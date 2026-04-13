@@ -8,27 +8,27 @@ It is built for developers who do not just need to write save files, but need a 
 
 - Godot: `4.6`
 - Plugin version: `0.1.0`
-- License: [MIT](F:/Coding-Projects/Godot/plugin-development/LICENSE)
+- License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 
 ## Install
 
-1. Copy [addons/saveflow_lite](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_lite) into your project `addons/` folder.
+1. Copy [`addons/saveflow_lite`](addons/saveflow_lite) into your project `addons/` folder.
 2. Enable `SaveFlow Lite` in the Godot plugin settings.
 3. Godot will register the `SaveFlow` autoload for you.
 
 ## Start Here
 
 - Quick component choice:
-  [saveflow-quick-selection-map.md](F:/Coding-Projects/Godot/plugin-development/docs/saveflow-quick-selection-map.md)
+  [saveflow-quick-selection-map.md](docs/saveflow-quick-selection-map.md)
 - Recommended integration path:
-  [saveflow-recommended-integration.md](F:/Coding-Projects/Godot/plugin-development/docs/saveflow-recommended-integration.md)
+  [saveflow-recommended-integration.md](docs/saveflow-recommended-integration.md)
 - Concept relationship map:
-  [saveflow-concept-map.md](F:/Coding-Projects/Godot/plugin-development/docs/saveflow-concept-map.md)
+  [saveflow-concept-map.md](docs/saveflow-concept-map.md)
 - Source tree map:
-  [saveflow-source-map.md](F:/Coding-Projects/Godot/plugin-development/docs/saveflow-source-map.md)
+  [saveflow-source-map.md](docs/saveflow-source-map.md)
 - Release notes:
-  [CHANGELOG.md](F:/Coding-Projects/Godot/plugin-development/CHANGELOG.md)
+  [CHANGELOG.md](CHANGELOG.md)
 
 ## Why SaveFlow Lite
 
@@ -374,10 +374,10 @@ The complex sandbox demonstrates:
 - why entity collections need an entity factory integration seam
 
 Related files:
-- [plugin_sandbox.tscn](F:/Coding-Projects/Godot/plugin-development/demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn)
-- [plugin_sandbox.gd](F:/Coding-Projects/Godot/plugin-development/demo/saveflow_lite/plugin_sandbox/plugin_sandbox.gd)
-- [sandbox_player.gd](F:/Coding-Projects/Godot/plugin-development/demo/saveflow_lite/plugin_sandbox/sandbox_player.gd)
-- [sandbox_settings.gd](F:/Coding-Projects/Godot/plugin-development/demo/saveflow_lite/plugin_sandbox/sandbox_settings.gd)
+- [plugin_sandbox.tscn](demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn)
+- [plugin_sandbox.gd](demo/saveflow_lite/plugin_sandbox/plugin_sandbox.gd)
+- [sandbox_player.gd](demo/saveflow_lite/plugin_sandbox/sandbox_player.gd)
+- [sandbox_settings.gd](demo/saveflow_lite/plugin_sandbox/sandbox_settings.gd)
 
 ## Testing
 
