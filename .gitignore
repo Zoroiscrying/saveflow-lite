@@ -1,0 +1,37 @@
+﻿# Godot 4+ specific ignores
+.godot/
+/android/
+.godot_user/
+.worktrees/
+
+# Godot C# / .NET
+.mono/
+/.vs/
+**/bin/
+**/obj/
+*.csproj
+*.sln
+
+# Export / build artifacts
+/build/
+/dist/
+/exports/
+/artifacts/
+/reports/
+/tmp/
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+*.import
+
+# IDE
+.idea/
+.claude/
+CLAUDE.md
+
+# Local editor / workspace helpers
+/feature_profiles/
+/text_editor_themes/
+/export_templates/

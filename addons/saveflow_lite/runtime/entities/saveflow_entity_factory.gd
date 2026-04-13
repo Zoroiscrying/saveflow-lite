@@ -1,0 +1,101 @@
+## SaveFlowEntityFactory is the project-owned runtime adapter for one class of
+## entities. Collection sources decide "which descriptors", factories decide
+## "how to find, spawn, and hydrate those entities".
+@tool
+@abstract
+class_name SaveFlowEntityFactory
+extends Node
+
+
+## Required. Return true when this factory owns the descriptor type_key.
+@abstract
+func can_handle_type(type_key: String) -> bool
+
+
+## Optional. Override when authored or pooled entities may already exist and
+## should be reused instead of recreated during restore.
+func find_existing_entity(_persistent_id: String, _context: Dictionary = {}) -> Node:
+	return null
+
+
+## Required. Create or materialize an entity shell for one descriptor. SaveFlow
+## applies payload state after this returns.
+@abstract
+func spawn_entity_from_save(descriptor: Dictionary, context: Dictionary = {}) -> Node
+
+
+## Required. Apply the descriptor payload to an entity returned by find/spawn.
+@abstract
+func apply_saved_data(node: Node, payload: Variant, context: Dictionary = {}) -> void
+
+
+## Optional. Called before a collection restore begins. Factories can use this
+## to clear caches or prepare a target container for policies like Clear And Restore.
+func prepare_restore(_restore_policy: int, _target_container: Node, _context: Dictionary = {}) -> void:
+	pass
+
+
+## Optional. Return supported type keys when the factory can describe them
+## statically. This improves inspector readability but is not required for restore.
+func get_supported_entity_types() -> PackedStringArray:
+	return PackedStringArray()
+
+
+## Optional. Return the runtime container this factory typically writes into.
+## This is used for preview and authoring clarity, not for restore dispatch.
+func get_target_container() -> Node:
+	return null
+
+
+## Returns the fixed schema consumed by the entity-factory inspector preview.
+## The preview uses this to explain which parts of the contract are implemented.
+func describe_entity_factory_plan() -> Dictionary:
+	var target_container := get_target_container()
+	var implements_find_existing := _implements_method("find_existing_entity")
+	var implements_spawn := _implements_method("spawn_entity_from_save")
+	var implements_apply := _implements_method("apply_saved_data")
+	var implements_prepare_restore := _implements_method("prepare_restore")
+	return {
+		"valid": implements_spawn and implements_apply,
+		"factory_name": name,
+		"factory_path": _describe_node_path(self),
+		"target_container_name": _describe_node_name(target_container),
+		"target_container_path": _describe_node_path(target_container),
+		"supported_entity_types": get_supported_entity_types(),
+		"implements_find_existing": implements_find_existing,
+		"implements_spawn": implements_spawn,
+		"implements_apply": implements_apply,
+		"implements_prepare_restore": implements_prepare_restore,
+		"required_contract": PackedStringArray([
+			"can_handle_type",
+			"spawn_entity_from_save",
+			"apply_saved_data",
+		]),
+		"optional_hooks": PackedStringArray([
+			"find_existing_entity",
+			"prepare_restore",
+			"get_supported_entity_types",
+			"get_target_container",
+		]),
+	}
+
+
+func _implements_method(method_name: String) -> bool:
+	var script_ref := get_script() as Script
+	if script_ref == null:
+		return false
+	return script_ref.has_method(method_name)
+
+
+func _describe_node_name(node: Node) -> String:
+	if node == null:
+		return ""
+	return node.name
+
+
+func _describe_node_path(node: Node) -> String:
+	if not is_instance_valid(node):
+		return "<none>"
+	if node.is_inside_tree():
+		return str(node.get_path())
+	return node.name

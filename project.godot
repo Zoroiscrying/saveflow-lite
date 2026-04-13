@@ -1,0 +1,54 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="PluginDevelopment"
+run/main_scene="res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+ControlCenter="*res://addons/control_center/runtime/control_center_runtime.gd"
+SaveFlow="*res://addons/saveflow_lite/runtime/core/save_flow.gd"
+
+[debug]
+
+gdscript/warnings/directory_rules={
+"res://addons": 1
+}
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/size/resizable=false
+
+[dotnet]
+
+project/assembly_name="PluginDevelopment"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/control_center/plugin.cfg", "res://addons/gdUnit4/plugin.cfg", "res://addons/saveflow_lite/plugin.cfg")
+
+[gdunit4]
+
+ui/toolbar/run_overall=true
+settings/common/update_notification_enabled=false
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+rendering_device/driver.windows="d3d12"
