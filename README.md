@@ -4,12 +4,26 @@ SaveFlow Lite is a comfort-first save workflow plugin for Godot 4.
 
 It is built for developers who do not just need to write save files, but need a cleaner way to organize save logic as projects grow.
 
+![Zelda-like demo screenshot](docs/screenshots/zelda-like-demo.png)
+
 ## Status
 
 - Godot: `4.6`
 - Plugin version: `0.1.0`
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
+
+## At A Glance
+
+Use SaveFlow Lite when your project looks like one of these:
+
+| You Need To Save | Typical Example | Recommended Path |
+| --- | --- | --- |
+| One authored or prefab-owned object | `player`, `chest`, `NPC`, `door`, `lever` | `SaveFlowNodeSource` |
+| One system, model, table, or queue | quest log, inventory backend, world progression table | custom `SaveFlowDataSource` |
+| A changing set of runtime entities | room enemies, dropped loot, summoned units | `SaveFlowEntityCollectionSource` + `SaveFlowPrefabEntityFactory` |
+
+If your save must restore several domains in order, add `SaveFlowScope` as a domain boundary and put the right leaf sources inside it.
 
 ## Install
 
@@ -29,6 +43,40 @@ It is built for developers who do not just need to write save files, but need a 
   [saveflow-source-map.md](docs/saveflow-source-map.md)
 - Release notes:
   [CHANGELOG.md](CHANGELOG.md)
+
+## Quick Use Cases
+
+### Save one gameplay object
+
+Use `SaveFlowNodeSource` when the mental model is "save this Godot object".
+
+Examples:
+- player state
+- a chest that can be opened
+- a door or lever with built-in node state
+- an NPC with exported gameplay fields and an `AnimationPlayer`
+
+### Save one game system
+
+Use a custom `SaveFlowDataSource` when the state belongs to a system rather than one scene node.
+
+Examples:
+- quest log
+- inventory model
+- world progression table
+- event queue
+
+### Save runtime entities in one area
+
+Use `SaveFlowEntityCollectionSource` when the set of entities changes over time.
+
+Examples:
+- current room enemies
+- dropped loot
+- summoned units
+- temporary spawned world actors
+
+Start with `SaveFlowPrefabEntityFactory` if one `type_key` maps cleanly to one prefab scene. Move to a custom `SaveFlowEntityFactory` only when you need pooling, authored spawn points, or custom lookup rules.
 
 ## Why SaveFlow Lite
 
