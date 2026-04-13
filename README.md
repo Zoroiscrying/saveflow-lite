@@ -11,6 +11,15 @@ It is built for developers who do not just need to write save files, but need a 
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 
+## Plugin Preview
+
+![SaveFlow component choice](docs/screenshots/saveflow-component-choice.svg)
+
+<p>
+  <img src="docs/screenshots/SaveFlowNodeSource.png" alt="SaveFlowNodeSource inspector" width="48%" />
+  <img src="docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
+</p>
+
 ## At A Glance
 
 Use SaveFlow Lite when your project looks like one of these:
