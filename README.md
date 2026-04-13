@@ -13,7 +13,7 @@ It is built for developers who do not just need to write save files, but need a 
 
 ## Plugin Preview
 
-![SaveFlow component choice](docs/screenshots/saveflow-component-choice.svg)
+![SaveFlow component choice](docs/screenshots/saveflow-component-choice-v2.svg)
 
 <p>
   <img src="docs/screenshots/SaveFlowNodeSource.png" alt="SaveFlowNodeSource inspector" width="48%" />
