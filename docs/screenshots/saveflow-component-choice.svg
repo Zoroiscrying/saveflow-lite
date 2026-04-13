@@ -46,47 +46,55 @@
   <text x="80" y="136" class="subtitle">Pick the component by ownership model first. Split mixed state instead of forcing one save style.</text>
 
   <g filter="url(#shadow)">
-    <rect x="80" y="200" rx="28" ry="28" width="580" height="220" fill="url(#cardBlue)"/>
+    <rect x="80" y="200" rx="28" ry="28" width="580" height="300" fill="url(#cardBlue)"/>
     <text x="120" y="258" class="cardTitle">SaveFlowNodeSource</text>
-    <text x="120" y="300" class="cardBody">Use when one authored or prefab-owned object owns the state.</text>
-    <text x="120" y="338" class="cardBody">Examples: player, chest, NPC, door, lever.</text>
-    <text x="120" y="376" class="cardBody">Good for exported fields, built-in node state, and selected child parts.</text>
-    <rect x="120" y="394" rx="16" ry="16" width="182" height="36" class="pill"/>
-    <text x="144" y="418" class="pillText">Object-owned state</text>
+    <text x="120" y="300" class="cardBody">Use when one authored or prefab-owned object</text>
+    <text x="120" y="332" class="cardBody">owns the state.</text>
+    <text x="120" y="368" class="cardBody">Examples: player, chest, NPC, door, lever.</text>
+    <text x="120" y="400" class="cardBody">Good for exported fields, built-in node state,</text>
+    <text x="120" y="432" class="cardBody">and selected child parts.</text>
+    <rect x="120" y="446" rx="16" ry="16" width="182" height="36" class="pill"/>
+    <text x="144" y="470" class="pillText">Object-owned state</text>
   </g>
 
   <g filter="url(#shadow)">
-    <rect x="740" y="200" rx="28" ry="28" width="580" height="220" fill="url(#cardGreen)"/>
+    <rect x="740" y="200" rx="28" ry="28" width="580" height="300" fill="url(#cardGreen)"/>
     <text x="780" y="258" class="cardTitle">SaveFlowDataSource</text>
-    <text x="780" y="300" class="cardBodyMuted">Use when the data belongs to one system, model, table, or queue.</text>
-    <text x="780" y="338" class="cardBodyMuted">Examples: quest log, inventory backend, world progression table.</text>
-    <text x="780" y="376" class="cardBodyMuted">Write custom gather/apply logic once, then keep it as one leaf source.</text>
-    <rect x="780" y="394" rx="16" ry="16" width="170" height="36" class="pill"/>
-    <text x="804" y="418" class="pillText">System-owned state</text>
+    <text x="780" y="300" class="cardBodyMuted">Use when the data belongs to one system,</text>
+    <text x="780" y="332" class="cardBodyMuted">model, table, or queue.</text>
+    <text x="780" y="368" class="cardBodyMuted">Examples: quest log, inventory backend,</text>
+    <text x="780" y="400" class="cardBodyMuted">world progression table.</text>
+    <text x="780" y="432" class="cardBodyMuted">Write custom gather/apply logic once.</text>
+    <rect x="780" y="446" rx="16" ry="16" width="170" height="36" class="pill"/>
+    <text x="804" y="470" class="pillText">System-owned state</text>
   </g>
 
   <g filter="url(#shadow)">
-    <rect x="80" y="490" rx="28" ry="28" width="580" height="220" fill="url(#cardAmber)"/>
+    <rect x="80" y="520" rx="28" ry="28" width="580" height="280" fill="url(#cardAmber)"/>
     <text x="120" y="548" class="cardTitle">SaveFlowEntityCollectionSource</text>
-    <text x="120" y="590" class="cardBodyWarm">Use when a set of runtime entities changes over time.</text>
-    <text x="120" y="628" class="cardBodyWarm">Examples: room enemies, dropped loot, summons, temporary actors.</text>
-    <text x="120" y="666" class="cardBodyWarm">Pair with SaveFlowPrefabEntityFactory first. Move to custom factory only for pooling or custom lookup.</text>
-    <rect x="120" y="684" rx="16" ry="16" width="188" height="36" class="pill"/>
-    <text x="144" y="708" class="pillText">Runtime entity sets</text>
+    <text x="120" y="590" class="cardBodyWarm">Use when a set of runtime entities changes</text>
+    <text x="120" y="622" class="cardBodyWarm">over time.</text>
+    <text x="120" y="658" class="cardBodyWarm">Examples: room enemies, dropped loot, summons,</text>
+    <text x="120" y="690" class="cardBodyWarm">temporary actors.</text>
+    <text x="120" y="722" class="cardBodyWarm">Start with SaveFlowPrefabEntityFactory.</text>
+    <rect x="120" y="736" rx="16" ry="16" width="188" height="36" class="pill"/>
+    <text x="144" y="760" class="pillText">Runtime entity sets</text>
   </g>
 
   <g filter="url(#shadow)">
-    <rect x="740" y="490" rx="28" ry="28" width="580" height="220" fill="url(#cardPurple)"/>
+    <rect x="740" y="520" rx="28" ry="28" width="580" height="280" fill="url(#cardPurple)"/>
     <text x="780" y="548" class="cardTitle">SaveFlowScope</text>
-    <text x="780" y="590" class="cardBodyPurple">Use when several save domains must restore in order.</text>
-    <text x="780" y="628" class="cardBodyPurple">Examples: player -&gt; world -&gt; runtime actors.</text>
-    <text x="780" y="666" class="cardBodyPurple">Scope does not serialize payload itself. It organizes domain boundaries, order, and restore policy.</text>
-    <rect x="780" y="684" rx="16" ry="16" width="152" height="36" class="pill"/>
-    <text x="804" y="708" class="pillText">Domain boundary</text>
+    <text x="780" y="590" class="cardBodyPurple">Use when several save domains must restore</text>
+    <text x="780" y="622" class="cardBodyPurple">in order.</text>
+    <text x="780" y="658" class="cardBodyPurple">Examples: player -&gt; world -&gt; runtime actors.</text>
+    <text x="780" y="690" class="cardBodyPurple">Scope organizes domain boundaries, order,</text>
+    <text x="780" y="722" class="cardBodyPurple">and restore policy.</text>
+    <rect x="780" y="736" rx="16" ry="16" width="152" height="36" class="pill"/>
+    <text x="804" y="760" class="pillText">Domain boundary</text>
   </g>
 
-  <path d="M700 420 L700 490" class="arrow"/>
-  <path d="M660 600 L740 600" class="arrow"/>
+  <path d="M700 500 L700 520" class="arrow"/>
+  <path d="M660 660 L740 660" class="arrow"/>
 
-  <text x="80" y="812" class="footer">Rule of thumb: if one feature mixes object state, system state, and runtime entities, split them into separate sources and put them in the right scope.</text>
+  <text x="80" y="860" class="footer">Rule of thumb: if one feature mixes object state, system state, and runtime entities, split them into separate sources and put them in the right scope.</text>
 </svg>
