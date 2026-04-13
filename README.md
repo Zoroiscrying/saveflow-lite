@@ -4,8 +4,6 @@ SaveFlow Lite is a comfort-first save workflow plugin for Godot 4.
 
 It is built for developers who do not just need to write save files, but need a cleaner way to organize save logic as projects grow.
 
-![Zelda-like demo screenshot](docs/screenshots/zelda-like-demo.png)
-
 ## Status
 
 - Godot: `4.6`
