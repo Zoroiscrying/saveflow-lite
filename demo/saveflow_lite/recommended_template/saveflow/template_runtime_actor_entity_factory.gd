@@ -2,7 +2,7 @@
 ## This file intentionally shows the smallest contract most projects need:
 ## advertise type ownership, spawn a prefab, and apply descriptor payload.
 @tool
-extends "res://addons/saveflow_lite/runtime/entities/saveflow_entity_factory.gd"
+extends "res://addons/saveflow_core/runtime/entities/saveflow_entity_factory.gd"
 
 const ActorPrefabScene := preload("res://demo/saveflow_lite/recommended_template/scenes/prefabs/template_runtime_actor.tscn")
 

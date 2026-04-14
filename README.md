@@ -118,7 +118,6 @@ SaveFlow Lite focuses on:
 - safe-write pipeline with temp file replacement
 - JSON in editor, binary in export through `AUTO` format
 - demo sandbox scene
-- GdUnit4 runtime tests
 
 ## Quick Start
 
@@ -441,24 +440,6 @@ Import the project headlessly:
 ```powershell
 .\tools\import_project.ps1
 ```
-
-Run runtime tests:
-
-```powershell
-.\tools\run_gdunit.ps1 -ContinueOnFailure
-```
-
-Current runtime coverage includes:
-- JSON save/load
-- binary save/load
-- slot copy/rename/delete
-- source collection and restore
-- node-source-driven scene save/load
-- scene inspection and exported-field collection
-- hierarchical save graph gather/apply
-- strict graph failure when a source target disappears
-- data-source graph save/load
-- entity collection restoration delegation
 
 ## C# Direction
 

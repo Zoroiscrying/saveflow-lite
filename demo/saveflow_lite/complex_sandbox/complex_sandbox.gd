@@ -1,7 +1,7 @@
 extends Control
 
 const SLOT_ID := "complex_slot"
-const SaveFlowNodeSourceScript := preload("res://addons/saveflow_lite/runtime/sources/saveflow_node_source.gd")
+const SaveFlowNodeSourceScript := preload("res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd")
 const EnemyStateScript := preload("res://demo/saveflow_lite/complex_sandbox/complex_enemy_state.gd")
 
 @onready var _player_state: Node2D = $StateRoot/PlayerState

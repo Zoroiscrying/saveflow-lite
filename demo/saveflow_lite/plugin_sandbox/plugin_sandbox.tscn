@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cm7thyx30uvuv" path="res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.gd" id="1_script"]
 [ext_resource type="Script" uid="uid://d34qt674wgoxo" path="res://demo/saveflow_lite/plugin_sandbox/sandbox_player.gd" id="2_script"]
 [ext_resource type="Script" uid="uid://dxygvx0s3jblx" path="res://demo/saveflow_lite/plugin_sandbox/sandbox_settings.gd" id="3_script"]
-[ext_resource type="Script" path="res://addons/saveflow_lite/runtime/sources/saveflow_node_source.gd" id="4_node_source"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="4_node_source"]
 
 [node name="PluginSandbox" type="Control" unique_id=1825626374]
 layout_mode = 3

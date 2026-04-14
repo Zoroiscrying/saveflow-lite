@@ -7,8 +7,8 @@
 [ext_resource type="Script" path="res://demo/saveflow_lite/complex_sandbox/complex_settings_state.gd" id="5_script"]
 [ext_resource type="Script" path="res://demo/saveflow_lite/complex_sandbox/complex_party_member_state.gd" id="6_script"]
 [ext_resource type="Script" path="res://demo/saveflow_lite/complex_sandbox/complex_enemy_state.gd" id="7_script"]
-[ext_resource type="Script" path="res://addons/saveflow_lite/runtime/sources/saveflow_node_source.gd" id="8_node_source"]
-[ext_resource type="Script" path="res://addons/saveflow_lite/runtime/core/saveflow_scope.gd" id="9_scope"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="8_node_source"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/core/saveflow_scope.gd" id="9_scope"]
 
 [node name="ComplexSandbox" type="Control"]
 layout_mode = 3

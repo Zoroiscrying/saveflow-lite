@@ -1,9 +1,9 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/template_runtime_actor.gd" id="1_actor"]
-[ext_resource type="Script" path="res://addons/saveflow_lite/runtime/entities/saveflow_identity.gd" id="2_identity"]
-[ext_resource type="Script" path="res://addons/saveflow_lite/runtime/core/saveflow_scope.gd" id="3_scope"]
-[ext_resource type="Script" path="res://addons/saveflow_lite/runtime/sources/saveflow_node_source.gd" id="4_node_source"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/entities/saveflow_identity.gd" id="2_identity"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/core/saveflow_scope.gd" id="3_scope"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="4_node_source"]
 
 [node name="TemplateRuntimeActor" type="Node2D"]
 script = ExtResource("1_actor")

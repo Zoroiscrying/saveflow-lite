@@ -3,7 +3,7 @@ extends EditorPlugin
 
 const AUTOLOAD_NAME := "SaveFlow"
 const LEGACY_AUTOLOAD_NAME := "Save"
-const AUTOLOAD_PATH := "res://addons/saveflow_lite/runtime/core/save_flow.gd"
+const AUTOLOAD_PATH := "res://addons/saveflow_core/runtime/core/save_flow.gd"
 const InspectorPluginScript := preload("res://addons/saveflow_lite/editor/saveflow_inspector_plugin.gd")
 
 var _inspector_plugin: EditorInspectorPlugin

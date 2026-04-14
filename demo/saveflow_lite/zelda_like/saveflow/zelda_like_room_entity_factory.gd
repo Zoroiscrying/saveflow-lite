@@ -1,5 +1,5 @@
 @tool
-extends "res://addons/saveflow_lite/runtime/entities/saveflow_entity_factory.gd"
+extends "res://addons/saveflow_core/runtime/entities/saveflow_entity_factory.gd"
 
 const EntityPrefabScene := preload("res://demo/saveflow_lite/zelda_like/scenes/prefabs/zelda_like_entity_prefab.tscn")
 const RoomEntityStateScript := preload("res://demo/saveflow_lite/zelda_like/gameplay/zelda_like_room_entity_state.gd")

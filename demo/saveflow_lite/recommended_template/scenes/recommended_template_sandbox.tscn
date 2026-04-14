@@ -5,8 +5,8 @@
 [ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/template_world_registry.gd" id="3_world"]
 [ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/saveflow/template_world_data_source.gd" id="4_world_data_source"]
 [ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/saveflow/template_runtime_actor_entity_factory.gd" id="5_actor_factory"]
-[ext_resource type="Script" path="res://addons/saveflow_lite/runtime/sources/saveflow_node_source.gd" id="6_node_source"]
-[ext_resource type="Script" path="res://addons/saveflow_lite/runtime/entities/saveflow_entity_collection_source.gd" id="9_runtime_collection"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="6_node_source"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd" id="9_runtime_collection"]
 
 [node name="RecommendedTemplateSandbox" type="Control"]
 layout_mode = 3

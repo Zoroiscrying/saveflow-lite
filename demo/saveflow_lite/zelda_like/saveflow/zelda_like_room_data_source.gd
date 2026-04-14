@@ -1,7 +1,7 @@
 ## Demo data source for Zelda-like world and room state. It keeps the example on
 ## the main `SaveFlowDataSource` path instead of introducing extra binding types.
 @tool
-extends "res://addons/saveflow_lite/runtime/sources/saveflow_data_source.gd"
+extends "res://addons/saveflow_core/runtime/sources/saveflow_data_source.gd"
 
 ## Expected to point at the room registry node that exposes import/export state.
 @export var registry: Node

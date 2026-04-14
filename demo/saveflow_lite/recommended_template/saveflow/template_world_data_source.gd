@@ -1,7 +1,7 @@
 ## Minimal template data source showing the recommended custom-source path for
 ## non-object system state.
 @tool
-extends "res://addons/saveflow_lite/runtime/sources/saveflow_data_source.gd"
+extends "res://addons/saveflow_core/runtime/sources/saveflow_data_source.gd"
 
 ## Points at the node that owns the template's `system_state` dictionary.
 @export var target: Node
