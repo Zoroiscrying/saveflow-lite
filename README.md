@@ -38,6 +38,27 @@ If your save must restore several domains in order, add `SaveFlowScope` as a dom
 2. Enable `SaveFlow Lite` in the Godot plugin settings.
 3. Godot will register the `SaveFlow` autoload for you.
 
+## Project Save Settings
+
+`SaveFlow Lite` now adds a `SaveFlow Settings` dock in the editor.
+
+Use it for project-wide defaults such as:
+- save format
+- save root and slot index path
+- JSON and binary file extensions
+- project title, game version, save schema, and data version
+- safe write, auto-create directories, slot-index metadata, and log level
+
+This panel configures the `SaveFlow` runtime singleton itself. It is the right
+place for project-level defaults.
+
+It is not the place for object-owned or system-owned save behavior. Keep those
+decisions on:
+- `SaveFlowNodeSource`
+- `SaveFlowDataSource`
+- `SaveFlowEntityCollectionSource`
+- `SaveFlowScope`
+
 ## Start Here
 
 - Quick component choice:
@@ -118,6 +139,7 @@ SaveFlow Lite focuses on:
 - safe-write pipeline with temp file replacement
 - JSON in editor, binary in export through `AUTO` format
 - demo sandbox scene
+- GdUnit4 runtime tests
 
 ## Quick Start
 
@@ -238,6 +260,13 @@ Current first-wave built-ins:
 - `Node3D`
 - `Control`
 - `AnimationPlayer`
+- `Timer`
+- `AudioStreamPlayer` / `AudioStreamPlayer2D` / `AudioStreamPlayer3D`
+- `PathFollow2D` / `PathFollow3D`
+- `Camera2D` / `Camera3D`
+- `Sprite2D` / `AnimatedSprite2D`
+- `CharacterBody2D` / `CharacterBody3D`
+- `RigidBody2D` / `RigidBody3D`
 
 You can also inspect what SaveFlow will collect before writing a slot:
 
@@ -440,6 +469,24 @@ Import the project headlessly:
 ```powershell
 .\tools\import_project.ps1
 ```
+
+Run runtime tests:
+
+```powershell
+.\tools\run_gdunit.ps1 -ContinueOnFailure
+```
+
+Current runtime coverage includes:
+- JSON save/load
+- binary save/load
+- slot copy/rename/delete
+- source collection and restore
+- node-source-driven scene save/load
+- scene inspection and exported-field collection
+- hierarchical save graph gather/apply
+- strict graph failure when a source target disappears
+- data-source graph save/load
+- entity collection restoration delegation
 
 ## C# Direction
 

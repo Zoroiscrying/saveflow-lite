@@ -14,6 +14,20 @@ static func _serializer_types() -> Array:
 		SaveFlowSerializerNode3D,
 		SaveFlowSerializerControl,
 		SaveFlowSerializerAnimationPlayer,
+		SaveFlowSerializerTimer,
+		SaveFlowSerializerAudioStreamPlayer,
+		SaveFlowSerializerAudioStreamPlayer2D,
+		SaveFlowSerializerAudioStreamPlayer3D,
+		SaveFlowSerializerPathFollow2D,
+		SaveFlowSerializerPathFollow3D,
+		SaveFlowSerializerCamera2D,
+		SaveFlowSerializerCamera3D,
+		SaveFlowSerializerSprite2D,
+		SaveFlowSerializerAnimatedSprite2D,
+		SaveFlowSerializerCharacterBody2D,
+		SaveFlowSerializerCharacterBody3D,
+		SaveFlowSerializerRigidBody2D,
+		SaveFlowSerializerRigidBody3D,
 	]
 
 
