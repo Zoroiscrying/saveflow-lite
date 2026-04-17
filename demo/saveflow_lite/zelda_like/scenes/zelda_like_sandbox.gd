@@ -1,6 +1,10 @@
 extends Node2D
 
 const SLOT_ID := "zelda_like_slot"
+const FORMAL_SAVE_ROOT := "user://zelda_like_sandbox/saves"
+const FORMAL_SLOT_INDEX := "user://zelda_like_sandbox/slots.index"
+const DEV_SAVE_ROOT := "user://zelda_like_sandbox/devSaves"
+const DEV_SLOT_INDEX := "user://zelda_like_sandbox/dev-slots.index"
 const ROOM_SCENES := {
 	"room_hub": preload("res://demo/saveflow_lite/zelda_like/scenes/rooms/room_hub.tscn"),
 	"room_east": preload("res://demo/saveflow_lite/zelda_like/scenes/rooms/room_east.tscn"),
@@ -71,8 +75,8 @@ func prepare_loaded_room_for_runtime_restore() -> void:
 func _configure_runtime() -> void:
 	SaveFlow.configure_with(
 		{
-			"save_root": "user://zelda_like_sandbox/saves",
-			"slot_index_file": "user://zelda_like_sandbox/slots.index",
+			"save_root": FORMAL_SAVE_ROOT,
+			"slot_index_file": FORMAL_SLOT_INDEX,
 			"storage_format": 0,
 			"pretty_json_in_editor": true,
 			"use_safe_write": true,
@@ -118,26 +122,61 @@ func _action_has_key(action_name: String, keycode: Key) -> bool:
 
 
 func _on_save_pressed() -> void:
-	var result: SaveResult = SaveFlow.save_scope(
-		SLOT_ID,
-		_graph_root,
-		{
-			"display_name": "SaveFlow Zelda-Like Sandbox",
-			"scene_path": scene_file_path,
-			"game_version": "saveflow_zelda_like_demo",
-		}
-	)
+	var result := save_named_entry(SLOT_ID)
 	_set_status(_format_result("Save", result))
 
 
 func _on_load_pressed() -> void:
-	var result: SaveResult = SaveFlow.load_scope(SLOT_ID, _graph_root, true)
+	var result := load_named_entry(SLOT_ID)
+	_set_status(_format_result("Load", result))
+
+
+func save_named_entry(entry_name: String) -> SaveResult:
+	return SaveFlow.save_scope(
+		entry_name,
+		_graph_root,
+		{
+			"display_name": entry_name,
+			"scene_path": scene_file_path,
+			"game_version": "saveflow_zelda_like_demo",
+		}
+	)
+
+
+func load_named_entry(entry_name: String) -> SaveResult:
+	var result: SaveResult = SaveFlow.load_scope(entry_name, _graph_root, true)
 	if result.ok:
 		var room_id: String = String(_player.get("current_room_id"))
 		_load_room_definition(room_id)
 		_stage.call("configure_room", room_id, _build_current_room_layout())
 		_focus_camera()
-	_set_status(_format_result("Load", result))
+	return result
+
+
+func build_dev_save_settings() -> Dictionary:
+	return {
+		"save_root": DEV_SAVE_ROOT,
+		"slot_index_file": DEV_SLOT_INDEX,
+		"storage_format": 0,
+		"pretty_json_in_editor": true,
+		"use_safe_write": true,
+	}
+
+
+func save_dev_named_entry(entry_name: String) -> SaveResult:
+	return _with_temp_save_settings(
+		build_dev_save_settings(),
+		func() -> SaveResult:
+			return save_named_entry(entry_name)
+	)
+
+
+func load_dev_named_entry(entry_name: String) -> SaveResult:
+	return _with_temp_save_settings(
+		build_dev_save_settings(),
+		func() -> SaveResult:
+			return load_named_entry(entry_name)
+	)
 
 
 func _on_reset_pressed() -> void:
@@ -364,6 +403,53 @@ func _format_result(action: String, result: SaveResult) -> String:
 	if result.ok:
 		return "%s OK. %s" % [action, JSON.stringify(result.data)]
 	return "%s failed: %s (%s)" % [action, result.error_key, result.error_message]
+
+
+func _with_temp_save_settings(overrides: Dictionary, operation: Callable) -> SaveResult:
+	var original_settings := _clone_save_settings(SaveFlow.get_settings())
+	var temp_settings := _clone_save_settings(original_settings)
+	_apply_settings_overrides(temp_settings, overrides)
+	var configure_result: SaveResult = SaveFlow.configure(temp_settings)
+	if not configure_result.ok:
+		return configure_result
+
+	var operation_result: SaveResult = operation.call()
+	SaveFlow.configure(original_settings)
+	return operation_result
+
+
+func _clone_save_settings(source: SaveSettings) -> SaveSettings:
+	var clone := SaveSettings.new()
+	clone.save_root = source.save_root
+	clone.slot_index_file = source.slot_index_file
+	clone.storage_format = source.storage_format
+	clone.pretty_json_in_editor = source.pretty_json_in_editor
+	clone.use_safe_write = source.use_safe_write
+	clone.file_extension_json = source.file_extension_json
+	clone.file_extension_binary = source.file_extension_binary
+	clone.log_level = source.log_level
+	clone.include_meta_in_slot_file = source.include_meta_in_slot_file
+	clone.auto_create_dirs = source.auto_create_dirs
+	clone.project_title = source.project_title
+	clone.game_version = source.game_version
+	clone.data_version = source.data_version
+	clone.save_schema = source.save_schema
+	return clone
+
+
+func _apply_settings_overrides(target: SaveSettings, overrides: Dictionary) -> void:
+	for key_variant in overrides.keys():
+		var key := String(key_variant)
+		if not _has_setting_property(target, key):
+			continue
+		target.set(key, overrides[key_variant])
+
+
+func _has_setting_property(target: SaveSettings, property_name: String) -> bool:
+	for property_info in target.get_property_list():
+		if String(property_info.get("name", "")) == property_name:
+			return true
+	return false
 
 
 func _load_room_definition(room_id: String) -> void:

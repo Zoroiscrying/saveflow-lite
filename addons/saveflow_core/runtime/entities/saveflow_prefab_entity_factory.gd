@@ -107,7 +107,16 @@ func prepare_restore(restore_policy: int, _target_container: Node, _context: Dic
 func describe_entity_factory_plan() -> Dictionary:
 	var plan: Dictionary = super.describe_entity_factory_plan()
 	var resolved_container := _ensure_target_container(false)
-	plan["valid"] = not type_key.is_empty() and entity_scene != null and (resolved_container != null or auto_create_container)
+	var problems: PackedStringArray = PackedStringArray(plan.get("problems", PackedStringArray()))
+	if type_key.is_empty():
+		problems.append("type_key is empty")
+	if entity_scene == null:
+		problems.append("entity_scene is not assigned")
+	if resolved_container == null and not auto_create_container:
+		problems.append("target_container is missing and auto_create_container is disabled")
+	plan["valid"] = problems.is_empty()
+	plan["reason"] = _resolve_prefab_plan_reason(problems)
+	plan["problems"] = problems
 	plan["factory_name"] = name
 	plan["target_container_name"] = _describe_node_name(resolved_container)
 	plan["target_container_path"] = _describe_node_path(resolved_container)
@@ -115,6 +124,16 @@ func describe_entity_factory_plan() -> Dictionary:
 	plan["can_provide_target_container"] = resolved_container != null or auto_create_container
 	plan["uses_prefab_scene"] = entity_scene != null
 	return plan
+
+
+func _resolve_prefab_plan_reason(problems: PackedStringArray) -> String:
+	if problems.is_empty():
+		return ""
+	if type_key.is_empty():
+		return "MISSING_TYPE_KEY"
+	if entity_scene == null:
+		return "MISSING_ENTITY_SCENE"
+	return "TARGET_CONTAINER_NOT_RESOLVED"
 
 
 func _instantiate_entity_scene(_descriptor: Dictionary, _context: Dictionary = {}) -> Node:

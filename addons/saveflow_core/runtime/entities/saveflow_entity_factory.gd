@@ -55,8 +55,15 @@ func describe_entity_factory_plan() -> Dictionary:
 	var implements_spawn := _implements_method("spawn_entity_from_save")
 	var implements_apply := _implements_method("apply_saved_data")
 	var implements_prepare_restore := _implements_method("prepare_restore")
+	var problems: PackedStringArray = PackedStringArray()
+	if not implements_spawn:
+		problems.append("spawn_entity_from_save is not implemented")
+	if not implements_apply:
+		problems.append("apply_saved_data is not implemented")
 	return {
-		"valid": implements_spawn and implements_apply,
+		"valid": problems.is_empty(),
+		"reason": _resolve_plan_reason(problems),
+		"problems": problems,
 		"factory_name": name,
 		"factory_path": _describe_node_path(self),
 		"target_container_name": _describe_node_name(target_container),
@@ -80,11 +87,16 @@ func describe_entity_factory_plan() -> Dictionary:
 	}
 
 
+func _resolve_plan_reason(problems: PackedStringArray) -> String:
+	if problems.is_empty():
+		return ""
+	if problems.size() == 1:
+		return "MISSING_REQUIRED_METHOD"
+	return "MISSING_REQUIRED_METHODS"
+
+
 func _implements_method(method_name: String) -> bool:
-	var script_ref := get_script() as Script
-	if script_ref == null:
-		return false
-	return script_ref.has_method(method_name)
+	return has_method(method_name)
 
 
 func _describe_node_name(node: Node) -> String:

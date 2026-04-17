@@ -8,10 +8,28 @@ const FORMAT_BINARY := 2
 const INDEX_VERSION := 1
 const INDEX_SLOTS_KEY := "slots"
 const TEMP_FILE_SUFFIX := ".tmp"
+const SaveFlowProjectSettingsScript := preload("res://addons/saveflow_core/runtime/core/saveflow_project_settings.gd")
+const SaveFlowSaveManagerBusScript := preload("res://addons/saveflow_core/runtime/core/saveflow_save_manager_bus.gd")
 
 var _settings: SaveSettings = SaveSettings.new()
 var _current_data: Dictionary = {}
 var _entity_factories: Array = []
+var _save_manager_bridge: Node
+var _save_manager_status_timer := 0.0
+
+
+func _ready() -> void:
+	_settings = SaveFlowProjectSettingsScript.load_settings()
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	_save_manager_status_timer += delta
+	if _save_manager_status_timer < 0.5:
+		return
+	_save_manager_status_timer = 0.0
+	_write_save_manager_status()
+	_process_save_manager_requests()
 
 
 func configure(settings: SaveSettings) -> SaveResult:
@@ -236,6 +254,37 @@ func unregister_entity_factory(factory: SaveFlowEntityFactory) -> SaveResult:
 
 func clear_entity_factories() -> SaveResult:
 	_entity_factories.clear()
+	return _ok_result()
+
+
+func register_save_manager_bridge(bridge: Node) -> SaveResult:
+	if bridge == null:
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"save manager bridge cannot be null"
+		)
+	if not bridge.has_method("save_named_entry") or not bridge.has_method("load_named_entry"):
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"save manager bridge must implement save_named_entry() and load_named_entry()"
+		)
+	_save_manager_bridge = bridge
+	_write_save_manager_status()
+	return _ok_result({"bridge_name": _get_save_manager_bridge_name()})
+
+
+func unregister_save_manager_bridge(bridge: Node) -> SaveResult:
+	if bridge == null:
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"save manager bridge cannot be null"
+		)
+	if _save_manager_bridge == bridge:
+		_save_manager_bridge = null
+	_write_save_manager_status()
 	return _ok_result()
 
 
@@ -701,11 +750,16 @@ func build_meta(slot_id: String, meta_patch: Dictionary = {}) -> Dictionary:
 	var base_meta: Dictionary = {
 		"slot_id": slot_id,
 		"display_name": slot_id,
+		"created_at_unix": Time.get_unix_time_from_system(),
+		"created_at_iso": Time.get_datetime_string_from_system(true, true),
 		"saved_at_unix": Time.get_unix_time_from_system(),
+		"saved_at_iso": Time.get_datetime_string_from_system(true, true),
 		"scene_path": "",
 		"playtime_seconds": 0,
-		"game_version": "",
-		"data_version": 1,
+		"project_title": _settings.project_title,
+		"game_version": _settings.game_version,
+		"data_version": _settings.data_version,
+		"save_schema": _settings.save_schema,
 	}
 	for key in meta_patch.keys():
 		base_meta[key] = meta_patch[key]
@@ -802,6 +856,13 @@ func _save_payload(slot_id: String, payload: Dictionary, format: int) -> SaveRes
 	var previous_path: String = ""
 	if previous_result.ok:
 		previous_path = String(previous_result.data["path"])
+		var previous_entry: Dictionary = Dictionary(previous_result.data.get("entry", {}))
+		if previous_entry.has("meta") and previous_entry["meta"] is Dictionary:
+			var previous_meta: Dictionary = previous_entry["meta"]
+			if previous_meta.has("created_at_unix") and not payload["meta"].has("created_at_unix"):
+				payload["meta"]["created_at_unix"] = previous_meta["created_at_unix"]
+			if previous_meta.has("created_at_iso") and not payload["meta"].has("created_at_iso"):
+				payload["meta"]["created_at_iso"] = previous_meta["created_at_iso"]
 
 	var write_result: SaveResult = _write_payload_file(path, payload, format)
 	if not write_result.ok:
@@ -1413,6 +1474,84 @@ func _sanitize_slot_id(slot_id: String) -> String:
 	if sanitized.is_empty():
 		sanitized = "slot"
 	return sanitized
+
+
+func _write_save_manager_status() -> void:
+	var bridge_active := _is_save_manager_bridge_available()
+	var dev_settings: Dictionary = {}
+	if bridge_active and _save_manager_bridge.has_method("get_dev_save_settings"):
+		var bridge_dev_settings: Variant = _save_manager_bridge.call("get_dev_save_settings")
+		if bridge_dev_settings is Dictionary:
+			dev_settings = Dictionary(bridge_dev_settings).duplicate(true)
+	SaveFlowSaveManagerBusScript.write_status(
+		{
+			"runtime_available": bridge_active,
+			"bridge_name": _get_save_manager_bridge_name() if bridge_active else "",
+			"settings": {
+				"save_root": _settings.save_root,
+				"slot_index_file": _settings.slot_index_file,
+				"storage_format": _settings.storage_format,
+				"pretty_json_in_editor": _settings.pretty_json_in_editor,
+				"use_safe_write": _settings.use_safe_write,
+				"file_extension_json": _settings.file_extension_json,
+				"file_extension_binary": _settings.file_extension_binary,
+				"log_level": _settings.log_level,
+				"include_meta_in_slot_file": _settings.include_meta_in_slot_file,
+				"auto_create_dirs": _settings.auto_create_dirs,
+				"project_title": _settings.project_title,
+				"game_version": _settings.game_version,
+				"data_version": _settings.data_version,
+				"save_schema": _settings.save_schema,
+			},
+			"dev_settings": dev_settings,
+		}
+	)
+
+
+func _process_save_manager_requests() -> void:
+	if not _is_save_manager_bridge_available():
+		return
+
+	for request in SaveFlowSaveManagerBusScript.list_pending_requests():
+		var request_id: String = String(request.get("id", ""))
+		var action: String = String(request.get("action", ""))
+		var entry_name: String = String(request.get("name", ""))
+		var result: SaveResult = _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"unsupported save manager action",
+			{"action": action}
+		)
+
+		if action == "save":
+			result = _save_manager_bridge.call("save_named_entry", entry_name)
+		elif action == "load":
+			result = _save_manager_bridge.call("load_named_entry", entry_name)
+
+		if result.ok:
+			SaveFlowSaveManagerBusScript.complete_request(request_id, true, "Completed %s '%s'." % [action, entry_name])
+		else:
+			SaveFlowSaveManagerBusScript.complete_request(
+				request_id,
+				false,
+				result.error_message if not result.error_message.is_empty() else "Save manager request failed."
+			)
+
+
+func _is_save_manager_bridge_available() -> bool:
+	if _save_manager_bridge == null or not is_instance_valid(_save_manager_bridge):
+		return false
+	if _save_manager_bridge.has_method("is_bridge_enabled"):
+		return bool(_save_manager_bridge.call("is_bridge_enabled"))
+	return true
+
+
+func _get_save_manager_bridge_name() -> String:
+	if _save_manager_bridge == null or not is_instance_valid(_save_manager_bridge):
+		return ""
+	if _save_manager_bridge.has_method("get_bridge_name"):
+		return String(_save_manager_bridge.call("get_bridge_name"))
+	return _save_manager_bridge.name
 
 
 func _read_payload_file(path: String, format: int) -> SaveResult:

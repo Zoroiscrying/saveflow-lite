@@ -8,6 +8,21 @@ The goal is simple:
 - one obvious way to save runtime entity collections
 - one obvious way to organize domains and restore order
 
+## Project-Level Save Defaults
+
+Use the `SaveFlow Settings` dock for project-wide defaults that should affect
+the whole runtime:
+- storage format
+- slot root and slot index paths
+- file extensions
+- default slot metadata such as project title, game version, save schema, and data version
+- write behavior such as safe write and auto-create directories
+
+This panel configures the `SaveFlow` singleton.
+
+Do not use it to replace per-source authoring decisions. Object, system, and
+runtime-set ownership still belongs on the matching SaveFlow components.
+
 ## The Three Main Paths
 
 ### 0. Domain boundaries: `SaveFlowScope`

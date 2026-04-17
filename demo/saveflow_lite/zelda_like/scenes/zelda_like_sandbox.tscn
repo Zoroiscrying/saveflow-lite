@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://c4hk6u8omj6ut" path="res://addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd" id="9_runtime_collection"]
 [ext_resource type="Script" uid="uid://pm7ake2mxamr" path="res://demo/saveflow_lite/zelda_like/saveflow/zelda_like_runtime_scope.gd" id="10_runtime_scope"]
 [ext_resource type="Script" uid="uid://b0sg3f22iv8yn" path="res://demo/saveflow_lite/zelda_like/gameplay/zelda_like_room_camera.gd" id="11_camera"]
+[ext_resource type="Script" uid="uid://bskp144qoa80b" path="res://demo/saveflow_lite/zelda_like/saveflow/zelda_like_save_manager_bridge.gd" id="12_save_manager_bridge"]
 [ext_resource type="Script" uid="uid://c2wv0iwpkmyaf" path="res://demo/saveflow_lite/zelda_like/saveflow/zelda_like_room_entity_factory.gd" id="13_entity_binding"]
 
 [sub_resource type="RectangleShape2D" id="1_player_body"]
@@ -199,9 +200,15 @@ scroll_active = false
 [node name="RoomRegistry" type="Node" parent="StateRoot" unique_id=1248175193]
 script = ExtResource("4_registry")
 
-[node name="RoomEntityFactory" type="Node" parent="StateRoot" unique_id=481257901]
+[node name="RoomEntityFactory" type="Node" parent="StateRoot" unique_id=481257901 node_paths=PackedStringArray("target_container")]
 script = ExtResource("13_entity_binding")
+target_container = NodePath("../../World/RoomStage/LoadedRoomEntities")
 _target_container_ref_path = NodePath("../../World/RoomStage/LoadedRoomEntities")
+
+[node name="SaveManagerBridge" type="Node" parent="StateRoot" unique_id=1549652220 node_paths=PackedStringArray("sandbox")]
+script = ExtResource("12_save_manager_bridge")
+sandbox = NodePath("../..")
+_sandbox_ref_path = NodePath("../..")
 
 [node name="SaveGraphRoot" type="Node" parent="StateRoot" unique_id=2093563576]
 script = ExtResource("8_scope")
@@ -219,8 +226,11 @@ _target_ref_path = NodePath("../../../../World/RoomStage/Player")
 additional_properties = PackedStringArray()
 ignored_properties = PackedStringArray()
 included_target_builtin_ids = PackedStringArray()
-included_paths = PackedStringArray("AnimationPlayer")
+included_paths = PackedStringArray("AnimationPlayer", "CollisionShape2D", "InteractionArea", "InteractionArea/CollisionShape2D")
 excluded_paths = PackedStringArray()
+metadata/_saveflow_node_source_preview_expanded = true
+metadata/_saveflow_node_source_details_expanded = false
+metadata/_saveflow_node_source_advanced_expanded = false
 
 [node name="WorldScope" type="Node" parent="StateRoot/SaveGraphRoot" unique_id=442439261]
 script = ExtResource("8_scope")
@@ -239,5 +249,6 @@ scope_key = "runtime"
 script = ExtResource("9_runtime_collection")
 target_container = NodePath("../../../../World/RoomStage/LoadedRoomEntities")
 _target_container_ref_path = NodePath("../../../../World/RoomStage/LoadedRoomEntities")
+restore_policy = 2
 entity_factory = NodePath("../../../RoomEntityFactory")
 _entity_factory_ref_path = NodePath("../../../RoomEntityFactory")

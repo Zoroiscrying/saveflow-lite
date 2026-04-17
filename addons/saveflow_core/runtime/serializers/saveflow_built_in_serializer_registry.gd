@@ -28,6 +28,10 @@ static func _serializer_types() -> Array:
 		SaveFlowSerializerCharacterBody3D,
 		SaveFlowSerializerRigidBody2D,
 		SaveFlowSerializerRigidBody3D,
+		SaveFlowSerializerArea2D,
+		SaveFlowSerializerNavigationAgent2D,
+		SaveFlowSerializerTileMapLayer,
+		SaveFlowSerializerTileMap,
 	]
 
 
@@ -75,15 +79,21 @@ static func resolve_serializers_for_node(node: Node, requested_ids: PackedString
 	return serializers
 
 
-static func gather_for_node(node: Node, requested_ids: PackedStringArray = PackedStringArray()) -> Dictionary:
+static func gather_for_node(
+	node: Node,
+	requested_ids: PackedStringArray = PackedStringArray(),
+	field_filters: Dictionary = {}
+) -> Dictionary:
 	var payload: Dictionary = {}
 	for serializer_variant in resolve_serializers_for_node(node, requested_ids):
 		var serializer: SaveFlowBuiltInSerializer = serializer_variant
-		payload[serializer.get_serializer_id()] = serializer.gather_from_node(node)
+		var serializer_id: String = serializer.get_serializer_id()
+		var serializer_payload: Variant = serializer.gather_from_node(node)
+		payload[serializer_id] = _filter_payload(serializer_payload, field_filters.get(serializer_id, null))
 	return payload
 
 
-static func apply_to_node(node: Node, payload: Dictionary) -> void:
+static func apply_to_node(node: Node, payload: Dictionary, field_filters: Dictionary = {}) -> void:
 	for serializer_variant in all_serializers():
 		var serializer: SaveFlowBuiltInSerializer = serializer_variant
 		var serializer_id: String = serializer.get_serializer_id()
@@ -91,4 +101,75 @@ static func apply_to_node(node: Node, payload: Dictionary) -> void:
 			continue
 		if not payload.has(serializer_id):
 			continue
-		serializer.apply_to_node(node, payload[serializer_id])
+		var serializer_payload: Variant = _filter_payload(payload[serializer_id], field_filters.get(serializer_id, null))
+		serializer.apply_to_node(node, serializer_payload)
+
+
+static func fields_for_node(node: Node, serializer_id: String) -> Array:
+	var serializer := _resolve_serializer_for_node(node, serializer_id)
+	if serializer == null:
+		return []
+	var descriptors: Array = serializer.describe_fields(node)
+	if not descriptors.is_empty():
+		return descriptors
+	var gathered: Variant = serializer.gather_from_node(node)
+	if not (gathered is Dictionary):
+		return []
+	var inferred: Array = []
+	var payload: Dictionary = gathered
+	for key_variant in payload.keys():
+		var key: String = String(key_variant)
+		inferred.append(
+			{
+				"id": key,
+				"display_name": key.replace("_", " ").capitalize(),
+			}
+		)
+	return inferred
+
+
+static func recommended_field_ids_for_node(node: Node, serializer_id: String) -> PackedStringArray:
+	var serializer := _resolve_serializer_for_node(node, serializer_id)
+	if serializer == null:
+		return PackedStringArray()
+	return serializer.recommended_field_ids(node)
+
+
+static func _resolve_serializer_for_node(node: Node, serializer_id: String) -> SaveFlowBuiltInSerializer:
+	for serializer_variant in all_serializers():
+		var serializer: SaveFlowBuiltInSerializer = serializer_variant
+		if not serializer.supports_node(node):
+			continue
+		if serializer.get_serializer_id() != serializer_id:
+			continue
+		return serializer
+	return null
+
+
+static func _filter_payload(payload: Variant, allowed_fields: Variant) -> Variant:
+	if not (payload is Dictionary):
+		return payload
+	if allowed_fields == null:
+		return payload
+	var allowed: PackedStringArray = _to_packed_string_array(allowed_fields)
+	if allowed.is_empty():
+		return payload
+	var source: Dictionary = payload
+	var filtered: Dictionary = {}
+	for field_id in allowed:
+		if source.has(field_id):
+			filtered[field_id] = source[field_id]
+	return filtered
+
+
+static func _to_packed_string_array(value: Variant) -> PackedStringArray:
+	if value is PackedStringArray:
+		return value
+	if value is Array:
+		var result: PackedStringArray = PackedStringArray()
+		for entry in value:
+			result.append(String(entry))
+		return result
+	if value is String:
+		return PackedStringArray([String(value)])
+	return PackedStringArray()

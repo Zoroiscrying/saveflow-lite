@@ -38,6 +38,7 @@ var _font: SystemFont
 
 
 func _ready() -> void:
+	_ensure_player_input_actions()
 	add_to_group("saveflow_demo_player")
 	_font = _build_font()
 	_configure_interaction_area()
@@ -263,3 +264,32 @@ func _build_font() -> SystemFont:
 	font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
 	font.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
 	return font
+
+
+func _ensure_player_input_actions() -> void:
+	_ensure_input_action(MOVE_LEFT_ACTION, [KEY_A, KEY_LEFT])
+	_ensure_input_action(MOVE_RIGHT_ACTION, [KEY_D, KEY_RIGHT])
+	_ensure_input_action(MOVE_UP_ACTION, [KEY_W, KEY_UP])
+	_ensure_input_action(MOVE_DOWN_ACTION, [KEY_S, KEY_DOWN])
+
+
+func _ensure_input_action(action_name: String, keycodes: Array) -> void:
+	if not InputMap.has_action(action_name):
+		InputMap.add_action(action_name)
+	for keycode_variant in keycodes:
+		var keycode: Key = int(keycode_variant)
+		if _action_has_key(action_name, keycode):
+			continue
+		var event := InputEventKey.new()
+		event.keycode = keycode
+		event.physical_keycode = keycode
+		InputMap.action_add_event(action_name, event)
+
+
+func _action_has_key(action_name: String, keycode: Key) -> bool:
+	for event_variant in InputMap.action_get_events(action_name):
+		if event_variant is InputEventKey:
+			var key_event: InputEventKey = event_variant
+			if key_event.keycode == keycode or key_event.physical_keycode == keycode:
+				return true
+	return false

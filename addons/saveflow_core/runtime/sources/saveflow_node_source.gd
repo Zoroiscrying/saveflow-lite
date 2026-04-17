@@ -66,6 +66,13 @@ var property_selection_mode: int = PropertySelectionMode.EXPORTED_FIELDS_AND_ADD
 	set(value):
 		included_target_builtin_ids = value
 		_refresh_editor_preview()
+## Advanced override map for target built-ins. Key = serializer id, value =
+## PackedStringArray of field ids. Leave empty for the default "save all"
+## behavior.
+@export var target_builtin_field_overrides: Dictionary = {}:
+	set(value):
+		target_builtin_field_overrides = value
+		_refresh_editor_preview()
 ## Include child nodes only when they are conceptually part of the same saved
 ## object, such as an AnimationPlayer under Player. Do not use this to reach
 ## across to unrelated systems; those should be separate sources or scopes.
@@ -146,7 +153,8 @@ func gather_save_data() -> Variant:
 	if include_target_built_ins:
 		payload["built_ins"] = SaveFlowBuiltInSerializerRegistry.gather_for_node(
 			target_node,
-			_resolve_active_target_builtin_ids(target_node)
+			_resolve_active_target_builtin_ids(target_node),
+			_resolve_active_target_builtin_field_overrides(target_node)
 		)
 
 	for participant_path in included_paths:
@@ -185,7 +193,11 @@ func apply_save_data(data: Variant, _context: Dictionary = {}) -> SaveResult:
 	if payload.has("properties") and payload["properties"] is Dictionary:
 		_apply_target_properties(target_node, payload["properties"])
 	if include_target_built_ins and payload.has("built_ins") and payload["built_ins"] is Dictionary:
-		SaveFlowBuiltInSerializerRegistry.apply_to_node(target_node, payload["built_ins"])
+		SaveFlowBuiltInSerializerRegistry.apply_to_node(
+			target_node,
+			payload["built_ins"],
+			_resolve_active_target_builtin_field_overrides(target_node)
+		)
 
 	var participant_payloads: Dictionary = Dictionary(payload.get("participants", {}))
 	for participant_path in included_paths:
@@ -327,18 +339,62 @@ func describe_target_built_in_options() -> Array:
 	if target_node == null:
 		return []
 	var active_ids: PackedStringArray = _resolve_active_target_builtin_ids(target_node)
+	var field_overrides: Dictionary = _resolve_active_target_builtin_field_overrides(target_node)
 	var options: Array = []
 	for descriptor_variant in SaveFlowBuiltInSerializerRegistry.supported_descriptors_for_node(target_node):
 		var descriptor: Dictionary = descriptor_variant
 		var serializer_id: String = String(descriptor.get("id", ""))
+		var fields: Array = SaveFlowBuiltInSerializerRegistry.fields_for_node(target_node, serializer_id)
+		var selected_field_ids: PackedStringArray = PackedStringArray(field_overrides.get(serializer_id, PackedStringArray()))
+		if selected_field_ids.is_empty() and not fields.is_empty():
+			for field_variant in fields:
+				if not (field_variant is Dictionary):
+					continue
+				selected_field_ids.append(String(field_variant.get("id", "")))
 		options.append(
 			{
 				"id": serializer_id,
 				"display_name": String(descriptor.get("display_name", serializer_id)),
 				"selected": include_target_built_ins and active_ids.has(serializer_id),
+				"fields": fields,
+				"selected_fields": selected_field_ids,
+				"recommended_fields": SaveFlowBuiltInSerializerRegistry.recommended_field_ids_for_node(
+					target_node,
+					serializer_id
+				),
 			}
 		)
 	return options
+
+
+func clear_target_builtin_field_overrides() -> void:
+	target_builtin_field_overrides = {}
+
+
+func use_recommended_target_builtin_fields() -> void:
+	var target_node := _resolve_target()
+	if target_node == null:
+		target_builtin_field_overrides = {}
+		return
+	var next_overrides: Dictionary = {}
+	for serializer_id in _resolve_active_target_builtin_ids(target_node):
+		var recommended_fields: PackedStringArray = SaveFlowBuiltInSerializerRegistry.recommended_field_ids_for_node(
+			target_node,
+			serializer_id
+		)
+		if recommended_fields.is_empty():
+			continue
+		next_overrides[serializer_id] = recommended_fields
+	target_builtin_field_overrides = next_overrides
+
+
+func set_target_builtin_field_selection(serializer_id: String, field_ids: PackedStringArray) -> void:
+	var next_overrides: Dictionary = target_builtin_field_overrides.duplicate(true)
+	if field_ids.is_empty():
+		next_overrides.erase(serializer_id)
+	else:
+		next_overrides[serializer_id] = field_ids
+	target_builtin_field_overrides = next_overrides
 
 
 func discover_participant_candidates() -> Array:
@@ -431,6 +487,19 @@ func _append_unique(values: PackedStringArray, value: String) -> void:
 	values.append(value)
 
 
+func _to_packed_string_array(value: Variant) -> PackedStringArray:
+	if value is PackedStringArray:
+		return value
+	if value is Array:
+		var result: PackedStringArray = PackedStringArray()
+		for item in value:
+			result.append(String(item))
+		return result
+	if value is String:
+		return PackedStringArray([String(value)])
+	return PackedStringArray()
+
+
 func _is_ignored(property_name: String) -> bool:
 	return ignored_properties.has(property_name)
 
@@ -456,6 +525,22 @@ func _resolve_active_target_builtin_ids(target_node: Node) -> PackedStringArray:
 		if supported_ids.has(serializer_id):
 			active_ids.append(serializer_id)
 	return active_ids
+
+
+func _resolve_active_target_builtin_field_overrides(target_node: Node) -> Dictionary:
+	var active_ids: PackedStringArray = _resolve_active_target_builtin_ids(target_node)
+	if active_ids.is_empty():
+		return {}
+	var overrides: Dictionary = {}
+	for serializer_id_variant in target_builtin_field_overrides.keys():
+		var serializer_id: String = String(serializer_id_variant)
+		if not active_ids.has(serializer_id):
+			continue
+		var field_ids: PackedStringArray = _to_packed_string_array(target_builtin_field_overrides[serializer_id_variant])
+		if field_ids.is_empty():
+			continue
+		overrides[serializer_id] = field_ids
+	return overrides
 
 
 func _collect_participant_candidates(target_node: Node, current: Node, into: Array) -> void:

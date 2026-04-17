@@ -3,6 +3,9 @@ extends VBoxContainer
 
 const LABEL_WIDTH := 112
 const PADDING := 10
+const META_PREVIEW_EXPANDED := "_saveflow_node_source_preview_expanded"
+const META_DETAILS_EXPANDED := "_saveflow_node_source_details_expanded"
+const META_ADVANCED_EXPANDED := "_saveflow_node_source_advanced_expanded"
 
 var _node_source: SaveFlowNodeSource
 var _last_signature: String = ""
@@ -18,6 +21,8 @@ var _save_key_value: Label
 var _target_fields_value: Label
 var _include_target_checkbox: CheckBox
 var _target_built_ins_box: VBoxContainer
+var _built_in_advanced_toggle: Button
+var _built_in_advanced_box: VBoxContainer
 var _participant_candidates_box: VBoxContainer
 var _missing_value: RichTextLabel
 var _discovery_mode_option: OptionButton
@@ -29,6 +34,8 @@ var _excluded_paths_value: Label
 var _supported_value: Label
 var _target_path_value: Label
 
+var _built_in_advanced_expanded := false
+
 
 func _ready() -> void:
 	_build_ui()
@@ -38,6 +45,7 @@ func _ready() -> void:
 
 func set_node_source(node_source: SaveFlowNodeSource) -> void:
 	_node_source = node_source
+	_restore_foldout_state_from_source()
 	_refresh()
 
 
@@ -119,6 +127,16 @@ func _build_ui() -> void:
 	_target_built_ins_box = VBoxContainer.new()
 	_target_built_ins_box.add_theme_constant_override("separation", 4)
 	content.add_child(_target_built_ins_box)
+
+	_built_in_advanced_toggle = Button.new()
+	_built_in_advanced_toggle.flat = true
+	_built_in_advanced_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_built_in_advanced_toggle.pressed.connect(_on_built_in_advanced_toggled)
+	content.add_child(_built_in_advanced_toggle)
+
+	_built_in_advanced_box = VBoxContainer.new()
+	_built_in_advanced_box.add_theme_constant_override("separation", 6)
+	content.add_child(_built_in_advanced_box)
 
 	var participant_title := Label.new()
 	participant_title.text = "Included Children"
@@ -219,6 +237,9 @@ func _refresh() -> void:
 	_discovery_mode_option.set_block_signals(false)
 
 	_rebuild_target_built_in_controls(target_options)
+	_built_in_advanced_toggle.text = _foldout_text("Advanced Built-Ins", _built_in_advanced_expanded)
+	_built_in_advanced_box.visible = _built_in_advanced_expanded
+	_rebuild_built_in_advanced_controls(target_options)
 	_rebuild_participant_controls(participant_candidates)
 
 	_missing_value.text = _format_list(missing_paths)
@@ -321,6 +342,61 @@ func _rebuild_target_built_in_controls(options: Array) -> void:
 		_target_built_ins_box.add_child(checkbox)
 
 
+func _rebuild_built_in_advanced_controls(options: Array) -> void:
+	_clear_children(_built_in_advanced_box)
+	if options.is_empty():
+		return
+
+	var action_row := HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 8)
+	_built_in_advanced_box.add_child(action_row)
+
+	var recommended_button := Button.new()
+	recommended_button.text = "Use Recommended"
+	recommended_button.disabled = not _include_target_checkbox.button_pressed
+	recommended_button.pressed.connect(_on_use_recommended_fields_pressed)
+	action_row.add_child(recommended_button)
+
+	var save_all_button := Button.new()
+	save_all_button.text = "Save All Fields"
+	save_all_button.disabled = not _include_target_checkbox.button_pressed
+	save_all_button.pressed.connect(_on_save_all_fields_pressed)
+	action_row.add_child(save_all_button)
+
+	for option_variant in options:
+		var option: Dictionary = option_variant
+		var serializer_id: String = String(option.get("id", ""))
+		var fields: Array = Array(option.get("fields", []))
+		if fields.is_empty():
+			continue
+		var selected_fields: PackedStringArray = PackedStringArray(option.get("selected_fields", PackedStringArray()))
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 4)
+		_built_in_advanced_box.add_child(box)
+
+		var title := Label.new()
+		title.text = String(option.get("display_name", serializer_id))
+		title.modulate = get_theme_color("font_placeholder_color", "Editor")
+		box.add_child(title)
+
+		for field_variant in fields:
+			if not (field_variant is Dictionary):
+				continue
+			var field: Dictionary = field_variant
+			var field_id: String = String(field.get("id", ""))
+			if field_id.is_empty():
+				continue
+			var field_checkbox := CheckBox.new()
+			field_checkbox.text = String(field.get("display_name", field_id))
+			field_checkbox.button_pressed = selected_fields.has(field_id)
+			field_checkbox.disabled = not _include_target_checkbox.button_pressed or not bool(option.get("selected", false))
+			field_checkbox.toggled.connect(
+				func(pressed: bool) -> void:
+					_on_target_built_in_field_toggled(serializer_id, field_id, pressed)
+			)
+			box.add_child(field_checkbox)
+
+
 func _rebuild_participant_controls(candidates: Array) -> void:
 	_clear_children(_participant_candidates_box)
 	if candidates.is_empty():
@@ -418,11 +494,19 @@ func _resolve_candidate_icon(candidate: Dictionary) -> Texture2D:
 
 func _on_preview_toggled() -> void:
 	_preview_expanded = not _preview_expanded
+	_persist_foldout_state_to_source()
 	_refresh()
 
 
 func _on_details_toggled() -> void:
 	_details_expanded = not _details_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_built_in_advanced_toggled() -> void:
+	_built_in_advanced_expanded = not _built_in_advanced_expanded
+	_persist_foldout_state_to_source()
 	_refresh()
 
 
@@ -446,6 +530,50 @@ func _on_target_built_in_toggled(serializer_id: String, pressed: bool) -> void:
 		if index >= 0:
 			next_ids.remove_at(index)
 	_node_source.included_target_builtin_ids = next_ids
+	_mark_source_dirty()
+	_refresh()
+
+
+func _on_use_recommended_fields_pressed() -> void:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return
+	if _node_source.has_method("use_recommended_target_builtin_fields"):
+		_node_source.use_recommended_target_builtin_fields()
+	_mark_source_dirty()
+	_refresh()
+
+
+func _on_save_all_fields_pressed() -> void:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return
+	if _node_source.has_method("clear_target_builtin_field_overrides"):
+		_node_source.clear_target_builtin_field_overrides()
+	_mark_source_dirty()
+	_refresh()
+
+
+func _on_target_built_in_field_toggled(serializer_id: String, field_id: String, pressed: bool) -> void:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return
+	var options: Array = _read_target_built_in_options()
+	var fields: PackedStringArray = PackedStringArray()
+	for option_variant in options:
+		if not (option_variant is Dictionary):
+			continue
+		var option: Dictionary = option_variant
+		if String(option.get("id", "")) != serializer_id:
+			continue
+		fields = PackedStringArray(option.get("selected_fields", PackedStringArray()))
+		break
+	if pressed:
+		if not fields.has(field_id):
+			fields.append(field_id)
+	else:
+		var index := fields.find(field_id)
+		if index >= 0:
+			fields.remove_at(index)
+	if _node_source.has_method("set_target_builtin_field_selection"):
+		_node_source.set_target_builtin_field_selection(serializer_id, fields)
 	_mark_source_dirty()
 	_refresh()
 
@@ -500,6 +628,22 @@ func _mark_source_dirty() -> void:
 	if _node_source == null or not is_instance_valid(_node_source):
 		return
 	_node_source.notify_property_list_changed()
+
+
+func _restore_foldout_state_from_source() -> void:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return
+	_preview_expanded = bool(_node_source.get_meta(META_PREVIEW_EXPANDED, _preview_expanded))
+	_details_expanded = bool(_node_source.get_meta(META_DETAILS_EXPANDED, _details_expanded))
+	_built_in_advanced_expanded = bool(_node_source.get_meta(META_ADVANCED_EXPANDED, _built_in_advanced_expanded))
+
+
+func _persist_foldout_state_to_source() -> void:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return
+	_node_source.set_meta(META_PREVIEW_EXPANDED, _preview_expanded)
+	_node_source.set_meta(META_DETAILS_EXPANDED, _details_expanded)
+	_node_source.set_meta(META_ADVANCED_EXPANDED, _built_in_advanced_expanded)
 
 
 func _foldout_text(label_text: String, expanded: bool) -> String:

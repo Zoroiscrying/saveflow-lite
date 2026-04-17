@@ -14,6 +14,7 @@ var _content_panel: PanelContainer
 var _status_chip: PanelContainer
 var _status_label: Label
 var _factory_value: Label
+var _reason_value: Label
 var _container_value: Label
 var _types_value: Label
 var _required_value: Label
@@ -99,6 +100,7 @@ func _build_ui() -> void:
 	content_padding.add_child(content)
 
 	_factory_value = _add_row(content, "Factory")
+	_reason_value = _add_row(content, "Invalid Reason")
 	_container_value = _add_row(content, "Container")
 	_types_value = _add_row(content, "Entity Types")
 	_required_value = _add_row(content, "Required")
@@ -152,6 +154,9 @@ func _refresh() -> void:
 	_content_panel.visible = _preview_expanded
 
 	_factory_value.text = _best_name(String(plan.get("factory_name", "")), String(plan.get("factory_path", "")))
+	_reason_value.text = _format_reason(plan)
+	_reason_value.visible = not valid
+	_reason_value.modulate = _warning_color() if not valid else Color(1, 1, 1, 1)
 	_container_value.text = _best_name(String(plan.get("target_container_name", "")), String(plan.get("target_container_path", "")))
 	_types_value.text = _format_types(PackedStringArray(plan.get("supported_entity_types", PackedStringArray())))
 	_required_value.text = _format_list_inline(PackedStringArray(plan.get("required_contract", PackedStringArray())))
@@ -168,7 +173,28 @@ func _read_plan() -> Dictionary:
 	if _entity_factory == null or not is_instance_valid(_entity_factory):
 		return {
 			"valid": false,
+			"reason": "ENTITY_FACTORY_NOT_FOUND",
+			"problems": PackedStringArray(["EntityFactory node instance is missing."]),
 			"factory_name": "",
+			"factory_path": "",
+			"target_container_name": "",
+			"target_container_path": "",
+			"supported_entity_types": PackedStringArray(),
+			"required_contract": PackedStringArray(),
+			"optional_hooks": PackedStringArray(),
+			"implements_find_existing": false,
+			"implements_spawn": false,
+			"implements_apply": false,
+			"implements_prepare_restore": false,
+		}
+	if not _can_inspect_factory_instance(_entity_factory):
+		return {
+			"valid": false,
+			"reason": "FACTORY_SCRIPT_PLACEHOLDER",
+			"problems": PackedStringArray([
+				"Factory script is currently a placeholder in editor. Ensure script compiles and is @tool before preview inspection.",
+			]),
+			"factory_name": _entity_factory.name,
 			"factory_path": "",
 			"target_container_name": "",
 			"target_container_path": "",
@@ -183,6 +209,10 @@ func _read_plan() -> Dictionary:
 	if not _entity_factory.has_method("describe_entity_factory_plan"):
 		return {
 			"valid": false,
+			"reason": "DESCRIBE_PLAN_NOT_AVAILABLE",
+			"problems": PackedStringArray([
+				"Factory script could not be inspected in editor (placeholder instance or script not in tool mode).",
+			]),
 			"factory_name": "",
 			"factory_path": "",
 			"target_container_name": "",
@@ -195,15 +225,75 @@ func _read_plan() -> Dictionary:
 			"implements_apply": false,
 			"implements_prepare_restore": false,
 		}
-	return _entity_factory.describe_entity_factory_plan()
+	if not _is_script_tool_enabled(_entity_factory):
+		return {
+			"valid": false,
+			"reason": "FACTORY_SCRIPT_NOT_TOOL",
+			"problems": PackedStringArray([
+				"Factory script is not running in tool mode, so preview cannot inspect it in editor.",
+			]),
+			"factory_name": _entity_factory.name,
+			"factory_path": "",
+			"target_container_name": "",
+			"target_container_path": "",
+			"supported_entity_types": PackedStringArray(),
+			"required_contract": PackedStringArray(),
+			"optional_hooks": PackedStringArray(),
+			"implements_find_existing": false,
+			"implements_spawn": false,
+			"implements_apply": false,
+			"implements_prepare_restore": false,
+		}
+	var plan_variant: Variant = _entity_factory.call("describe_entity_factory_plan")
+	if plan_variant is Dictionary:
+		return Dictionary(plan_variant)
+	return {
+		"valid": false,
+		"reason": "DESCRIBE_PLAN_INVALID_RESULT",
+		"problems": PackedStringArray([
+			"describe_entity_factory_plan() must return a Dictionary for inspector preview.",
+		]),
+		"factory_name": _entity_factory.name,
+		"factory_path": "",
+		"target_container_name": "",
+		"target_container_path": "",
+		"supported_entity_types": PackedStringArray(),
+		"required_contract": PackedStringArray(),
+		"optional_hooks": PackedStringArray(),
+		"implements_find_existing": false,
+		"implements_spawn": false,
+		"implements_apply": false,
+		"implements_prepare_restore": false,
+	}
 
 
 func _compute_signature() -> String:
 	if _entity_factory == null or not is_instance_valid(_entity_factory):
 		return "<null>"
+	if not _can_inspect_factory_instance(_entity_factory):
+		return "<placeholder>"
 	if not _entity_factory.has_method("describe_entity_factory_plan"):
 		return "<placeholder>"
-	return JSON.stringify(_entity_factory.describe_entity_factory_plan())
+	if not _is_script_tool_enabled(_entity_factory):
+		return "<not_tool>"
+	var plan_variant: Variant = _entity_factory.call("describe_entity_factory_plan")
+	if plan_variant is Dictionary:
+		return JSON.stringify(plan_variant)
+	return "<invalid_plan_result>"
+
+
+func _can_inspect_factory_instance(target: Object) -> bool:
+	var script_ref := target.get_script() as Script
+	if script_ref == null:
+		return true
+	return script_ref.can_instantiate()
+
+
+func _is_script_tool_enabled(target: Object) -> bool:
+	var script_ref := target.get_script() as Script
+	if script_ref == null:
+		return true
+	return script_ref.is_tool()
 
 
 func _best_name(name_text: String, path_text: String) -> String:
@@ -239,6 +329,16 @@ func _format_list_inline(values: PackedStringArray) -> String:
 	if values.is_empty():
 		return "<none>"
 	return ", ".join(values)
+
+
+func _format_reason(plan: Dictionary) -> String:
+	var problems: PackedStringArray = PackedStringArray(plan.get("problems", PackedStringArray()))
+	if not problems.is_empty():
+		return "; ".join(problems)
+	var reason_code: String = String(plan.get("reason", ""))
+	if reason_code.is_empty():
+		return "<none>"
+	return reason_code
 
 
 func _on_preview_toggled() -> void:

@@ -404,19 +404,15 @@ func _unregister_entity_factory() -> void:
 		SaveFlow.unregister_entity_factory(factory)
 
 
-func _get_entity_factory() -> Node:
+func _get_entity_factory() -> SaveFlowEntityFactory:
 	var factory := entity_factory
 	if factory == null and not _entity_factory_ref_path.is_empty():
 		var resolved := get_node_or_null(_entity_factory_ref_path)
 		if resolved is SaveFlowEntityFactory:
 			factory = resolved
-	if factory != null \
-	and factory.has_method("can_handle_type") \
-	and factory.has_method("find_existing_entity") \
-	and factory.has_method("spawn_entity_from_save") \
-	and factory.has_method("apply_saved_data"):
-		return factory
-	return null
+	if not is_instance_valid(factory):
+		return null
+	return factory
 
 
 func _is_entity_collection_plan_factory_valid(factory: Node, saveflow_autoload_available: bool) -> bool:
