@@ -13,11 +13,11 @@ It is built for developers who do not just need to write save files, but need a 
 
 ## Plugin Preview
 
-![SaveFlow component choice](docs/screenshots/saveflow-component-choice-v2.svg)
+![SaveFlow component choice](addons/saveflow_lite/docs/screenshots/saveflow-component-choice-v2.svg)
 
 <p>
-  <img src="docs/screenshots/SaveFlowNodeSource.png" alt="SaveFlowNodeSource inspector" width="48%" />
-  <img src="docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
+  <img src="addons/saveflow_lite/docs/screenshots/SaveFlowNodeSource.png" alt="SaveFlowNodeSource inspector" width="48%" />
+  <img src="addons/saveflow_lite/docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
 </p>
 
 ## At A Glance
@@ -410,8 +410,8 @@ Separate adapter-node patterns are possible, but they are no longer the recommen
 ## Demo
 
 Open:
-- `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn`
-- `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.tscn`
+- `res://addons/saveflow_lite/demo/plugin_sandbox/plugin_sandbox.tscn`
+- `res://addons/saveflow_lite/demo/complex_sandbox/complex_sandbox.tscn`
 
 The sandbox demonstrates:
 - mutate local state
@@ -428,10 +428,10 @@ The complex sandbox demonstrates:
 - why entity collections need an entity factory integration seam
 
 Related files:
-- [plugin_sandbox.tscn](demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn)
-- [plugin_sandbox.gd](demo/saveflow_lite/plugin_sandbox/plugin_sandbox.gd)
-- [sandbox_player.gd](demo/saveflow_lite/plugin_sandbox/sandbox_player.gd)
-- [sandbox_settings.gd](demo/saveflow_lite/plugin_sandbox/sandbox_settings.gd)
+- [plugin_sandbox.tscn](addons/saveflow_lite/demo/plugin_sandbox/plugin_sandbox.tscn)
+- [plugin_sandbox.gd](addons/saveflow_lite/demo/plugin_sandbox/plugin_sandbox.gd)
+- [sandbox_player.gd](addons/saveflow_lite/demo/plugin_sandbox/sandbox_player.gd)
+- [sandbox_settings.gd](addons/saveflow_lite/demo/plugin_sandbox/sandbox_settings.gd)
 
 ## Testing
 

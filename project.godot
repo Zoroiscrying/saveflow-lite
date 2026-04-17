@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="SaveFlowLite"
-run/main_scene="res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn"
+run/main_scene="res://addons/saveflow_lite/demo/zelda_like/scenes/zelda_like_sandbox.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
