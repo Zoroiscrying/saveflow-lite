@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3
+
+Updated in this release:
+- Repository layout tightened for distribution:
+  - moved docs to `addons/saveflow_lite/docs`
+  - moved demos to `addons/saveflow_lite/demo`
+  - removed top-level `tools` from the public repo
+- Added `.gitattributes` export rules so Asset Library/source archives include only `addons/`
+- Hardened `.gitignore` to avoid exposing internal/private path naming
+
 ## 0.1.2
 
 Updated in this release:
