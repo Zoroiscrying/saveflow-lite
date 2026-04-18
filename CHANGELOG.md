@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4
+
+Updated in this release:
+- Refined component icon set for better inspector readability and faster visual recognition
+- Increased and simplified component badges (`Scope`, `NodeSource`, `EntityCollectionSource`, `EntityFactory`) to improve list-view legibility
+- Unified database base icon to a cleaner mono-color style across core SaveFlow components
+- Updated release automation to keep `saveflow-lite` synced safely while preserving Asset Library archive filtering
+
 ## 0.1.2
 
 Updated in this release:
