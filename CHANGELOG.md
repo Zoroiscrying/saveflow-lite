@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+Updated in this release:
+- Restored `addons/saveflow_core` in `saveflow-lite` distribution packaging
+- Fixed repository sync workflow so Lite releases always include both `saveflow_core` and `saveflow_lite`
+- Updated install guidance to copy both addon folders
+
 ## 0.1.4
 
 Updated in this release:
