@@ -1,0 +1,76 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/saveflow_lite/zelda_like/gameplay/zelda_like_room_scene.gd" id="1_room"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/zelda_like/gameplay/zelda_like_room_door_marker.gd" id="2_door"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/zelda_like/gameplay/zelda_like_room_obstacle_marker.gd" id="3_obstacle"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/zelda_like/gameplay/zelda_like_room_entity_spawn.gd" id="4_spawn"]
+
+[node name="RoomBasement" type="Node2D"]
+script = ExtResource("1_room")
+room_id = "room_basement"
+room_title = "Floodgate Cellar"
+
+[node name="Doors" type="Node2D" parent="."]
+
+[node name="NorthLadder" type="Marker2D" parent="Doors"]
+position = Vector2(280, 0)
+script = ExtResource("2_door")
+edge = "north"
+door_size = 60.0
+target_room_id = "room_hub"
+spawn_position = Vector2(280, 204)
+
+[node name="Obstacles" type="Node2D" parent="."]
+
+[node name="WaterTable" type="Node2D" parent="Obstacles"]
+position = Vector2(149, 165)
+script = ExtResource("3_obstacle")
+size = Vector2(118, 34)
+glyph = "~~"
+color = Color(0.482353, 0.87451, 0.94902, 1)
+
+[node name="CrateStack" type="Node2D" parent="Obstacles"]
+position = Vector2(387, 99)
+script = ExtResource("3_obstacle")
+size = Vector2(70, 50)
+glyph = "##"
+color = Color(0.721569, 0.643137, 0.494118, 1)
+
+[node name="EntitySpawns" type="Node2D" parent="."]
+
+[node name="BasementChest01" type="Marker2D" parent="EntitySpawns"]
+position = Vector2(404, 146)
+script = ExtResource("4_spawn")
+persistent_id = "basement_chest_01"
+type_key = "chest"
+hp = 0
+loot_table = PackedStringArray("boss_key")
+tags_set = {
+"boss": true,
+"reward": true
+}
+patrol_route = PackedStringArray()
+touch_damage = 0
+rupee_value = 0
+mood = "quiet"
+accent = "gold"
+ornament_flags = {
+"glow": true,
+"rare": true
+}
+
+[node name="BasementSlime01" type="Marker2D" parent="EntitySpawns"]
+position = Vector2(222, 124)
+script = ExtResource("4_spawn")
+persistent_id = "basement_slime_01"
+hp = 4
+loot_table = PackedStringArray("slime_gel", "rupee_green")
+tags_set = {
+"room_guard": true,
+"wet": true
+}
+patrol_route = PackedStringArray("bridge", "crate_stack")
+touch_damage = 1
+rupee_value = 6
+facing = "right"
+accent = "moss"

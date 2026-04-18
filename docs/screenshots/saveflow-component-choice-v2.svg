@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+  <title id="title">SaveFlow Lite Component Choice</title>
+  <desc id="desc">A quick visual guide for choosing SaveFlowNodeSource, SaveFlowDataSource, SaveFlowEntityCollectionSource, or SaveFlowScope.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="cardBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#1e40af"/>
+    </linearGradient>
+    <linearGradient id="cardGreen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#065f46"/>
+    </linearGradient>
+    <linearGradient id="cardAmber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#92400e"/>
+    </linearGradient>
+    <linearGradient id="cardPurple" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#5b21b6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+    <style>
+      .title { fill: #f8fafc; font: 700 42px 'Segoe UI', Arial, sans-serif; }
+      .subtitle { fill: #94a3b8; font: 500 21px 'Segoe UI', Arial, sans-serif; }
+      .cardTitle { fill: #ffffff; font: 700 28px 'Segoe UI', Arial, sans-serif; }
+      .cardBody { fill: #dbeafe; font: 500 18px 'Segoe UI', Arial, sans-serif; }
+      .cardBodyMuted { fill: #d1fae5; font: 500 18px 'Segoe UI', Arial, sans-serif; }
+      .cardBodyWarm { fill: #fef3c7; font: 500 18px 'Segoe UI', Arial, sans-serif; }
+      .cardBodyPurple { fill: #ede9fe; font: 500 18px 'Segoe UI', Arial, sans-serif; }
+      .pill { fill: #0b1220; stroke: rgba(255,255,255,0.14); stroke-width: 1; }
+      .pillText { fill: #e2e8f0; font: 600 16px 'Segoe UI', Arial, sans-serif; }
+      .arrow { stroke: #64748b; stroke-width: 4; fill: none; stroke-linecap: round; }
+      .footer { fill: #94a3b8; font: 500 18px 'Segoe UI', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="900" fill="url(#bg)"/>
+
+  <text x="80" y="96" class="title">Choose The Right SaveFlow Path</text>
+  <text x="80" y="136" class="subtitle">Pick the component by ownership model first. Split mixed state instead of forcing one save style.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="200" rx="28" ry="28" width="580" height="300" fill="url(#cardBlue)"/>
+    <text x="120" y="258" class="cardTitle">SaveFlowNodeSource</text>
+    <text x="120" y="300" class="cardBody">Use when one authored or prefab-owned object</text>
+    <text x="120" y="332" class="cardBody">owns the state.</text>
+    <text x="120" y="368" class="cardBody">Examples: player, chest, NPC, door, lever.</text>
+    <text x="120" y="400" class="cardBody">Good for exported fields, built-in node state,</text>
+    <text x="120" y="432" class="cardBody">and selected child parts.</text>
+    <rect x="120" y="446" rx="16" ry="16" width="182" height="36" class="pill"/>
+    <text x="144" y="470" class="pillText">Object-owned state</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="740" y="200" rx="28" ry="28" width="580" height="300" fill="url(#cardGreen)"/>
+    <text x="780" y="258" class="cardTitle">SaveFlowDataSource</text>
+    <text x="780" y="300" class="cardBodyMuted">Use when the data belongs to one system,</text>
+    <text x="780" y="332" class="cardBodyMuted">model, table, or queue.</text>
+    <text x="780" y="368" class="cardBodyMuted">Examples: quest log, inventory backend,</text>
+    <text x="780" y="400" class="cardBodyMuted">world progression table.</text>
+    <text x="780" y="432" class="cardBodyMuted">Write custom gather/apply logic once.</text>
+    <rect x="780" y="446" rx="16" ry="16" width="170" height="36" class="pill"/>
+    <text x="804" y="470" class="pillText">System-owned state</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="520" rx="28" ry="28" width="580" height="280" fill="url(#cardAmber)"/>
+    <text x="120" y="548" class="cardTitle">SaveFlowEntityCollectionSource</text>
+    <text x="120" y="590" class="cardBodyWarm">Use when a set of runtime entities changes</text>
+    <text x="120" y="622" class="cardBodyWarm">over time.</text>
+    <text x="120" y="658" class="cardBodyWarm">Examples: room enemies, dropped loot, summons,</text>
+    <text x="120" y="690" class="cardBodyWarm">temporary actors.</text>
+    <text x="120" y="722" class="cardBodyWarm">Start with SaveFlowPrefabEntityFactory.</text>
+    <rect x="120" y="736" rx="16" ry="16" width="188" height="36" class="pill"/>
+    <text x="144" y="760" class="pillText">Runtime entity sets</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="740" y="520" rx="28" ry="28" width="580" height="280" fill="url(#cardPurple)"/>
+    <text x="780" y="548" class="cardTitle">SaveFlowScope</text>
+    <text x="780" y="590" class="cardBodyPurple">Use when several save domains must restore</text>
+    <text x="780" y="622" class="cardBodyPurple">in order.</text>
+    <text x="780" y="658" class="cardBodyPurple">Examples: player -&gt; world -&gt; runtime actors.</text>
+    <text x="780" y="690" class="cardBodyPurple">Scope organizes domain boundaries, order,</text>
+    <text x="780" y="722" class="cardBodyPurple">and restore policy.</text>
+    <rect x="780" y="736" rx="16" ry="16" width="152" height="36" class="pill"/>
+    <text x="804" y="760" class="pillText">Domain boundary</text>
+  </g>
+
+  <path d="M700 500 L700 520" class="arrow"/>
+  <path d="M660 660 L740 660" class="arrow"/>
+
+  <text x="80" y="860" class="footer">Rule of thumb: if one feature mixes object state, system state, and runtime entities, split them into separate sources and put them in the right scope.</text>
+</svg>
