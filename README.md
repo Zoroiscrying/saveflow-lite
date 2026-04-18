@@ -13,11 +13,11 @@ It is built for developers who do not just need to write save files, but need a 
 
 ## Plugin Preview
 
-![SaveFlow component choice](docs/screenshots/saveflow-component-choice-v2.svg)
+![SaveFlow component choice](addons/saveflow_lite/docs/screenshots/saveflow-component-choice-v2.svg)
 
 <p>
-  <img src="docs/screenshots/SaveFlowNodeSource.png" alt="SaveFlowNodeSource inspector" width="48%" />
-  <img src="docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
+  <img src="addons/saveflow_lite/docs/screenshots/SaveFlowNodeSource.png" alt="SaveFlowNodeSource inspector" width="48%" />
+  <img src="addons/saveflow_lite/docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
 </p>
 
 ## At A Glance
@@ -62,13 +62,13 @@ decisions on:
 ## Start Here
 
 - Quick component choice:
-  [saveflow-quick-selection-map.md](docs/saveflow-quick-selection-map.md)
+  [saveflow-quick-selection-map.md](addons/saveflow_lite/docs/saveflow-quick-selection-map.md)
 - Recommended integration path:
-  [saveflow-recommended-integration.md](docs/saveflow-recommended-integration.md)
+  [saveflow-recommended-integration.md](addons/saveflow_lite/docs/saveflow-recommended-integration.md)
 - Concept relationship map:
-  [saveflow-concept-map.md](docs/saveflow-concept-map.md)
+  [saveflow-concept-map.md](addons/saveflow_lite/docs/saveflow-concept-map.md)
 - Source tree map:
-  [saveflow-source-map.md](docs/saveflow-source-map.md)
+  [saveflow-source-map.md](addons/saveflow_lite/docs/saveflow-source-map.md)
 - Release notes:
   [CHANGELOG.md](CHANGELOG.md)
 
