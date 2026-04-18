@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6
+
+Updated in this release:
+- Split workspace docs and plugin docs into clearer ownership boundaries
+- Moved SaveFlow Lite user-facing docs and screenshots to `addons/saveflow_lite/docs`
+- Updated README links to plugin-local docs paths
+- Updated sync/release projection so plugin repositories no longer carry workspace-level docs
+
 ## 0.1.5
 
 Updated in this release:
