@@ -1,5 +1,6 @@
 ## SaveFlowDataSource is the custom-source path for non-object state such as
 ## world tables, managers, queues, and model-backed runtime systems.
+@icon("res://addons/saveflow_lite/icons/components/saveflow_data_source_icon.svg")
 @tool
 @abstract
 class_name SaveFlowDataSource

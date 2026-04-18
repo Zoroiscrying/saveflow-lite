@@ -1,6 +1,7 @@
 ## SaveFlowNodeSource is the main object-centric source. It gathers one target
 ## node's exported fields, built-in Godot state, and selected child participants
 ## into a single payload for "save this object".
+@icon("res://addons/saveflow_lite/icons/components/saveflow_node_source_icon.svg")
 @tool
 class_name SaveFlowNodeSource
 extends SaveFlowSource

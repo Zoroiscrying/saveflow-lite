@@ -1,6 +1,7 @@
 ## SaveFlowScope is the graph-level domain node. It does not serialize payloads
 ## itself; it organizes domain boundaries, ordering, and restore strategy for
 ## child scopes and leaf sources.
+@icon("res://addons/saveflow_lite/icons/components/saveflow_scope_icon.svg")
 @tool
 class_name SaveFlowScope
 extends Node

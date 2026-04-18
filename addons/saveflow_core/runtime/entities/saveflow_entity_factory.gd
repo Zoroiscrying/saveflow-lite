@@ -1,6 +1,7 @@
 ## SaveFlowEntityFactory is the project-owned runtime adapter for one class of
 ## entities. Collection sources decide "which descriptors", factories decide
 ## "how to find, spawn, and hydrate those entities".
+@icon("res://addons/saveflow_lite/icons/components/saveflow_entity_factory_icon.svg")
 @tool
 @abstract
 class_name SaveFlowEntityFactory

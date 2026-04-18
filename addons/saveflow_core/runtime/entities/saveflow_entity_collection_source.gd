@@ -1,6 +1,7 @@
 ## SaveFlowEntityCollectionSource owns one changing set of runtime entities.
 ## It gathers entity descriptors from a container and delegates restore to
 ## SaveFlow + the configured entity factory.
+@icon("res://addons/saveflow_lite/icons/components/saveflow_entity_collection_icon.svg")
 @tool
 class_name SaveFlowEntityCollectionSource
 extends SaveFlowSource
