@@ -7,17 +7,17 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.1.3`
+- Plugin version: `0.1.2`
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 
 ## Plugin Preview
 
-![SaveFlow component choice](addons/saveflow_lite/docs/screenshots/saveflow-component-choice-v2.svg)
+![SaveFlow component choice](docs/screenshots/saveflow-component-choice-v2.svg)
 
 <p>
-  <img src="addons/saveflow_lite/docs/screenshots/SaveFlowNodeSource.png" alt="SaveFlowNodeSource inspector" width="48%" />
-  <img src="addons/saveflow_lite/docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
+  <img src="docs/screenshots/SaveFlowNodeSource.png" alt="SaveFlowNodeSource inspector" width="48%" />
+  <img src="docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
 </p>
 
 ## At A Glance
@@ -37,6 +37,27 @@ If your save must restore several domains in order, add `SaveFlowScope` as a dom
 1. Copy [`addons/saveflow_lite`](addons/saveflow_lite) into your project `addons/` folder.
 2. Enable `SaveFlow Lite` in the Godot plugin settings.
 3. Godot will register the `SaveFlow` autoload for you.
+
+## Project Save Settings
+
+`SaveFlow Lite` now adds a `SaveFlow Settings` dock in the editor.
+
+Use it for project-wide defaults such as:
+- save format
+- save root and slot index path
+- JSON and binary file extensions
+- project title, game version, save schema, and data version
+- safe write, auto-create directories, slot-index metadata, and log level
+
+This panel configures the `SaveFlow` runtime singleton itself. It is the right
+place for project-level defaults.
+
+It is not the place for object-owned or system-owned save behavior. Keep those
+decisions on:
+- `SaveFlowNodeSource`
+- `SaveFlowDataSource`
+- `SaveFlowEntityCollectionSource`
+- `SaveFlowScope`
 
 ## Start Here
 
@@ -118,6 +139,7 @@ SaveFlow Lite focuses on:
 - safe-write pipeline with temp file replacement
 - JSON in editor, binary in export through `AUTO` format
 - demo sandbox scene
+- GdUnit4 runtime tests
 
 ## Quick Start
 
@@ -238,6 +260,16 @@ Current first-wave built-ins:
 - `Node3D`
 - `Control`
 - `AnimationPlayer`
+- `Timer`
+- `AudioStreamPlayer` / `AudioStreamPlayer2D` / `AudioStreamPlayer3D`
+- `PathFollow2D` / `PathFollow3D`
+- `Camera2D` / `Camera3D`
+- `Sprite2D` / `AnimatedSprite2D`
+- `CharacterBody2D` / `CharacterBody3D`
+- `RigidBody2D` / `RigidBody3D`
+- `Area2D`
+- `NavigationAgent2D`
+- `TileMapLayer` / `TileMap` (cell payload)
 
 You can also inspect what SaveFlow will collect before writing a slot:
 
@@ -410,8 +442,8 @@ Separate adapter-node patterns are possible, but they are no longer the recommen
 ## Demo
 
 Open:
-- `res://addons/saveflow_lite/demo/plugin_sandbox/plugin_sandbox.tscn`
-- `res://addons/saveflow_lite/demo/complex_sandbox/complex_sandbox.tscn`
+- `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn`
+- `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.tscn`
 
 The sandbox demonstrates:
 - mutate local state
@@ -428,10 +460,10 @@ The complex sandbox demonstrates:
 - why entity collections need an entity factory integration seam
 
 Related files:
-- [plugin_sandbox.tscn](addons/saveflow_lite/demo/plugin_sandbox/plugin_sandbox.tscn)
-- [plugin_sandbox.gd](addons/saveflow_lite/demo/plugin_sandbox/plugin_sandbox.gd)
-- [sandbox_player.gd](addons/saveflow_lite/demo/plugin_sandbox/sandbox_player.gd)
-- [sandbox_settings.gd](addons/saveflow_lite/demo/plugin_sandbox/sandbox_settings.gd)
+- [plugin_sandbox.tscn](demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn)
+- [plugin_sandbox.gd](demo/saveflow_lite/plugin_sandbox/plugin_sandbox.gd)
+- [sandbox_player.gd](demo/saveflow_lite/plugin_sandbox/sandbox_player.gd)
+- [sandbox_settings.gd](demo/saveflow_lite/plugin_sandbox/sandbox_settings.gd)
 
 ## Testing
 
@@ -440,6 +472,24 @@ Import the project headlessly:
 ```powershell
 .\tools\import_project.ps1
 ```
+
+Run runtime tests:
+
+```powershell
+.\tools\run_gdunit.ps1 -ContinueOnFailure
+```
+
+Current runtime coverage includes:
+- JSON save/load
+- binary save/load
+- slot copy/rename/delete
+- source collection and restore
+- node-source-driven scene save/load
+- scene inspection and exported-field collection
+- hierarchical save graph gather/apply
+- strict graph failure when a source target disappears
+- data-source graph save/load
+- entity collection restoration delegation
 
 ## C# Direction
 

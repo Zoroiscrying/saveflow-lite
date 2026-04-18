@@ -10,13 +10,14 @@ config_version=5
 
 [application]
 
-config/name="SaveFlowLite"
-run/main_scene="res://addons/saveflow_lite/demo/zelda_like/scenes/zelda_like_sandbox.tscn"
+config/name="PluginDevelopment"
+run/main_scene="res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
+ControlCenter="*res://addons/control_center/runtime/control_center_runtime.gd"
 SaveFlow="*res://addons/saveflow_core/runtime/core/save_flow.gd"
 
 [debug]
@@ -33,11 +34,16 @@ window/size/resizable=false
 
 [dotnet]
 
-project/assembly_name="SaveFlowLite"
+project/assembly_name="PluginDevelopment"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/saveflow_lite/plugin.cfg")
+enabled=PackedStringArray("res://addons/control_center/plugin.cfg", "res://addons/gdUnit4/plugin.cfg", "res://addons/saveflow_lite/plugin.cfg")
+
+[gdunit4]
+
+ui/toolbar/run_overall=true
+settings/common/update_notification_enabled=false
 
 [physics]
 
