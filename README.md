@@ -69,6 +69,8 @@ decisions on:
   [saveflow-concept-map.md](addons/saveflow_lite/docs/saveflow-concept-map.md)
 - Source tree map:
   [saveflow-source-map.md](addons/saveflow_lite/docs/saveflow-source-map.md)
+- C# quickstart:
+  [saveflow-csharp-quickstart.md](addons/saveflow_lite/docs/saveflow-csharp-quickstart.md)
 - Release notes:
   [CHANGELOG.md](CHANGELOG.md)
 
@@ -493,13 +495,23 @@ Current runtime coverage includes:
 
 ## C# Direction
 
-C# is part of the product direction, but the first-class wrapper layer is not implemented yet.
+C# now has a shipped baseline wrapper layer in:
+- `addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs`
+- `addons/saveflow_core/runtime/dotnet/SaveFlowCallResult.cs`
 
-The intended shape is:
-- `SaveFlow.SaveData(...)`
-- `SaveFlow.LoadData(...)`
-- `SaveFlow.SaveNodes(...)`
-- `SaveFlow.LoadNodes(...)`
+Current entrypoints include:
+- `SaveFlowClient.SaveData(...)`
+- `SaveFlowClient.LoadData(...)`
+- `SaveFlowClient.SaveNodes(...)`
+- `SaveFlowClient.LoadNodes(...)`
+- `SaveFlowClient.SaveScope(...)`
+- `SaveFlowClient.LoadScope(...)`
+- `SaveFlowClient.SaveCurrent(...)`
+- `SaveFlowClient.LoadCurrent(...)`
+- `SaveFlowClient.SaveDevNamedEntry(...)`
+- `SaveFlowClient.LoadDevNamedEntry(...)`
+
+In C#, use `SaveFlow.DotNet.SaveFlowClient` for these calls.
 
 The goal is not just "call the GDScript autoload from C#".
 The goal is a wrapper that feels idiomatic for Godot C# users and supports stronger typing over time.
@@ -527,4 +539,4 @@ Current status:
 - main runtime entry is `SaveFlow`
 - demo scene is working
 - runtime tests are passing
-- C# wrapper layer is planned, not shipped
+- C# wrapper baseline is shipped in `saveflow_core/runtime/dotnet`

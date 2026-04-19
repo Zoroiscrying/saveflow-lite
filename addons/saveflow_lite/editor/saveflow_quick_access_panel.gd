@@ -14,6 +14,7 @@ const OVERVIEW_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/re
 const NODE_SOURCE_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_node_source_case.tscn"
 const DATA_SOURCE_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_data_source_case.tscn"
 const ENTITY_COLLECTION_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_entity_collection_case.tscn"
+const CSHARP_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_csharp_case.tscn"
 
 const SaveFlowIcon := preload("res://addons/saveflow_lite/icons/saveflow_icon.svg")
 const NodeSourceIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_node_source_icon.svg")
@@ -123,6 +124,12 @@ func _build_ui() -> void:
 				"title": "Open Entity Collection Case",
 				"description": "One changing runtime set through EntityCollectionSource + PrefabEntityFactory.",
 				"action": func() -> void: _emit_scene(ENTITY_COLLECTION_CASE_SCENE),
+			},
+			{
+				"icon": SaveFlowIcon,
+				"title": "Open C# Wrapper Case",
+				"description": "One minimal C# scene using SaveFlowClient SaveData/LoadData calls.",
+				"action": func() -> void: _emit_scene(CSHARP_CASE_SCENE),
 			},
 			{
 				"icon": ScopeIcon,

@@ -21,12 +21,14 @@ Open:
 - `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_node_source_case.tscn`
 - `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_data_source_case.tscn`
 - `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_entity_collection_case.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_csharp_case.tscn`
 
 Recommended first pass:
 - Open `recommended_template_sandbox.tscn` as the case launcher
 - Open `recommended_node_source_case.tscn` when you want to understand one authored object with one `SaveFlowNodeSource`
 - Open `recommended_data_source_case.tscn` when you want to understand one system-owned dictionary with one `SaveFlowDataSource`
 - Open `recommended_entity_collection_case.tscn` when you want to understand one changing runtime set with `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
+- Open `recommended_csharp_case.tscn` when you want to call SaveFlow from C# through `SaveFlowClient`
 - Open `recommended_template_overview.tscn` only after the single-path scenes feel clear
 
 What the template demonstrates:
@@ -42,6 +44,8 @@ Case scenes:
   One `WorldRegistry` system node gathered/applied through a custom data source
 - `recommended_entity_collection_case.tscn`
   One runtime actor set restored through `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
+- `recommended_csharp_case.tscn`
+  One minimal C# SaveData/LoadData flow using `SaveFlow.DotNet.SaveFlowClient`
 - `recommended_template_overview.tscn`
   The original all-in-one scene kept for side-by-side comparison after the case scenes
 

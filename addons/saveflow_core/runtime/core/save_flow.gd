@@ -803,6 +803,18 @@ func load_current(slot_id: String) -> SaveResult:
 	return result
 
 
+## Save one named dev entry for editor-driven runtime testing.
+## This uses a derived dev-save settings profile and prefers scope-root
+## restoration when a SaveFlowScope is present in the active scene.
+func save_dev_named_entry(entry_name: String) -> SaveResult:
+	return _run_named_entry_with_dev_settings("save", entry_name)
+
+
+## Load one named dev entry for editor-driven runtime testing.
+func load_dev_named_entry(entry_name: String) -> SaveResult:
+	return _run_named_entry_with_dev_settings("load", entry_name)
+
+
 func validate_slot(slot_id: String) -> SaveResult:
 	var load_result: SaveResult = load_slot(slot_id)
 	if not load_result.ok:
@@ -1478,38 +1490,29 @@ func _sanitize_slot_id(slot_id: String) -> String:
 
 func _write_save_manager_status() -> void:
 	var bridge_active := _is_save_manager_bridge_available()
+	var builtin_active := _is_builtin_save_manager_fallback_available()
+	var runtime_available := bridge_active or builtin_active
 	var dev_settings: Dictionary = {}
 	if bridge_active and _save_manager_bridge.has_method("get_dev_save_settings"):
 		var bridge_dev_settings: Variant = _save_manager_bridge.call("get_dev_save_settings")
 		if bridge_dev_settings is Dictionary:
 			dev_settings = Dictionary(bridge_dev_settings).duplicate(true)
+	elif builtin_active:
+		dev_settings = _settings_to_status_dict(_build_builtin_dev_settings())
 	SaveFlowSaveManagerBusScript.write_status(
 		{
-			"runtime_available": bridge_active,
-			"bridge_name": _get_save_manager_bridge_name() if bridge_active else "",
-			"settings": {
-				"save_root": _settings.save_root,
-				"slot_index_file": _settings.slot_index_file,
-				"storage_format": _settings.storage_format,
-				"pretty_json_in_editor": _settings.pretty_json_in_editor,
-				"use_safe_write": _settings.use_safe_write,
-				"file_extension_json": _settings.file_extension_json,
-				"file_extension_binary": _settings.file_extension_binary,
-				"log_level": _settings.log_level,
-				"include_meta_in_slot_file": _settings.include_meta_in_slot_file,
-				"auto_create_dirs": _settings.auto_create_dirs,
-				"project_title": _settings.project_title,
-				"game_version": _settings.game_version,
-				"data_version": _settings.data_version,
-				"save_schema": _settings.save_schema,
-			},
+			"runtime_available": runtime_available,
+			"bridge_name": _get_save_manager_bridge_name() if bridge_active else ("SaveFlow (Built-in)" if builtin_active else ""),
+			"settings": _settings_to_status_dict(_settings),
 			"dev_settings": dev_settings,
 		}
 	)
 
 
 func _process_save_manager_requests() -> void:
-	if not _is_save_manager_bridge_available():
+	var bridge_active := _is_save_manager_bridge_available()
+	var builtin_active := _is_builtin_save_manager_fallback_available()
+	if not bridge_active and not builtin_active:
 		return
 
 	for request in SaveFlowSaveManagerBusScript.list_pending_requests():
@@ -1523,10 +1526,16 @@ func _process_save_manager_requests() -> void:
 			{"action": action}
 		)
 
-		if action == "save":
-			result = _save_manager_bridge.call("save_named_entry", entry_name)
-		elif action == "load":
-			result = _save_manager_bridge.call("load_named_entry", entry_name)
+		if bridge_active:
+			if action == "save":
+				result = _save_manager_bridge.call("save_named_entry", entry_name)
+			elif action == "load":
+				result = _save_manager_bridge.call("load_named_entry", entry_name)
+		else:
+			if action == "save":
+				result = save_dev_named_entry(entry_name)
+			elif action == "load":
+				result = load_dev_named_entry(entry_name)
 
 		if result.ok:
 			SaveFlowSaveManagerBusScript.complete_request(request_id, true, "Completed %s '%s'." % [action, entry_name])
@@ -1546,12 +1555,130 @@ func _is_save_manager_bridge_available() -> bool:
 	return true
 
 
+func _is_builtin_save_manager_fallback_available() -> bool:
+	return _resolve_runtime_scene_root() != null
+
+
 func _get_save_manager_bridge_name() -> String:
 	if _save_manager_bridge == null or not is_instance_valid(_save_manager_bridge):
 		return ""
 	if _save_manager_bridge.has_method("get_bridge_name"):
 		return String(_save_manager_bridge.call("get_bridge_name"))
 	return _save_manager_bridge.name
+
+
+func _run_named_entry_with_dev_settings(action: String, entry_name: String) -> SaveResult:
+	var slot_id := entry_name.strip_edges()
+	if slot_id.is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"entry_name cannot be empty"
+		)
+
+	var previous_settings := _settings
+	var dev_settings := _build_builtin_dev_settings()
+	_settings = dev_settings
+	var result := _execute_named_entry_action(action, slot_id)
+	_settings = previous_settings
+	return result
+
+
+func _execute_named_entry_action(action: String, slot_id: String) -> SaveResult:
+	var scene_root := _resolve_runtime_scene_root()
+	if scene_root == null:
+		return _error_result(
+			SaveError.INVALID_SAVEABLE,
+			"INVALID_SAVEABLE",
+			"no runtime scene is available for SaveFlow dev save/load"
+		)
+
+	var scope_root := _find_first_scope_in_tree(scene_root)
+	if scope_root != null:
+		if action == "save":
+			return save_scope(slot_id, scope_root, {"display_name": slot_id})
+		if action == "load":
+			return load_scope(slot_id, scope_root, false)
+
+	if action == "save":
+		return save_scene(slot_id, scene_root, {"display_name": slot_id}, "saveflow")
+	if action == "load":
+		return load_scene(slot_id, scene_root, false, "saveflow")
+
+	return _error_result(
+		SaveError.INVALID_ARGUMENT,
+		"INVALID_ARGUMENT",
+		"unsupported save manager action",
+		{"action": action}
+	)
+
+
+func _resolve_runtime_scene_root() -> Node:
+	var tree := get_tree()
+	if tree == null:
+		return null
+	if tree.current_scene != null:
+		return tree.current_scene
+	return null
+
+
+func _find_first_scope_in_tree(node: Node) -> SaveFlowScope:
+	if node == null:
+		return null
+	if node is SaveFlowScope:
+		return node as SaveFlowScope
+	for child in node.get_children():
+		if not (child is Node):
+			continue
+		var found := _find_first_scope_in_tree(child)
+		if found != null:
+			return found
+	return null
+
+
+func _build_builtin_dev_settings() -> SaveSettings:
+	var settings := _settings.duplicate(true) as SaveSettings
+	if settings == null:
+		settings = SaveSettings.new()
+
+	var formal_root := settings.save_root
+	if formal_root.is_empty():
+		formal_root = "user://saves"
+
+	var formal_root_clean := formal_root.trim_suffix("/")
+	formal_root_clean = formal_root_clean.trim_suffix("\\")
+	var formal_leaf := formal_root_clean.get_file().to_lower()
+	var parent := formal_root_clean.get_base_dir()
+	if formal_leaf == "saves":
+		settings.save_root = parent.path_join("devSaves")
+	else:
+		settings.save_root = formal_root_clean.path_join("devSaves")
+
+	var slot_index := settings.slot_index_file
+	if slot_index.is_empty():
+		settings.slot_index_file = settings.save_root.path_join("dev-slots.index")
+	else:
+		settings.slot_index_file = slot_index.get_base_dir().path_join("dev-slots.index")
+	return settings
+
+
+func _settings_to_status_dict(settings: SaveSettings) -> Dictionary:
+	return {
+		"save_root": settings.save_root,
+		"slot_index_file": settings.slot_index_file,
+		"storage_format": settings.storage_format,
+		"pretty_json_in_editor": settings.pretty_json_in_editor,
+		"use_safe_write": settings.use_safe_write,
+		"file_extension_json": settings.file_extension_json,
+		"file_extension_binary": settings.file_extension_binary,
+		"log_level": settings.log_level,
+		"include_meta_in_slot_file": settings.include_meta_in_slot_file,
+		"auto_create_dirs": settings.auto_create_dirs,
+		"project_title": settings.project_title,
+		"game_version": settings.game_version,
+		"data_version": settings.data_version,
+		"save_schema": settings.save_schema,
+	}
 
 
 func _read_payload_file(path: String, format: int) -> SaveResult:
@@ -1827,6 +1954,5 @@ func _error_result(error_code: int, error_key: String, error_message: String, me
 	result.error_message = error_message
 	result.meta = meta
 	return result
-
 
 

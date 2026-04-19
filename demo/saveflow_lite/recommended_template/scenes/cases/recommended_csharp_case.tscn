@@ -1,15 +1,15 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/template_case_launcher.gd" id="1_launcher"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/template_csharp_case.cs" id="1_case"]
 
-[node name="RecommendedTemplateSandbox" type="Control"]
+[node name="RecommendedCSharpCase" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_launcher")
+script = ExtResource("1_case")
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -32,36 +32,41 @@ theme_override_constants/separation = 12
 
 [node name="Title" type="Label" parent="MarginContainer/PanelContainer/Content"]
 layout_mode = 2
-text = "SaveFlow Recommended Case Launcher"
+text = "Case 4: SaveFlow C# Wrapper"
 horizontal_alignment = 1
 
 [node name="Hint" type="Label" parent="MarginContainer/PanelContainer/Content"]
 layout_mode = 2
-text = "Pick the smallest case that matches your ownership model first. Use the combined overview only after the single-path cases feel clear."
+text = "Use this when gameplay code is written in C#. This case stores and restores one small dictionary through SaveFlowClient.SaveData/LoadData."
 autowrap_mode = 3
 
-[node name="NodeSourceButton" type="Button" parent="MarginContainer/PanelContainer/Content"]
+[node name="Buttons" type="HBoxContainer" parent="MarginContainer/PanelContainer/Content"]
 layout_mode = 2
-text = "Open Case 1: SaveFlowNodeSource"
+theme_override_constants/separation = 10
 
-[node name="DataSourceButton" type="Button" parent="MarginContainer/PanelContainer/Content"]
+[node name="SaveButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
 layout_mode = 2
-text = "Open Case 2: SaveFlowDataSource"
+text = "Save"
 
-[node name="EntityCollectionButton" type="Button" parent="MarginContainer/PanelContainer/Content"]
+[node name="LoadButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
 layout_mode = 2
-text = "Open Case 3: SaveFlowEntityCollectionSource"
+text = "Load"
 
-[node name="CSharpButton" type="Button" parent="MarginContainer/PanelContainer/Content"]
+[node name="MutateButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
 layout_mode = 2
-text = "Open Case 4: SaveFlow C# Wrapper"
+text = "Mutate"
 
-[node name="OverviewButton" type="Button" parent="MarginContainer/PanelContainer/Content"]
+[node name="ResetButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
 layout_mode = 2
-text = "Open Combined Overview"
+text = "Reset"
+
+[node name="StateLabel" type="Label" parent="MarginContainer/PanelContainer/Content"]
+layout_mode = 2
+autowrap_mode = 3
+text = "C# State:"
 
 [node name="StatusOutput" type="TextEdit" parent="MarginContainer/PanelContainer/Content"]
-custom_minimum_size = Vector2(0, 180)
+custom_minimum_size = Vector2(0, 160)
 layout_mode = 2
 editable = false
 wrap_mode = 2

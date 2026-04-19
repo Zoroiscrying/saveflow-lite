@@ -229,7 +229,7 @@ func _refresh_runtime_status() -> void:
 		_runtime_status_label.text = "Runtime bridge active: %s" % bridge_name
 		_runtime_status_label.modulate = Color(0.35, 0.8, 0.45, 1.0)
 	else:
-		_runtime_status_label.text = "Runtime bridge inactive. Save/load requests require a running game with a SaveFlowSaveManagerBridge."
+		_runtime_status_label.text = "Runtime handler inactive. Save/load requests require a running game with SaveFlow available."
 		_runtime_status_label.modulate = Color(0.85, 0.6, 0.3, 1.0)
 
 
@@ -472,7 +472,7 @@ func _queue_save_request_named(entry_name: String) -> void:
 		_request_status_label.text = "Enter a save name first."
 		return
 	if not _is_runtime_available():
-		_request_status_label.text = "Save requests require a running game with a SaveFlowSaveManagerBridge."
+		_request_status_label.text = "Save requests require a running game with SaveFlow available."
 		return
 	SaveFlowSaveManagerBusScript.append_request("save", entry_name)
 	_request_status_label.text = "Queued dev save request for '%s'." % entry_name
@@ -483,7 +483,7 @@ func _queue_load_request(entry_name: String) -> void:
 	if entry_name.is_empty():
 		return
 	if not _is_runtime_available():
-		_request_status_label.text = "Load requests require a running game with a SaveFlowSaveManagerBridge."
+		_request_status_label.text = "Load requests require a running game with SaveFlow available."
 		return
 	SaveFlowSaveManagerBusScript.append_request("load", entry_name)
 	_request_status_label.text = "Queued dev load request for '%s'." % entry_name

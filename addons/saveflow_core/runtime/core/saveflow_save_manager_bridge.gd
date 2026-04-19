@@ -22,20 +22,31 @@ func get_dev_save_settings() -> Dictionary:
 
 
 ## Override in game code to capture a named save entry.
-func save_named_entry(_entry_name: String) -> SaveResult:
-	var result := SaveResult.new()
-	result.ok = false
-	result.error_code = SaveError.INVALID_SAVEABLE
-	result.error_key = "SAVE_MANAGER_BRIDGE_NOT_IMPLEMENTED"
-	result.error_message = "save_named_entry() is not implemented on this SaveFlowSaveManagerBridge."
-	return result
+func save_named_entry(entry_name: String) -> SaveResult:
+	var runtime := _resolve_saveflow_runtime()
+	if runtime == null or not runtime.has_method("save_dev_named_entry"):
+		return _error("SaveFlow runtime cannot handle save_named_entry(). Ensure the SaveFlow autoload is running.")
+	return runtime.call("save_dev_named_entry", entry_name)
 
 
 ## Override in game code to load a named save entry.
-func load_named_entry(_entry_name: String) -> SaveResult:
+func load_named_entry(entry_name: String) -> SaveResult:
+	var runtime := _resolve_saveflow_runtime()
+	if runtime == null or not runtime.has_method("load_dev_named_entry"):
+		return _error("SaveFlow runtime cannot handle load_named_entry(). Ensure the SaveFlow autoload is running.")
+	return runtime.call("load_dev_named_entry", entry_name)
+
+
+func _resolve_saveflow_runtime() -> Node:
+	if not is_inside_tree():
+		return null
+	return get_tree().root.get_node_or_null("/root/SaveFlow")
+
+
+func _error(message: String) -> SaveResult:
 	var result := SaveResult.new()
 	result.ok = false
 	result.error_code = SaveError.INVALID_SAVEABLE
-	result.error_key = "SAVE_MANAGER_BRIDGE_NOT_IMPLEMENTED"
-	result.error_message = "load_named_entry() is not implemented on this SaveFlowSaveManagerBridge."
+	result.error_key = "SAVE_MANAGER_BRIDGE_ERROR"
+	result.error_message = message
 	return result
