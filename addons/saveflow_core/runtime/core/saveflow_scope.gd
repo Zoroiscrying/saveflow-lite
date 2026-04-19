@@ -13,21 +13,53 @@ enum RestorePolicy {
 }
 
 ## Leave empty unless the default snake_case node name would be unstable or too vague.
-@export var scope_key: String = ""
-@export var enabled: bool = true
-@export var save_enabled: bool = true
-@export var load_enabled: bool = true
+@export var scope_key: String = "":
+	set(value):
+		scope_key = value
+		_refresh_editor_warnings()
+@export var enabled: bool = true:
+	set(value):
+		enabled = value
+		_refresh_editor_warnings()
+@export var save_enabled: bool = true:
+	set(value):
+		save_enabled = value
+		_refresh_editor_warnings()
+@export var load_enabled: bool = true:
+	set(value):
+		load_enabled = value
+		_refresh_editor_warnings()
 ## Override this only when child keys need to live under a different public namespace
 ## than the scope key itself.
-@export var key_namespace: String = ""
+@export var key_namespace: String = "":
+	set(value):
+		key_namespace = value
+		_refresh_editor_warnings()
 ## Lower phases run first inside the graph. Only set this when restore order
 ## between sibling domains truly matters.
-@export var phase: int = 0
+@export var phase: int = 0:
+	set(value):
+		phase = value
+		_refresh_editor_warnings()
 ## Controls how this domain should treat restore errors relative to its parent.
 ## Inherit is the safe default. Use Best Effort only when partial restoration is
 ## acceptable for this domain; use Strict when this domain must restore cleanly.
 @export_enum("Inherit", "Best Effort", "Strict")
-var restore_policy: int = RestorePolicy.INHERIT
+var restore_policy: int = RestorePolicy.INHERIT:
+	set(value):
+		restore_policy = value
+		_refresh_editor_warnings()
+
+
+func _ready() -> void:
+	_refresh_editor_warnings()
+
+
+func _notification(what: int) -> void:
+	if not Engine.is_editor_hint():
+		return
+	if what == NOTIFICATION_CHILD_ORDER_CHANGED:
+		_refresh_editor_warnings()
 
 
 func get_scope_key() -> String:
@@ -98,18 +130,40 @@ func describe_scope_plan() -> Dictionary:
 	var child_source_count := 0
 	var child_scope_keys: PackedStringArray = []
 	var child_source_keys: PackedStringArray = []
+	var duplicate_scope_keys: PackedStringArray = []
+	var duplicate_source_keys: PackedStringArray = []
+	var seen_scope_keys: Dictionary = {}
+	var seen_source_keys: Dictionary = {}
 
 	for child in get_children():
 		if child is SaveFlowScope:
+			var child_scope_key := (child as SaveFlowScope).get_scope_key()
 			child_scope_count += 1
-			child_scope_keys.append((child as SaveFlowScope).get_scope_key())
+			child_scope_keys.append(child_scope_key)
+			if seen_scope_keys.has(child_scope_key):
+				_append_unique_string(duplicate_scope_keys, child_scope_key)
+			else:
+				seen_scope_keys[child_scope_key] = true
 		elif child is SaveFlowSource:
+			var child_source_key := (child as SaveFlowSource).get_source_key()
 			child_source_count += 1
-			child_source_keys.append((child as SaveFlowSource).get_source_key())
+			child_source_keys.append(child_source_key)
+			if seen_source_keys.has(child_source_key):
+				_append_unique_string(duplicate_source_keys, child_source_key)
+			else:
+				seen_source_keys[child_source_key] = true
+
+	var problems: PackedStringArray = []
+	if child_scope_count == 0 and child_source_count == 0:
+		problems.append("Scope has no child domains or leaf sources.")
+	if not duplicate_scope_keys.is_empty():
+		problems.append("Duplicate child domain keys: %s" % ", ".join(duplicate_scope_keys))
+	if not duplicate_source_keys.is_empty():
+		problems.append("Duplicate leaf source keys: %s" % ", ".join(duplicate_source_keys))
 
 	return {
-		"valid": true,
-		"reason": "",
+		"valid": problems.is_empty(),
+		"reason": _resolve_scope_plan_reason(problems),
 		"scope_key": get_scope_key(),
 		"enabled": is_scope_enabled(),
 		"save_enabled": can_save_scope(),
@@ -122,7 +176,41 @@ func describe_scope_plan() -> Dictionary:
 		"child_source_count": child_source_count,
 		"child_scope_keys": child_scope_keys,
 		"child_source_keys": child_source_keys,
+		"problems": problems,
+		"duplicate_scope_keys": duplicate_scope_keys,
+		"duplicate_source_keys": duplicate_source_keys,
 	}
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+	var warnings: PackedStringArray = []
+	var plan := describe_scope_plan()
+	var problems: PackedStringArray = PackedStringArray(plan.get("problems", PackedStringArray()))
+	for problem in problems:
+		warnings.append("SaveFlowScope: %s" % problem)
+	return warnings
+
+
+func _refresh_editor_warnings() -> void:
+	if not Engine.is_editor_hint():
+		return
+	update_configuration_warnings()
+
+
+func _resolve_scope_plan_reason(problems: PackedStringArray) -> String:
+	if problems.is_empty():
+		return ""
+	if problems.size() == 1 and String(problems[0]).begins_with("Scope has no child"):
+		return "EMPTY_SCOPE"
+	return "INVALID_SCOPE_PLAN"
+
+
+func _append_unique_string(values: PackedStringArray, value: String) -> void:
+	if value.is_empty():
+		return
+	if values.has(value):
+		return
+	values.append(value)
 
 
 func _describe_restore_policy(value: int) -> String:

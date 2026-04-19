@@ -6,10 +6,17 @@ extends VBoxContainer
 
 const PANEL_PADDING := 12
 const LABEL_WIDTH := 132
-const SaveFlowProjectSettingsScript := preload("res://addons/saveflow_core/runtime/core/saveflow_project_settings.gd")
+const PROJECT_SETTINGS_SCRIPT_PATH := "res://addons/saveflow_core/runtime/core/saveflow_project_settings.gd"
+const SetupHealthScript := preload("res://addons/saveflow_lite/editor/saveflow_setup_health.gd")
 
 signal open_save_manager_requested
+signal open_quick_access_requested
+signal repair_setup_requested
+signal open_addons_folder_requested
+signal open_lite_docs_requested
 
+var _content_scroll: ScrollContainer
+var _content_root: VBoxContainer
 var _format_option: OptionButton
 var _save_root_edit: LineEdit
 var _slot_index_edit: LineEdit
@@ -25,35 +32,112 @@ var _auto_create_dirs_check: CheckBox
 var _include_meta_check: CheckBox
 var _log_level_option: OptionButton
 var _status_label: Label
+var _health_summary_label: Label
+var _health_hint_label: Label
+var _health_details: RichTextLabel
+var _health_section_content: Control
+var _health_section_toggle_button: Button
+var _save_button: Button
+var _reload_button: Button
+var _reset_button: Button
 
 
 func _ready() -> void:
 	_build_ui()
 	reload_from_project_settings()
+	refresh_setup_health()
 
 
 ## Reload the current project defaults from ProjectSettings into the dock UI.
 func reload_from_project_settings() -> void:
-	var settings := SaveFlowProjectSettingsScript.load_settings()
+	var project_settings_script := _get_project_settings_script()
+	if project_settings_script == null:
+		_set_status("SaveFlow core is missing. Cannot load project defaults.")
+		refresh_setup_health()
+		return
+	var settings: SaveSettings = project_settings_script.load_settings()
 	_apply_settings_to_fields(settings)
 	_set_status("Loaded project defaults.")
+	refresh_setup_health()
 
 
 ## Persist the dock values back into ProjectSettings and immediately reconfigure
 ## the editor runtime singleton if it exists.
 func save_to_project_settings() -> void:
+	var project_settings_script := _get_project_settings_script()
+	if project_settings_script == null:
+		_set_status("SaveFlow core is missing. Cannot save project defaults.")
+		refresh_setup_health()
+		return
 	var settings := _build_settings_from_fields()
-	SaveFlowProjectSettingsScript.save_settings(settings)
+	project_settings_script.save_settings(settings)
 	_apply_runtime_settings(settings)
 	_set_status("Saved project defaults.")
+	refresh_setup_health()
 
 
 ## Reset the project-wide SaveFlow Lite defaults to the shipped baseline.
 func reset_to_defaults() -> void:
-	var settings := SaveFlowProjectSettingsScript.reset_to_defaults()
+	var project_settings_script := _get_project_settings_script()
+	if project_settings_script == null:
+		_set_status("SaveFlow core is missing. Cannot reset project defaults.")
+		refresh_setup_health()
+		return
+	var settings: SaveSettings = project_settings_script.reset_to_defaults()
 	_apply_settings_to_fields(settings)
 	_apply_runtime_settings(settings)
 	_set_status("Reset to defaults.")
+	refresh_setup_health()
+
+
+## Re-run the lightweight setup diagnostics shown in the Settings dock.
+func refresh_setup_health() -> void:
+	var report := SetupHealthScript.inspect_setup()
+	if _health_summary_label != null:
+		_health_summary_label.text = String(report.get("summary", ""))
+		var warning_count := int(report.get("warning_count", 0))
+		if bool(report.get("healthy", false)) and warning_count == 0:
+			_health_summary_label.modulate = Color(0.60, 0.92, 0.70)
+		elif bool(report.get("healthy", false)):
+			_health_summary_label.modulate = Color(0.95, 0.82, 0.46)
+		else:
+			_health_summary_label.modulate = Color(0.96, 0.54, 0.54)
+
+	if _health_hint_label != null:
+		_health_hint_label.text = _build_setup_hint_text(report)
+		_health_hint_label.modulate = get_theme_color("font_placeholder_color", "Editor")
+
+	if _health_details != null:
+		_health_details.clear()
+		for check in report.get("checks", []):
+			var state := String(check.get("state", "warning"))
+			var title := String(check.get("title", "Check"))
+			var detail := String(check.get("detail", ""))
+			var prefix := "[OK]"
+			var color := "#93d4a5"
+			if state == "warning":
+				prefix = "[Warn]"
+				color = "#f0c96a"
+			elif state == "error":
+				prefix = "[Error]"
+				color = "#f08b8b"
+			_health_details.append_text("%s %s\n" % [prefix, title])
+			_health_details.push_color(Color.from_string(color, Color.WHITE))
+			_health_details.append_text("    %s\n\n" % detail)
+			_health_details.pop()
+
+	var can_edit_project_settings := _get_project_settings_script() != null
+	if _save_button != null:
+		_save_button.disabled = not can_edit_project_settings
+	if _reload_button != null:
+		_reload_button.disabled = not can_edit_project_settings
+	if _reset_button != null:
+		_reset_button.disabled = not can_edit_project_settings
+
+
+## Show a status message from the plugin when a quick action finishes.
+func show_status_message(message: String) -> void:
+	_set_status(message)
 
 
 func _build_ui() -> void:
@@ -61,50 +145,156 @@ func _build_ui() -> void:
 		return
 
 	add_theme_constant_override("separation", 10)
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	_content_scroll = ScrollContainer.new()
+	_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(_content_scroll)
+
+	_content_root = VBoxContainer.new()
+	_content_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_root.add_theme_constant_override("separation", 10)
+	_content_scroll.add_child(_content_root)
 
 	var header := Label.new()
 	header.text = "SaveFlow Lite Settings"
 	header.add_theme_font_size_override("font_size", 18)
-	add_child(header)
+	_content_root.add_child(header)
 
 	var description := Label.new()
 	description.text = "Manage project-wide save format, metadata defaults, and slot behavior in one place."
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.modulate = get_theme_color("font_placeholder_color", "Editor")
-	add_child(description)
+	_content_root.add_child(description)
+
+	var launcher_buttons := HBoxContainer.new()
+	launcher_buttons.add_theme_constant_override("separation", 8)
+	_content_root.add_child(launcher_buttons)
+
+	var open_quick_access_button := Button.new()
+	open_quick_access_button.text = "Open Quick Access"
+	open_quick_access_button.pressed.connect(_on_open_quick_access_pressed)
+	launcher_buttons.add_child(open_quick_access_button)
 
 	var open_manager_button := Button.new()
 	open_manager_button.text = "Open DevSaveManager"
 	open_manager_button.pressed.connect(_on_open_save_manager_pressed)
-	add_child(open_manager_button)
+	launcher_buttons.add_child(open_manager_button)
 
-	add_child(_build_section("Storage", _build_storage_section()))
-	add_child(_build_section("Metadata", _build_metadata_section()))
-	add_child(_build_section("Behavior", _build_behavior_section()))
+	_content_root.add_child(_build_collapsible_section("Setup Health", _build_setup_health_section(), false))
+	_content_root.add_child(_build_section("Storage", _build_storage_section()))
+	_content_root.add_child(_build_section("Metadata", _build_metadata_section()))
+	_content_root.add_child(_build_section("Behavior", _build_behavior_section()))
 
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 8)
-	add_child(actions)
+	_content_root.add_child(actions)
 
-	var save_button := Button.new()
-	save_button.text = "Save"
-	save_button.pressed.connect(save_to_project_settings)
-	actions.add_child(save_button)
+	_save_button = Button.new()
+	_save_button.text = "Save"
+	_save_button.pressed.connect(save_to_project_settings)
+	actions.add_child(_save_button)
 
-	var reload_button := Button.new()
-	reload_button.text = "Reload"
-	reload_button.pressed.connect(reload_from_project_settings)
-	actions.add_child(reload_button)
+	_reload_button = Button.new()
+	_reload_button.text = "Reload"
+	_reload_button.pressed.connect(reload_from_project_settings)
+	actions.add_child(_reload_button)
 
-	var reset_button := Button.new()
-	reset_button.text = "Reset Defaults"
-	reset_button.pressed.connect(reset_to_defaults)
-	actions.add_child(reset_button)
+	_reset_button = Button.new()
+	_reset_button.text = "Reset Defaults"
+	_reset_button.pressed.connect(reset_to_defaults)
+	actions.add_child(_reset_button)
 
 	_status_label = Label.new()
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status_label.modulate = get_theme_color("font_placeholder_color", "Editor")
-	add_child(_status_label)
+	_content_root.add_child(_status_label)
+
+
+func _build_setup_health_section() -> VBoxContainer:
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
+	_health_section_content = content
+
+	_health_summary_label = Label.new()
+	_health_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(_health_summary_label)
+
+	_health_hint_label = Label.new()
+	_health_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(_health_hint_label)
+
+	_health_details = RichTextLabel.new()
+	_health_details.fit_content = false
+	_health_details.bbcode_enabled = false
+	_health_details.scroll_active = true
+	_health_details.selection_enabled = true
+	_health_details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_health_details.custom_minimum_size.y = 140
+	content.add_child(_health_details)
+
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 8)
+	content.add_child(actions)
+
+	var repair_button := Button.new()
+	repair_button.text = "Repair SaveFlow Setup"
+	repair_button.pressed.connect(_on_repair_setup_pressed)
+	actions.add_child(repair_button)
+
+	var open_addons_button := Button.new()
+	open_addons_button.text = "Open addons Folder"
+	open_addons_button.pressed.connect(_on_open_addons_folder_pressed)
+	actions.add_child(open_addons_button)
+
+	var open_docs_button := Button.new()
+	open_docs_button.text = "Open Lite Docs"
+	open_docs_button.pressed.connect(_on_open_lite_docs_pressed)
+	actions.add_child(open_docs_button)
+
+	var recheck_button := Button.new()
+	recheck_button.text = "Recheck Setup"
+	recheck_button.pressed.connect(refresh_setup_health)
+	actions.add_child(recheck_button)
+
+	return content
+
+
+func _build_collapsible_section(title: String, content: Control, expanded: bool) -> Control:
+	var panel := PanelContainer.new()
+
+	var padding := MarginContainer.new()
+	padding.add_theme_constant_override("margin_left", PANEL_PADDING)
+	padding.add_theme_constant_override("margin_top", PANEL_PADDING)
+	padding.add_theme_constant_override("margin_right", PANEL_PADDING)
+	padding.add_theme_constant_override("margin_bottom", PANEL_PADDING)
+	panel.add_child(padding)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	padding.add_child(box)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 10)
+	box.add_child(header)
+
+	var label := Label.new()
+	label.text = title
+	label.add_theme_font_size_override("font_size", 15)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(label)
+
+	_health_section_toggle_button = Button.new()
+	_health_section_toggle_button.toggle_mode = true
+	_health_section_toggle_button.button_pressed = expanded
+	_health_section_toggle_button.toggled.connect(_on_health_section_toggled)
+	header.add_child(_health_section_toggle_button)
+
+	box.add_child(content)
+	_on_health_section_toggled(expanded)
+	return panel
 
 
 func _build_storage_section() -> VBoxContainer:
@@ -266,6 +456,12 @@ func _apply_runtime_settings(settings: SaveSettings) -> void:
 		runtime.configure(settings)
 
 
+func _get_project_settings_script() -> Script:
+	if not ResourceLoader.exists(PROJECT_SETTINGS_SCRIPT_PATH):
+		return null
+	return load(PROJECT_SETTINGS_SCRIPT_PATH)
+
+
 func _select_option_by_id(option: OptionButton, value: int) -> void:
 	for index in range(option.item_count):
 		if option.get_item_id(index) == value:
@@ -287,5 +483,68 @@ func _set_status(message: String) -> void:
 	_status_label.text = message
 
 
+func _build_setup_hint_text(report: Dictionary) -> String:
+	var lines: PackedStringArray = []
+	if _report_has_state(report, "Core addon", "error"):
+		lines.append("Next step: copy both `addons/saveflow_core` and `addons/saveflow_lite` into this project's `addons/` folder.")
+	elif _report_has_state(report, "Lite addon", "error"):
+		lines.append("Next step: reinstall SaveFlow Lite so `addons/saveflow_lite` is complete.")
+
+	if _report_has_state(report, "Project settings bridge", "error"):
+		lines.append("Until the core addon is restored, this panel can only run diagnostics and cannot save project defaults.")
+
+	if _report_has_state(report, "Lite plugin enabled", "error"):
+		lines.append("Enable `SaveFlow Lite` from Project Settings > Plugins before using editor tooling.")
+
+	if _report_has_state(report, "Project settings registration", "warning"):
+		lines.append("Use `Repair SaveFlow Setup` to register the project-wide SaveFlow settings keys.")
+
+	if _report_has_state(report, "Addon version match", "error"):
+		lines.append("Reinstall the matching `saveflow_core` and `saveflow_lite` package pair. Mixed versions are not supported.")
+
+	if _report_has_state(report, "Autoload registration", "error") or _report_has_state(report, "Autoload registration", "warning"):
+		lines.append("Use `Repair SaveFlow Setup` to re-register the `SaveFlow` autoload with the expected runtime entry.")
+
+	if _report_has_state(report, "Legacy autoload cleanup", "warning"):
+		lines.append("Use `Repair SaveFlow Setup` to remove the old `Save` autoload entry.")
+
+	if _report_has_state(report, "Runtime singleton", "warning") and not _report_has_state(report, "Autoload registration", "error"):
+		lines.append("If the plugin was just enabled, reload the project once so the editor runtime can see `/root/SaveFlow`.")
+
+	if lines.is_empty():
+		lines.append("No action needed right now. This project looks ready for SaveFlow Lite.")
+	return "\n".join(lines)
+
+
+func _report_has_state(report: Dictionary, title: String, state: String) -> bool:
+	for check in report.get("checks", []):
+		if String(check.get("title", "")) == title and String(check.get("state", "")) == state:
+			return true
+	return false
+
+
+func _on_health_section_toggled(expanded: bool) -> void:
+	if _health_section_content != null:
+		_health_section_content.visible = expanded
+	if _health_section_toggle_button != null:
+		_health_section_toggle_button.text = "Hide" if expanded else "Show"
+
+
+func _on_repair_setup_pressed() -> void:
+	repair_setup_requested.emit()
+
+
+func _on_open_addons_folder_pressed() -> void:
+	open_addons_folder_requested.emit()
+
+
+func _on_open_lite_docs_pressed() -> void:
+	open_lite_docs_requested.emit()
+
+
 func _on_open_save_manager_pressed() -> void:
 	open_save_manager_requested.emit()
+
+
+func _on_open_quick_access_pressed() -> void:
+	open_quick_access_requested.emit()

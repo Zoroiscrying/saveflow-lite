@@ -1,5 +1,5 @@
 ## SaveFlowPrefabEntityFactory is the lowest-boilerplate runtime factory path.
-## Use it when one or more entity `type_key`s map directly to prefab scenes and
+## Use it when one entity `type_key` maps directly to one prefab scene and
 ## the default identity lookup + local save-graph restore behavior is enough.
 @tool
 class_name SaveFlowPrefabEntityFactory
@@ -11,34 +11,54 @@ extends SaveFlowEntityFactory
 	set(value):
 		target_container = value
 		_target_container_ref_path = _resolve_relative_node_path(value)
+		_refresh_editor_state()
 @export_storage var _target_container_ref_path: NodePath = NodePath()
 
 ## Enable this only when the container should be created by SaveFlow at runtime.
 ## The container will be created under the factory's parent using `container_name`.
-@export var auto_create_container := false
+@export var auto_create_container := false:
+	set(value):
+		var previous_value := auto_create_container
+		auto_create_container = value
+		_refresh_editor_state(previous_value != auto_create_container)
 ## Used only when `auto_create_container` is enabled.
-@export var container_name := "RuntimeEntities"
+@export var container_name := "RuntimeEntities":
+	set(value):
+		container_name = value if not String(value).strip_edges().is_empty() else "RuntimeEntities"
+		_refresh_editor_state()
 
-## The primary entity type this prefab factory owns.
-@export var type_key: String = ""
+## The primary entity type this prefab factory owns. Leave empty to infer one
+## from the prefab scene file name.
+@export var type_key: String = "":
+	set(value):
+		type_key = value.strip_edges()
+		_refresh_editor_state()
 ## The prefab scene instantiated for the configured `type_key`.
-@export var entity_scene: PackedScene
+@export var entity_scene: PackedScene:
+	set(value):
+		entity_scene = value
+		_refresh_editor_state()
 
 var _entity_index: Dictionary = {}
 
 
 func _ready() -> void:
 	_hydrate_target_container_from_ref_path()
+	_refresh_editor_state()
 
 
 func can_handle_type(requested_type_key: String) -> bool:
-	return not type_key.is_empty() and requested_type_key == type_key
+	var normalized_requested_type_key := requested_type_key.strip_edges()
+	if normalized_requested_type_key.is_empty():
+		return false
+	return normalized_requested_type_key == _effective_type_key()
 
 
 func get_supported_entity_types() -> PackedStringArray:
-	if type_key.is_empty():
+	var effective_type_key := _effective_type_key()
+	if effective_type_key.is_empty():
 		return PackedStringArray()
-	return PackedStringArray([type_key])
+	return PackedStringArray([effective_type_key])
 
 
 func get_target_container() -> Node:
@@ -61,7 +81,7 @@ func spawn_entity_from_save(descriptor: Dictionary, context: Dictionary = {}) ->
 	if entity_scene == null:
 		return null
 
-	var requested_type_key: String = String(descriptor.get("type_key", type_key))
+	var requested_type_key: String = String(descriptor.get("type_key", _effective_type_key())).strip_edges()
 	if not can_handle_type(requested_type_key):
 		return null
 
@@ -108,8 +128,10 @@ func describe_entity_factory_plan() -> Dictionary:
 	var plan: Dictionary = super.describe_entity_factory_plan()
 	var resolved_container := _ensure_target_container(false)
 	var problems: PackedStringArray = PackedStringArray(plan.get("problems", PackedStringArray()))
-	if type_key.is_empty():
-		problems.append("type_key is empty")
+	var effective_type_key := _effective_type_key()
+	var inferred_type_key := _infer_type_key_from_scene()
+	if effective_type_key.is_empty():
+		problems.append("type_key is empty and no type could be inferred from entity_scene")
 	if entity_scene == null:
 		problems.append("entity_scene is not assigned")
 	if resolved_container == null and not auto_create_container:
@@ -120,16 +142,22 @@ func describe_entity_factory_plan() -> Dictionary:
 	plan["factory_name"] = name
 	plan["target_container_name"] = _describe_node_name(resolved_container)
 	plan["target_container_path"] = _describe_node_path(resolved_container)
-	plan["supported_entity_types"] = get_supported_entity_types()
+	plan["supported_entity_types"] = PackedStringArray([effective_type_key]) if not effective_type_key.is_empty() else PackedStringArray()
 	plan["can_provide_target_container"] = resolved_container != null or auto_create_container
 	plan["uses_prefab_scene"] = entity_scene != null
+	plan["auto_create_container"] = auto_create_container
+	plan["container_name"] = container_name
+	plan["uses_inferred_type_key"] = type_key.is_empty() and not inferred_type_key.is_empty()
+	plan["inferred_type_key"] = inferred_type_key
+	plan["type_key_mode"] = _describe_type_key_mode(inferred_type_key)
+	plan["routing_summary"] = _describe_routing_summary(effective_type_key)
 	return plan
 
 
 func _resolve_prefab_plan_reason(problems: PackedStringArray) -> String:
 	if problems.is_empty():
 		return ""
-	if type_key.is_empty():
+	if _effective_type_key().is_empty():
 		return "MISSING_TYPE_KEY"
 	if entity_scene == null:
 		return "MISSING_ENTITY_SCENE"
@@ -250,3 +278,56 @@ func _resolve_relative_node_path(node: Node) -> NodePath:
 	if not is_inside_tree() or not node.is_inside_tree():
 		return NodePath()
 	return get_path_to(node)
+
+
+func _validate_property(property: Dictionary) -> void:
+	if String(property.get("name", "")) == "target_container":
+		property["usage"] = PROPERTY_USAGE_DEFAULT if not auto_create_container else PROPERTY_USAGE_NO_EDITOR
+	elif String(property.get("name", "")) == "container_name":
+		property["usage"] = PROPERTY_USAGE_DEFAULT if auto_create_container else PROPERTY_USAGE_NO_EDITOR
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+	return super._get_configuration_warnings()
+
+
+func _effective_type_key() -> String:
+	if not type_key.is_empty():
+		return type_key
+	return _infer_type_key_from_scene()
+
+
+func _infer_type_key_from_scene() -> String:
+	if entity_scene == null:
+		return ""
+	var resource_path := String(entity_scene.resource_path).strip_edges()
+	if resource_path.is_empty():
+		return ""
+	return resource_path.get_file().get_basename().to_snake_case()
+
+
+func _refresh_editor_state(refresh_property_list: bool = false) -> void:
+	if not Engine.is_editor_hint():
+		return
+	update_configuration_warnings()
+	if refresh_property_list:
+		notify_property_list_changed()
+
+
+func _describe_type_key_mode(inferred_type_key: String) -> String:
+	if not type_key.is_empty():
+		return "Explicit single key"
+	if not inferred_type_key.is_empty():
+		return "Inferred single key"
+	return "Unresolved"
+
+
+func _describe_routing_summary(effective_type_key: String) -> String:
+	if effective_type_key.is_empty():
+		return "No type routing is configured yet."
+	var container_summary := "the assigned target container"
+	if auto_create_container:
+		container_summary = "runtime container `%s`" % container_name
+	elif target_container == null and _target_container_ref_path.is_empty():
+		container_summary = "the resolved factory target container"
+	return "Type `%s` spawns the configured prefab into %s." % [effective_type_key, container_summary]

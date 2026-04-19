@@ -8,7 +8,14 @@ extends SaveFlowSource
 
 ## Lets a source declare its own schema/versioning boundary without forcing that
 ## concept onto the surrounding scope.
-@export var data_version: int = 1
+@export var data_version: int = 1:
+	set(value):
+		data_version = value
+		_refresh_editor_warnings()
+
+
+func _ready() -> void:
+	_refresh_editor_warnings()
 
 
 func describe_source() -> Dictionary:
@@ -38,6 +45,24 @@ func describe_data_plan() -> Dictionary:
 		## a fixed top-level schema plus this expandable details section.
 		"details": {},
 	}
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+	var warnings: PackedStringArray = []
+	var plan := describe_data_plan()
+	if not bool(plan.get("valid", false)):
+		var reason := String(plan.get("reason", "INVALID_DATA_SOURCE_PLAN"))
+		warnings.append("SaveFlowDataSource plan is invalid: %s" % reason)
+	var summary := String(plan.get("summary", "")).strip_edges()
+	if summary.is_empty():
+		warnings.append("SaveFlowDataSource preview summary is empty.")
+	return warnings
+
+
+func _refresh_editor_warnings() -> void:
+	if not Engine.is_editor_hint():
+		return
+	update_configuration_warnings()
 
 
 func gather_save_data() -> Variant:

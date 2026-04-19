@@ -17,6 +17,8 @@ var _factory_value: Label
 var _reason_value: Label
 var _container_value: Label
 var _types_value: Label
+var _type_mode_value: Label
+var _routing_value: Label
 var _required_value: Label
 var _optional_value: Label
 var _capabilities_value: Label
@@ -103,6 +105,8 @@ func _build_ui() -> void:
 	_reason_value = _add_row(content, "Invalid Reason")
 	_container_value = _add_row(content, "Container")
 	_types_value = _add_row(content, "Entity Types")
+	_type_mode_value = _add_row(content, "Type Mode")
+	_routing_value = _add_row(content, "Routing")
 	_required_value = _add_row(content, "Required")
 	_optional_value = _add_row(content, "Optional")
 	_capabilities_value = _add_row(content, "Implemented")
@@ -159,6 +163,8 @@ func _refresh() -> void:
 	_reason_value.modulate = _warning_color() if not valid else Color(1, 1, 1, 1)
 	_container_value.text = _best_name(String(plan.get("target_container_name", "")), String(plan.get("target_container_path", "")))
 	_types_value.text = _format_types(PackedStringArray(plan.get("supported_entity_types", PackedStringArray())))
+	_type_mode_value.text = String(plan.get("type_key_mode", "<custom>"))
+	_routing_value.text = String(plan.get("routing_summary", "<custom>"))
 	_required_value.text = _format_list_inline(PackedStringArray(plan.get("required_contract", PackedStringArray())))
 	_optional_value.text = _format_list_inline(PackedStringArray(plan.get("optional_hooks", PackedStringArray())))
 	_capabilities_value.text = _format_capabilities(plan)

@@ -18,6 +18,9 @@ var _factory_value: Label
 var _source_key_value: Label
 var _restore_policy_value: Label
 var _failure_policy_value: Label
+var _container_strategy_value: Label
+var _factory_types_value: Label
+var _factory_spawn_value: Label
 var _entity_count_value: Label
 var _auto_register_checkbox: CheckBox
 var _direct_children_checkbox: CheckBox
@@ -105,6 +108,9 @@ func _build_ui() -> void:
 	_source_key_value = _add_row(content, "Save Key")
 	_restore_policy_value = _add_row(content, "Restore")
 	_failure_policy_value = _add_row(content, "Failure")
+	_container_strategy_value = _add_row(content, "Container Mode")
+	_factory_types_value = _add_row(content, "Factory Types")
+	_factory_spawn_value = _add_row(content, "Spawn Path")
 	_entity_count_value = _add_row(content, "Entities")
 
 	_auto_register_checkbox = CheckBox.new()
@@ -190,6 +196,9 @@ func _refresh() -> void:
 	_source_key_value.text = String(plan.get("source_key", ""))
 	_restore_policy_value.text = String(plan.get("restore_policy_name", "Create Missing"))
 	_failure_policy_value.text = String(plan.get("failure_policy_name", "Fail On Missing Or Invalid"))
+	_container_strategy_value.text = String(plan.get("target_resolution", "<none>"))
+	_factory_types_value.text = _format_list(plan.get("factory_supported_entity_types", PackedStringArray()))
+	_factory_spawn_value.text = String(plan.get("factory_spawn_summary", ""))
 	_entity_count_value.text = str(int(plan.get("entity_count", 0)))
 
 	_auto_register_checkbox.set_block_signals(true)

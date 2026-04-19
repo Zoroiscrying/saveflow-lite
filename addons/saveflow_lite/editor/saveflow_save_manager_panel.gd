@@ -21,6 +21,8 @@ enum SortMode {
 	SAVED_OLDEST,
 }
 
+var _content_scroll: ScrollContainer
+var _content_root: VBoxContainer
 var _search_edit: LineEdit
 var _sort_option: OptionButton
 var _new_name_edit: LineEdit
@@ -64,21 +66,33 @@ func _build_ui() -> void:
 		return
 
 	add_theme_constant_override("separation", 10)
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	_content_scroll = ScrollContainer.new()
+	_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(_content_scroll)
+
+	_content_root = VBoxContainer.new()
+	_content_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_root.add_theme_constant_override("separation", 10)
+	_content_scroll.add_child(_content_root)
 
 	var title := Label.new()
 	title.text = "SaveFlow DevSaveManager"
 	title.add_theme_font_size_override("font_size", 18)
-	add_child(title)
+	_content_root.add_child(title)
 
 	var description := Label.new()
 	description.text = "Manage dev snapshots and formal slot saves side by side. Runtime save/load requests only target dev saves."
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.modulate = get_theme_color("font_placeholder_color", "Editor")
-	add_child(description)
+	_content_root.add_child(description)
 
 	var toolbar := HBoxContainer.new()
 	toolbar.add_theme_constant_override("separation", 8)
-	add_child(toolbar)
+	_content_root.add_child(toolbar)
 
 	_search_edit = LineEdit.new()
 	_search_edit.placeholder_text = "Search saves"
@@ -103,7 +117,7 @@ func _build_ui() -> void:
 
 	var folder_bar := HBoxContainer.new()
 	folder_bar.add_theme_constant_override("separation", 8)
-	add_child(folder_bar)
+	_content_root.add_child(folder_bar)
 
 	var open_formal_folder_button := Button.new()
 	open_formal_folder_button.text = "Open Formal Saves"
@@ -117,7 +131,7 @@ func _build_ui() -> void:
 
 	var save_bar := HBoxContainer.new()
 	save_bar.add_theme_constant_override("separation", 8)
-	add_child(save_bar)
+	_content_root.add_child(save_bar)
 
 	_new_name_edit = LineEdit.new()
 	_new_name_edit.placeholder_text = "New dev save name"
@@ -131,17 +145,18 @@ func _build_ui() -> void:
 
 	_runtime_status_label = Label.new()
 	_runtime_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(_runtime_status_label)
+	_content_root.add_child(_runtime_status_label)
 
 	_request_status_label = Label.new()
 	_request_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_request_status_label.modulate = get_theme_color("font_placeholder_color", "Editor")
-	add_child(_request_status_label)
+	_content_root.add_child(_request_status_label)
 
 	var lists_split := HSplitContainer.new()
 	lists_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lists_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(lists_split)
+	lists_split.custom_minimum_size.y = 260
+	_content_root.add_child(lists_split)
 
 	lists_split.add_child(_build_scope_list_section("Dev Saves", SCOPE_DEV))
 	lists_split.add_child(_build_scope_list_section("Formal Saves (Slot Index)", SCOPE_FORMAL))

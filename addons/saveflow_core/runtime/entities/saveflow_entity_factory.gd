@@ -8,6 +8,10 @@ class_name SaveFlowEntityFactory
 extends Node
 
 
+func _ready() -> void:
+	_refresh_editor_warnings()
+
+
 ## Required. Return true when this factory owns the descriptor type_key.
 @abstract
 func can_handle_type(type_key: String) -> bool
@@ -86,6 +90,21 @@ func describe_entity_factory_plan() -> Dictionary:
 			"get_target_container",
 		]),
 	}
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+	var warnings: PackedStringArray = []
+	var plan := describe_entity_factory_plan()
+	var problems: PackedStringArray = PackedStringArray(plan.get("problems", PackedStringArray()))
+	for problem in problems:
+		warnings.append("SaveFlowEntityFactory: %s" % problem)
+	return warnings
+
+
+func _refresh_editor_warnings() -> void:
+	if not Engine.is_editor_hint():
+		return
+	update_configuration_warnings()
 
 
 func _resolve_plan_reason(problems: PackedStringArray) -> String:

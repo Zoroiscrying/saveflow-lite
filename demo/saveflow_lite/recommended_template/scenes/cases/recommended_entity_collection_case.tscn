@@ -1,0 +1,96 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/template_entity_collection_case.gd" id="1_case"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/entities/saveflow_prefab_entity_factory.gd" id="2_prefab_factory"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd" id="3_entity_collection"]
+[ext_resource type="PackedScene" path="res://demo/saveflow_lite/recommended_template/scenes/prefabs/template_runtime_actor.tscn" id="4_actor_prefab"]
+
+[node name="RecommendedEntityCollectionCase" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_case")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="PanelContainer" type="PanelContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="MarginContainer/PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="MarginContainer/PanelContainer/Content"]
+layout_mode = 2
+text = "Case 3: SaveFlowEntityCollectionSource"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="MarginContainer/PanelContainer/Content"]
+layout_mode = 2
+text = "Use this when runtime entities appear, disappear, or respawn over time. This case stores a changing actor set through EntityCollectionSource + PrefabEntityFactory."
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="MarginContainer/PanelContainer/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SaveButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Save"
+
+[node name="LoadButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Load"
+
+[node name="SpawnButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Spawn Runtime"
+
+[node name="MutateButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Mutate"
+
+[node name="ResetButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Reset"
+
+[node name="ActorsLabel" type="Label" parent="MarginContainer/PanelContainer/Content"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+autowrap_mode = 3
+text = "Runtime Actors:"
+
+[node name="StatusOutput" type="TextEdit" parent="MarginContainer/PanelContainer/Content"]
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+editable = false
+wrap_mode = 2
+
+[node name="StateRoot" type="Node" parent="."]
+
+[node name="RuntimeActors" type="Node" parent="StateRoot"]
+
+[node name="RuntimeActorFactory" type="Node" parent="StateRoot"]
+script = ExtResource("2_prefab_factory")
+type_key = "runtime_actor"
+entity_scene = ExtResource("4_actor_prefab")
+_target_container_ref_path = NodePath("../RuntimeActors")
+
+[node name="ActorCollection" type="Node" parent="StateRoot"]
+script = ExtResource("3_entity_collection")
+source_key = "actors"
+_target_container_ref_path = NodePath("../RuntimeActors")
+_entity_factory_ref_path = NodePath("../RuntimeActorFactory")

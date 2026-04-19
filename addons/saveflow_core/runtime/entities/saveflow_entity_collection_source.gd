@@ -175,6 +175,7 @@ func apply_save_data(data: Variant, context: Dictionary = {}) -> SaveResult:
 func describe_entity_collection_plan() -> Dictionary:
 	var target := _resolve_target()
 	var factory := _get_entity_factory()
+	var factory_plan := _describe_entity_factory_plan(factory)
 	var saveflow_autoload_available := _is_saveflow_autoload_available_for_plan()
 	var entity_candidates: Array = discover_entity_candidates()
 	var missing_identity_nodes: PackedStringArray = []
@@ -190,13 +191,17 @@ func describe_entity_collection_plan() -> Dictionary:
 		"source_key": get_source_key(),
 		"target_name": _describe_node_name(target),
 		"target_path": _describe_node_path(target),
+		"target_resolution": _describe_target_resolution(target, factory, factory_plan),
 		"entity_factory_name": _describe_node_name(factory),
 		"entity_factory_path": _describe_node_path(factory),
+		"entity_factory_plan": factory_plan,
 		"saveflow_autoload_available": saveflow_autoload_available,
 		"failure_policy": failure_policy,
 		"failure_policy_name": _describe_failure_policy(failure_policy),
 		"restore_policy": restore_policy,
 		"restore_policy_name": _describe_restore_policy(restore_policy),
+		"factory_supported_entity_types": PackedStringArray(factory_plan.get("supported_entity_types", PackedStringArray())),
+		"factory_spawn_summary": _describe_factory_spawn_summary(factory_plan),
 		"include_direct_children_only": include_direct_children_only,
 		"auto_register_factory": auto_register_factory,
 		"entity_count": entity_candidates.size(),
@@ -434,12 +439,10 @@ func _resolve_plan_reason(target: Node, factory: Node, saveflow_autoload_availab
 
 
 func _factory_can_provide_target_container(factory: Node) -> bool:
-	if factory == null or not factory.has_method("describe_entity_factory_plan"):
+	var factory_plan := _describe_entity_factory_plan(factory)
+	if factory_plan.is_empty():
 		return false
-	var plan_variant: Variant = factory.call("describe_entity_factory_plan")
-	if not (plan_variant is Dictionary):
-		return false
-	return bool(Dictionary(plan_variant).get("can_provide_target_container", false))
+	return bool(factory_plan.get("can_provide_target_container", false))
 
 
 func _is_saveflow_autoload_available_for_plan() -> bool:
@@ -593,3 +596,63 @@ func _describe_restore_policy(value: Variant) -> String:
 			return "Clear And Restore"
 		_:
 			return "Create Missing"
+
+
+func _describe_entity_factory_plan(factory: Node) -> Dictionary:
+	if factory == null or not factory.has_method("describe_entity_factory_plan"):
+		return {}
+	var plan_variant: Variant = factory.call("describe_entity_factory_plan")
+	if not (plan_variant is Dictionary):
+		return {}
+	return Dictionary(plan_variant)
+
+
+func _describe_target_resolution(target: Node, factory: Node, factory_plan: Dictionary) -> String:
+	if is_instance_valid(target_container):
+		return "Use collection target container."
+	if not _target_container_ref_path.is_empty():
+		return "Use collection target container path."
+	if not factory_plan.is_empty():
+		var can_provide_target_container := bool(factory_plan.get("can_provide_target_container", false))
+		var auto_create_container := bool(factory_plan.get("auto_create_container", false))
+		var container_name := String(factory_plan.get("container_name", "RuntimeEntities")).strip_edges()
+		if can_provide_target_container and auto_create_container:
+			return "Use or create factory container `%s` at runtime." % _fallback_container_name(container_name)
+		if can_provide_target_container and factory != null:
+			return "Use entity factory target container."
+	if _has_explicit_target_container:
+		return "Collection target container is expected but not resolved."
+	if target == get_parent():
+		return "Use collection parent node."
+	return "Container resolution is pending."
+
+
+func _describe_factory_spawn_summary(factory_plan: Dictionary) -> String:
+	if factory_plan.is_empty():
+		return "No entity factory is configured yet."
+	var supported_entity_types := PackedStringArray(factory_plan.get("supported_entity_types", PackedStringArray()))
+	var uses_prefab_scene := bool(factory_plan.get("uses_prefab_scene", false))
+	var uses_inferred_type_key := bool(factory_plan.get("uses_inferred_type_key", false))
+	var inferred_type_key := String(factory_plan.get("inferred_type_key", "")).strip_edges()
+	var auto_create_container := bool(factory_plan.get("auto_create_container", false))
+	var container_name := _fallback_container_name(String(factory_plan.get("container_name", "RuntimeEntities")))
+	var type_summary := "<none>"
+	if not supported_entity_types.is_empty():
+		type_summary = ", ".join(supported_entity_types)
+	if uses_prefab_scene:
+		if uses_inferred_type_key and not inferred_type_key.is_empty():
+			return "Spawn prefab entities for `%s` (inferred from scene).%s" % [type_summary, _describe_spawn_container_suffix(auto_create_container, container_name)]
+		return "Spawn prefab entities for `%s`.%s" % [type_summary, _describe_spawn_container_suffix(auto_create_container, container_name)]
+	if not supported_entity_types.is_empty():
+		return "Factory handles `%s`.%s" % [type_summary, _describe_spawn_container_suffix(auto_create_container, container_name)]
+	return "Custom entity factory flow.%s" % _describe_spawn_container_suffix(auto_create_container, container_name)
+
+
+func _describe_spawn_container_suffix(auto_create_container: bool, container_name: String) -> String:
+	if not auto_create_container:
+		return ""
+	return " Container `%s` will be created on demand if it does not exist." % container_name
+
+
+func _fallback_container_name(value: String) -> String:
+	return value if not value.is_empty() else "RuntimeEntities"

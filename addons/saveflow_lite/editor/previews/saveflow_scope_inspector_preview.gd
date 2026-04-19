@@ -206,7 +206,7 @@ func _refresh() -> void:
 
 	_details_toggle.text = _foldout_text("Details", _details_expanded)
 	_details_box.visible = _details_expanded
-	_reason_value.text = String(plan.get("reason", ""))
+	_reason_value.text = _format_reason(plan)
 	_scope_list_value.text = _format_list(plan.get("child_scope_keys", PackedStringArray()))
 	_source_list_value.text = _format_list(plan.get("child_source_keys", PackedStringArray()))
 
@@ -280,6 +280,16 @@ func _format_list(values: Variant) -> String:
 	if items.is_empty():
 		return "<none>"
 	return "\n".join(items)
+
+
+func _format_reason(plan: Dictionary) -> String:
+	var problems: PackedStringArray = PackedStringArray(plan.get("problems", PackedStringArray()))
+	if not problems.is_empty():
+		return "; ".join(problems)
+	var reason_code: String = String(plan.get("reason", ""))
+	if reason_code.is_empty():
+		return "<none>"
+	return reason_code
 
 
 func _on_preview_toggled() -> void:

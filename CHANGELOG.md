@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.7
+
+Updated in this release:
+- Added Setup Health diagnostics and guided quick-fix actions in `SaveFlow Settings`
+- Added `SaveFlow Quick Access` floating panel with one-click entry to demo cases and editor manager panels
+- Added first-run minimal case launcher flow for NodeSource, DataSource, and EntityCollectionSource demo paths
+- Improved hierarchy/editor warnings and inspector previews for Scope, DataSource, EntityFactory, and EntityCollection workflows
+- Simplified prefab factory defaults back to a safer single-key routing model and improved narrow-layout behavior in editor panels
+- Updated Quick Access panel UI with dark surface styling, better responsive layout, and footer version display
+
 ## 0.1.6
 
 Updated in this release:

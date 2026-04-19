@@ -17,12 +17,33 @@ Folder layout:
 
 Open:
 - `res://demo/saveflow_lite/recommended_template/scenes/recommended_template_sandbox.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/recommended_template_overview.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_node_source_case.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_data_source_case.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_entity_collection_case.tscn`
+
+Recommended first pass:
+- Open `recommended_template_sandbox.tscn` as the case launcher
+- Open `recommended_node_source_case.tscn` when you want to understand one authored object with one `SaveFlowNodeSource`
+- Open `recommended_data_source_case.tscn` when you want to understand one system-owned dictionary with one `SaveFlowDataSource`
+- Open `recommended_entity_collection_case.tscn` when you want to understand one changing runtime set with `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
+- Open `recommended_template_overview.tscn` only after the single-path scenes feel clear
 
 What the template demonstrates:
 - one local prefab-owned `SaveFlowNodeSource` on `Player`
 - one custom `SaveFlowDataSource` for world state
 - one `SaveFlowEntityCollectionSource` with an entity factory; the collection owns descriptor gather/apply and the factory owns runtime find/spawn/apply behavior
 - one `save_scene()` / `load_scene()` entry over a single `StateRoot`
+
+Case scenes:
+- `recommended_node_source_case.tscn`
+  One authored `Player` node plus one included `AnimationPlayer`
+- `recommended_data_source_case.tscn`
+  One `WorldRegistry` system node gathered/applied through a custom data source
+- `recommended_entity_collection_case.tscn`
+  One runtime actor set restored through `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
+- `recommended_template_overview.tscn`
+  The original all-in-one scene kept for side-by-side comparison after the case scenes
 
 Minimum entity factory contract:
 - required: `can_handle_type(type_key)`, `spawn_entity_from_save(descriptor)`, `apply_saved_data(node, payload)`
