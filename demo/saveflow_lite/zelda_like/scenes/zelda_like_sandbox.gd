@@ -73,15 +73,7 @@ func prepare_loaded_room_for_runtime_restore() -> void:
 
 
 func _configure_runtime() -> void:
-	SaveFlow.configure_with(
-		{
-			"save_root": FORMAL_SAVE_ROOT,
-			"slot_index_file": FORMAL_SLOT_INDEX,
-			"storage_format": 0,
-			"pretty_json_in_editor": true,
-			"use_safe_write": true,
-		}
-	)
+	SaveFlow.configure_with(FORMAL_SAVE_ROOT, FORMAL_SLOT_INDEX)
 
 
 func _bind_actions() -> void:
@@ -153,14 +145,14 @@ func load_named_entry(entry_name: String) -> SaveResult:
 	return result
 
 
-func build_dev_save_settings() -> Dictionary:
-	return {
-		"save_root": DEV_SAVE_ROOT,
-		"slot_index_file": DEV_SLOT_INDEX,
-		"storage_format": 0,
-		"pretty_json_in_editor": true,
-		"use_safe_write": true,
-	}
+func build_dev_save_settings() -> SaveSettings:
+	var settings := _clone_save_settings(SaveFlow.get_settings())
+	settings.save_root = DEV_SAVE_ROOT
+	settings.slot_index_file = DEV_SLOT_INDEX
+	settings.storage_format = SaveFlow.FORMAT_AUTO
+	settings.pretty_json_in_editor = true
+	settings.use_safe_write = true
+	return settings
 
 
 func save_dev_named_entry(entry_name: String) -> SaveResult:
@@ -405,10 +397,8 @@ func _format_result(action: String, result: SaveResult) -> String:
 	return "%s failed: %s (%s)" % [action, result.error_key, result.error_message]
 
 
-func _with_temp_save_settings(overrides: Dictionary, operation: Callable) -> SaveResult:
+func _with_temp_save_settings(temp_settings: SaveSettings, operation: Callable) -> SaveResult:
 	var original_settings := _clone_save_settings(SaveFlow.get_settings())
-	var temp_settings := _clone_save_settings(original_settings)
-	_apply_settings_overrides(temp_settings, overrides)
 	var configure_result: SaveResult = SaveFlow.configure(temp_settings)
 	if not configure_result.ok:
 		return configure_result
@@ -437,19 +427,6 @@ func _clone_save_settings(source: SaveSettings) -> SaveSettings:
 	return clone
 
 
-func _apply_settings_overrides(target: SaveSettings, overrides: Dictionary) -> void:
-	for key_variant in overrides.keys():
-		var key := String(key_variant)
-		if not _has_setting_property(target, key):
-			continue
-		target.set(key, overrides[key_variant])
-
-
-func _has_setting_property(target: SaveSettings, property_name: String) -> bool:
-	for property_info in target.get_property_list():
-		if String(property_info.get("name", "")) == property_name:
-			return true
-	return false
 
 
 func _load_room_definition(room_id: String) -> void:

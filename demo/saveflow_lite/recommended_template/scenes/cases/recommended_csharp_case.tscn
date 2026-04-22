@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/template_csharp_case.cs" id="1_case"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/template_csharp_case_host.gd" id="1_case"]
 
 [node name="RecommendedCSharpCase" type="Control"]
 layout_mode = 3

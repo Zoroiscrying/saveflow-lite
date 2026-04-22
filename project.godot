@@ -12,7 +12,7 @@ config_version=5
 
 config/name="PluginDevelopment"
 run/main_scene="res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn"
-config/features=PackedStringArray("4.6", "Forward Plus")
+config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]

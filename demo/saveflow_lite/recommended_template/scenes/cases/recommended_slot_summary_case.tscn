@@ -1,0 +1,92 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/template_slot_summary_case.gd" id="1_case"]
+
+[node name="RecommendedSlotSummaryCase" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_case")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="PanelContainer" type="PanelContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="MarginContainer/PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="MarginContainer/PanelContainer/Content"]
+layout_mode = 2
+text = "Case 5: Slot Summary UI"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="MarginContainer/PanelContainer/Content"]
+layout_mode = 2
+text = "Use this when a continue screen or load menu needs save rows without loading the full gameplay payload. This case seeds sample slots and renders them from list_slot_summaries()."
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="MarginContainer/PanelContainer/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SeedButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Seed Sample Slots"
+
+[node name="RefreshButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Refresh Summaries"
+
+[node name="LoadPayloadButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Load Selected Payload"
+
+[node name="ResetButton" type="Button" parent="MarginContainer/PanelContainer/Content/Buttons"]
+layout_mode = 2
+text = "Reset Demo Slots"
+
+[node name="Body" type="HSplitContainer" parent="MarginContainer/PanelContainer/Content"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 220
+
+[node name="SummaryList" type="ItemList" parent="MarginContainer/PanelContainer/Content/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+select_mode = 0
+
+[node name="DetailColumn" type="VBoxContainer" parent="MarginContainer/PanelContainer/Content/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="SummaryOutput" type="TextEdit" parent="MarginContainer/PanelContainer/Content/Body/DetailColumn"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_vertical = 3
+editable = false
+wrap_mode = 2
+
+[node name="StatusOutput" type="TextEdit" parent="MarginContainer/PanelContainer/Content/Body/DetailColumn"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+editable = false
+wrap_mode = 2

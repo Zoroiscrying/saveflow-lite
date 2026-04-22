@@ -24,13 +24,8 @@ func _ready() -> void:
 
 func _configure_runtime() -> void:
 	SaveFlow.configure_with(
-		{
-			"save_root": "user://recommended_template/saves",
-			"slot_index_file": "user://recommended_template/slots.index",
-			"storage_format": 0,
-			"pretty_json_in_editor": true,
-			"use_safe_write": true,
-		}
+		"user://recommended_template/saves",
+		"user://recommended_template/slots.index"
 	)
 
 
@@ -81,8 +76,8 @@ func _on_mutate_pressed() -> void:
 	_player_animation.play("attack")
 	_player_animation.seek(0.2, true)
 
-	var system_state: Dictionary = Dictionary(_world_registry.get("system_state")).duplicate(true)
-	var opened_doors: Dictionary = Dictionary(system_state.get("opened_doors", {}))
+	var system_state: Dictionary = _as_dictionary(_world_registry.get("system_state")).duplicate(true)
+	var opened_doors: Dictionary = _as_dictionary(system_state.get("opened_doors", {}))
 	opened_doors["moss_gate"] = true
 	system_state["opened_doors"] = opened_doors
 	system_state["pending_mail"] = ["starter_letter", "supply_drop"]
@@ -186,3 +181,7 @@ func _format_result(label: String, result: SaveResult) -> String:
 func _set_status(message: String) -> void:
 	_status_output.text = message
 	_refresh_labels()
+
+
+func _as_dictionary(value: Variant) -> Dictionary:
+	return value.duplicate(true) if value is Dictionary else {}

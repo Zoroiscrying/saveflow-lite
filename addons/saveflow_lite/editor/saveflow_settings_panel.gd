@@ -5,7 +5,7 @@
 extends VBoxContainer
 
 const PANEL_PADDING := 12
-const LABEL_WIDTH := 132
+const LABEL_WIDTH := 108
 const PROJECT_SETTINGS_SCRIPT_PATH := "res://addons/saveflow_core/runtime/core/saveflow_project_settings.gd"
 const SetupHealthScript := preload("res://addons/saveflow_lite/editor/saveflow_setup_health.gd")
 
@@ -28,9 +28,15 @@ var _save_schema_edit: LineEdit
 var _data_version_spin: SpinBox
 var _pretty_json_check: CheckBox
 var _safe_write_check: CheckBox
+var _keep_last_backup_check: CheckBox
 var _auto_create_dirs_check: CheckBox
 var _include_meta_check: CheckBox
+var _enforce_schema_match_check: CheckBox
+var _enforce_data_version_match_check: CheckBox
+var _verify_scene_path_check: CheckBox
 var _log_level_option: OptionButton
+var _compatibility_summary_label: Label
+var _compatibility_details_label: Label
 var _status_label: Label
 var _health_summary_label: Label
 var _health_hint_label: Label
@@ -140,6 +146,12 @@ func show_status_message(message: String) -> void:
 	_set_status(message)
 
 
+func focus_primary_input() -> void:
+	if _save_root_edit == null or not is_instance_valid(_save_root_edit):
+		return
+	_save_root_edit.grab_focus()
+
+
 func _build_ui() -> void:
 	if _status_label != null:
 		return
@@ -187,6 +199,7 @@ func _build_ui() -> void:
 	_content_root.add_child(_build_section("Storage", _build_storage_section()))
 	_content_root.add_child(_build_section("Metadata", _build_metadata_section()))
 	_content_root.add_child(_build_section("Behavior", _build_behavior_section()))
+	_content_root.add_child(_build_section("Compatibility", _build_compatibility_section()))
 
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 8)
@@ -232,7 +245,7 @@ func _build_setup_health_section() -> VBoxContainer:
 	_health_details.scroll_active = true
 	_health_details.selection_enabled = true
 	_health_details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_health_details.custom_minimum_size.y = 140
+	_health_details.custom_minimum_size.y = 220
 	content.add_child(_health_details)
 
 	var actions := HBoxContainer.new()
@@ -329,9 +342,11 @@ func _build_metadata_section() -> VBoxContainer:
 	_add_labeled_control(content, "Project title", _project_title_edit)
 
 	_game_version_edit = LineEdit.new()
+	_game_version_edit.text_changed.connect(func(_value: String) -> void: _refresh_compatibility_summary())
 	_add_labeled_control(content, "Game version", _game_version_edit)
 
 	_save_schema_edit = LineEdit.new()
+	_save_schema_edit.text_changed.connect(func(_value: String) -> void: _refresh_compatibility_summary())
 	_add_labeled_control(content, "Save schema", _save_schema_edit)
 
 	_data_version_spin = SpinBox.new()
@@ -339,6 +354,7 @@ func _build_metadata_section() -> VBoxContainer:
 	_data_version_spin.max_value = 1000
 	_data_version_spin.step = 1
 	_data_version_spin.rounded = true
+	_data_version_spin.value_changed.connect(func(_value: float) -> void: _refresh_compatibility_summary())
 	_add_labeled_control(content, "Data version", _data_version_spin)
 	return content
 
@@ -355,6 +371,10 @@ func _build_behavior_section() -> VBoxContainer:
 	_safe_write_check.text = "Use safe write"
 	content.add_child(_safe_write_check)
 
+	_keep_last_backup_check = CheckBox.new()
+	_keep_last_backup_check.text = "Keep last backup"
+	content.add_child(_keep_last_backup_check)
+
 	_auto_create_dirs_check = CheckBox.new()
 	_auto_create_dirs_check.text = "Auto-create directories"
 	content.add_child(_auto_create_dirs_check)
@@ -363,12 +383,43 @@ func _build_behavior_section() -> VBoxContainer:
 	_include_meta_check.text = "Include meta in slot index"
 	content.add_child(_include_meta_check)
 
+	_enforce_schema_match_check = CheckBox.new()
+	_enforce_schema_match_check.text = "Enforce save schema match on load"
+	_enforce_schema_match_check.toggled.connect(func(_pressed: bool) -> void: _refresh_compatibility_summary())
+	content.add_child(_enforce_schema_match_check)
+
+	_enforce_data_version_match_check = CheckBox.new()
+	_enforce_data_version_match_check.text = "Enforce data version match on load"
+	_enforce_data_version_match_check.toggled.connect(func(_pressed: bool) -> void: _refresh_compatibility_summary())
+	content.add_child(_enforce_data_version_match_check)
+
+	_verify_scene_path_check = CheckBox.new()
+	_verify_scene_path_check.text = "Verify scene path on scene/scope load"
+	_verify_scene_path_check.toggled.connect(func(_pressed: bool) -> void: _refresh_compatibility_summary())
+	content.add_child(_verify_scene_path_check)
+
 	_log_level_option = OptionButton.new()
 	_log_level_option.add_item("Quiet", 0)
 	_log_level_option.add_item("Error", 1)
 	_log_level_option.add_item("Info", 2)
 	_log_level_option.add_item("Verbose", 3)
 	_add_labeled_control(content, "Log level", _log_level_option)
+	return content
+
+
+func _build_compatibility_section() -> VBoxContainer:
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
+
+	_compatibility_summary_label = Label.new()
+	_compatibility_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(_compatibility_summary_label)
+
+	_compatibility_details_label = Label.new()
+	_compatibility_details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_compatibility_details_label.modulate = get_theme_color("font_placeholder_color", "Editor")
+	content.add_child(_compatibility_details_label)
+
 	return content
 
 
@@ -423,9 +474,14 @@ func _apply_settings_to_fields(settings: SaveSettings) -> void:
 
 	_pretty_json_check.button_pressed = settings.pretty_json_in_editor
 	_safe_write_check.button_pressed = settings.use_safe_write
+	_keep_last_backup_check.button_pressed = settings.keep_last_backup
 	_auto_create_dirs_check.button_pressed = settings.auto_create_dirs
 	_include_meta_check.button_pressed = settings.include_meta_in_slot_file
+	_enforce_schema_match_check.button_pressed = settings.enforce_save_schema_match
+	_enforce_data_version_match_check.button_pressed = settings.enforce_data_version_match
+	_verify_scene_path_check.button_pressed = settings.verify_scene_path_on_load
 	_select_option_by_id(_log_level_option, settings.log_level)
+	_refresh_compatibility_summary()
 
 
 func _build_settings_from_fields() -> SaveSettings:
@@ -441,10 +497,67 @@ func _build_settings_from_fields() -> SaveSettings:
 	settings.data_version = int(_data_version_spin.value)
 	settings.pretty_json_in_editor = _pretty_json_check.button_pressed
 	settings.use_safe_write = _safe_write_check.button_pressed
+	settings.keep_last_backup = _keep_last_backup_check.button_pressed
 	settings.auto_create_dirs = _auto_create_dirs_check.button_pressed
 	settings.include_meta_in_slot_file = _include_meta_check.button_pressed
+	settings.enforce_save_schema_match = _enforce_schema_match_check.button_pressed
+	settings.enforce_data_version_match = _enforce_data_version_match_check.button_pressed
+	settings.verify_scene_path_on_load = _verify_scene_path_check.button_pressed
 	settings.log_level = _selected_id(_log_level_option)
 	return settings
+
+
+func _refresh_compatibility_summary() -> void:
+	if _compatibility_summary_label == null or _compatibility_details_label == null:
+		return
+
+	var enforced_checks: PackedStringArray = []
+	var advisory_checks: PackedStringArray = []
+	if _enforce_schema_match_check != null and _enforce_schema_match_check.button_pressed:
+		enforced_checks.append("save schema")
+	else:
+		advisory_checks.append("save schema")
+	if _enforce_data_version_match_check != null and _enforce_data_version_match_check.button_pressed:
+		enforced_checks.append("data version")
+	else:
+		advisory_checks.append("data version")
+
+	var summary := "Loads currently block when "
+	if enforced_checks.is_empty():
+		summary = "Loads do not currently block on schema or data version mismatch by policy alone."
+		_compatibility_summary_label.modulate = Color(0.95, 0.82, 0.46)
+	else:
+		summary += "%s do not match project defaults." % _join_human_list(enforced_checks)
+		_compatibility_summary_label.modulate = Color(0.60, 0.92, 0.70)
+	_compatibility_summary_label.text = summary
+
+	var details: PackedStringArray = []
+	details.append("Current project defaults: schema `%s`, data version %d." % [
+		_save_schema_edit.text.strip_edges(),
+		int(_data_version_spin.value),
+	])
+	if _verify_scene_path_check != null and _verify_scene_path_check.button_pressed:
+		details.append("Scene and scope loads also require the saved scene path to match the current restore target.")
+	else:
+		details.append("Scene path verification is currently disabled for scene/scope loads.")
+		details.append("With this off, SaveFlow skips the scene-context precheck and continues restore against whatever save graph, source keys, and runtime identities resolve under the current target.")
+	if not advisory_checks.is_empty():
+		details.append("Unchecked metadata still appears in compatibility reports, but does not block load by itself.")
+	details.append("Use DevSaveManager to inspect individual slot compatibility before loading older saves.")
+	_compatibility_details_label.text = "\n".join(details)
+
+
+func _join_human_list(values: PackedStringArray) -> String:
+	if values.is_empty():
+		return "no metadata checks"
+	if values.size() == 1:
+		return values[0]
+	if values.size() == 2:
+		return "%s and %s" % [values[0], values[1]]
+	var all_but_last := PackedStringArray()
+	for index in range(values.size() - 1):
+		all_but_last.append(values[index])
+	return "%s, and %s" % [", ".join(all_but_last), values[values.size() - 1]]
 
 
 func _apply_runtime_settings(settings: SaveSettings) -> void:
@@ -510,6 +623,15 @@ func _build_setup_hint_text(report: Dictionary) -> String:
 
 	if _report_has_state(report, "Runtime singleton", "warning") and not _report_has_state(report, "Autoload registration", "error"):
 		lines.append("If the plugin was just enabled, reload the project once so the editor runtime can see `/root/SaveFlow`.")
+
+	if _report_has_state(report, "C# project file", "error"):
+		lines.append("If you want to use Case 4 or project-side C# scripts, add the main `%s.csproj` file for this Godot project." % String(ProjectSettings.get_setting("dotnet/project/assembly_name", "YourProject")).strip_edges())
+
+	if _report_has_state(report, "C# package source", "warning"):
+		lines.append("If `dotnet build` cannot resolve `Godot.NET.Sdk`, add a local GodotSharp package source in `nuget.config`.")
+
+	if _report_has_state(report, "C# assembly build", "warning"):
+		lines.append("Build the project C# assembly once so Case 4 can instantiate the C# helper instead of showing setup guidance.")
 
 	if lines.is_empty():
 		lines.append("No action needed right now. This project looks ready for SaveFlow Lite.")

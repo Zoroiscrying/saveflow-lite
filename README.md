@@ -47,7 +47,8 @@ Use it for project-wide defaults such as:
 - save root and slot index path
 - JSON and binary file extensions
 - project title, game version, save schema, and data version
-- safe write, auto-create directories, slot-index metadata, and log level
+- safe write, last-known-good backup, auto-create directories, slot-index metadata, and log level
+- compatibility enforcement for `save_schema`, `data_version`, and scene/scope restore targets
 
 This panel configures the `SaveFlow` runtime singleton itself. It is the right
 place for project-level defaults.
@@ -59,12 +60,23 @@ decisions on:
 - `SaveFlowEntityCollectionSource`
 - `SaveFlowScope`
 
+`SaveFlow Lite` also includes `DevSaveManager` for editor-side slot inspection.
+Read its badges in this order:
+- `Compatibility`: can the slot load under the current schema/data-version policy?
+- `Restore Contract`: is the current scene the expected restore target?
+- `Slot Safety`: is the primary file healthy, and is backup recovery available?
+
+If you need more than the headline state, expand `Slot Details` to inspect the
+slot path, primary file state, backup state, schema, versions, and saved scene path.
+
 ## Start Here
 
 - Quick component choice:
   [saveflow-quick-selection-map.md](addons/saveflow_lite/docs/saveflow-quick-selection-map.md)
 - Recommended integration path:
   [saveflow-recommended-integration.md](addons/saveflow_lite/docs/saveflow-recommended-integration.md)
+- Commercial-project guide:
+  [saveflow-commercial-project-guide.md](addons/saveflow_lite/docs/saveflow-commercial-project-guide.md)
 - Concept relationship map:
   [saveflow-concept-map.md](addons/saveflow_lite/docs/saveflow-concept-map.md)
 - Source tree map:
@@ -128,6 +140,7 @@ SaveFlow Lite focuses on:
 ## Current Lite Features
 
 - `SaveFlow.save_data()` and `SaveFlow.load_data()` for direct payload saves
+- `SaveFlow.read_slot_summary()` and `SaveFlow.list_slot_summaries()` for lightweight save-list UI reads
 - `SaveFlow.save_scene()` and `SaveFlow.load_scene()` for scene/node workflows
 - `SaveFlow.save_scope()` and `SaveFlow.load_scope()` for hierarchical save graphs
 - `SaveFlow.inspect_scope()` for graph diagnostics
@@ -139,6 +152,9 @@ SaveFlow Lite focuses on:
 - slot operations: save, load, delete, copy, rename, list
 - slot metadata helpers
 - safe-write pipeline with temp file replacement
+- optional last-known-good slot backup beside each slot file
+- compatibility inspection and baseline load blocking for schema/data-version mismatches
+- scene/scope restore target verification through saved scene-path metadata
 - JSON in editor, binary in export through `AUTO` format
 - demo sandbox scene
 - GdUnit4 runtime tests
@@ -164,10 +180,8 @@ var game_data := {
 var save_result: SaveResult = SaveFlow.save_data(
     "slot_1",
     game_data,
-    {
-        "display_name": "Slot 1",
-        "game_version": "0.1.0",
-    }
+    "Slot 1",
+    "manual"
 )
 
 if not save_result.ok:
@@ -177,6 +191,49 @@ var load_result: SaveResult = SaveFlow.load_data("slot_1")
 if load_result.ok:
     var loaded_data: Dictionary = load_result.data
     print(loaded_data)
+```
+
+### Option 1.5: Build a load menu from slot summaries
+
+When game UI only needs save-list rows, read slot summaries instead of loading
+full gameplay payload:
+
+```gdscript
+var summaries_result: SaveResult = SaveFlow.list_slot_summaries()
+if summaries_result.ok:
+    for summary in summaries_result.data:
+        print(
+            "%s | %s | %s" % [
+                summary["display_name"],
+                summary["save_type"],
+                summary["location_name"],
+            ]
+        )
+```
+
+Each summary keeps the common save-list fields at the top level:
+
+- `display_name`
+- `save_type`
+- `chapter_name`
+- `location_name`
+- `playtime_seconds`
+- `difficulty`
+- `thumbnail_path`
+
+and exposes `compatibility_report` plus `custom_metadata` for project-specific
+UI needs.
+
+To keep save-list metadata consistent, start from:
+
+```gdscript
+var meta := SaveFlow.build_slot_metadata(
+	"Forest Gate",
+	"autosave",
+	"Chapter 2",
+	"Forest Gate",
+	1320
+)
 ```
 
 ### Option 2: Save a scene through SaveFlowNodeSource
@@ -211,10 +268,7 @@ Save and load the scene root:
 var save_result: SaveResult = SaveFlow.save_scene(
     "slot_1",
     $StateRoot,
-    {
-        "display_name": "Slot 1",
-        "game_version": "0.1.0",
-    }
+    "Slot 1"
 )
 
 var load_result: SaveResult = SaveFlow.load_scene("slot_1", $StateRoot)
@@ -323,10 +377,7 @@ Save and load the graph root:
 var save_result: SaveResult = SaveFlow.save_scope(
     "slot_1",
     $StateRoot/SaveGraphRoot,
-    {
-        "display_name": "Slot 1",
-        "game_version": "0.2.0",
-    }
+    "Slot 1"
 )
 
 var load_result: SaveResult = SaveFlow.load_scope(
@@ -508,6 +559,7 @@ Current entrypoints include:
 - `SaveFlowClient.LoadScope(...)`
 - `SaveFlowClient.SaveCurrent(...)`
 - `SaveFlowClient.LoadCurrent(...)`
+- `SaveFlowClient.InspectSlotCompatibility(...)`
 - `SaveFlowClient.SaveDevNamedEntry(...)`
 - `SaveFlowClient.LoadDevNamedEntry(...)`
 
@@ -524,13 +576,17 @@ SaveFlow Lite should solve:
 - practical node/system save workflow
 - explicit save graphs for multi-system authored state
 - manager and table state through a first-class data-source path
+- baseline trust features such as scene-restore contracts, version compatibility reporting, and last-backup safety
 
 SaveFlow Pro should solve:
-- migration workflow
-- richer debugging and inspection
-- stronger commercial-project safety
-- advanced recovery, async, encryption, and long-lived project ergonomics
-- runtime entity sync policies and more complete world reconstruction
+- migration and version tooling
+- multi-scene restore orchestration and resource-loading coordination
+- storage profiles, cold-backup recovery helpers, and cloud-save transport
+- reference repair across authored/runtime objects
+- seamless/background save workflows for larger commercial projects
+
+For a deeper explanation of why those problems appear and how they map back to Godot workflows, see:
+- [saveflow-commercial-project-guide.md](addons/saveflow_lite/docs/saveflow-commercial-project-guide.md)
 
 ## Project Status
 

@@ -15,6 +15,9 @@ const NODE_SOURCE_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/s
 const DATA_SOURCE_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_data_source_case.tscn"
 const ENTITY_COLLECTION_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_entity_collection_case.tscn"
 const CSHARP_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_csharp_case.tscn"
+const SLOT_SUMMARY_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_slot_summary_case.tscn"
+const AUTOSAVE_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_autosave_case.tscn"
+const IN_GAME_SAVE_PANEL_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_in_game_save_panel_case.tscn"
 
 const SaveFlowIcon := preload("res://addons/saveflow_lite/icons/saveflow_icon.svg")
 const NodeSourceIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_node_source_icon.svg")
@@ -132,6 +135,24 @@ func _build_ui() -> void:
 				"action": func() -> void: _emit_scene(CSHARP_CASE_SCENE),
 			},
 			{
+				"icon": SaveFlowIcon,
+				"title": "Open Slot Summary Case",
+				"description": "A minimal continue/load menu flow driven by list_slot_summaries() and read_slot_summary().",
+				"action": func() -> void: _emit_scene(SLOT_SUMMARY_CASE_SCENE),
+			},
+			{
+				"icon": SaveFlowIcon,
+				"title": "Open Autosave Case",
+				"description": "A gameplay-event demo for autosave, checkpoint, manual save, and save gating.",
+				"action": func() -> void: _emit_scene(AUTOSAVE_CASE_SCENE),
+			},
+			{
+				"icon": SaveFlowIcon,
+				"title": "Open In-Game Save Panel Case",
+				"description": "A fuller save/load menu flow with Continue, Load, Save, Delete, and confirmation dialogs.",
+				"action": func() -> void: _emit_scene(IN_GAME_SAVE_PANEL_CASE_SCENE),
+			},
+			{
 				"icon": ScopeIcon,
 				"title": "Open Combined Overview",
 				"description": "Keep the all-in-one recommended template scene available for side-by-side comparison.",
@@ -234,7 +255,7 @@ func _build_intro_panel() -> Control:
 	return panel
 
 
-func _build_section(title: String, actions: Array) -> Control:
+func _build_section(section_title: String, actions: Array) -> Control:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _build_panel_style(SURFACE_BACKGROUND, 12))
 
@@ -250,7 +271,7 @@ func _build_section(title: String, actions: Array) -> Control:
 	padding.add_child(content)
 
 	var header := Label.new()
-	header.text = title
+	header.text = section_title
 	header.add_theme_font_size_override("font_size", 15)
 	content.add_child(header)
 
@@ -266,7 +287,7 @@ func _build_section(title: String, actions: Array) -> Control:
 	return panel
 
 
-func _build_action_row(icon_texture: Texture2D, title: String, description: String, action: Callable) -> Control:
+func _build_action_row(icon_texture: Texture2D, action_title: String, description: String, action: Callable) -> Control:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _build_panel_style(SURFACE_BACKGROUND_SOFT, 10))
 
@@ -294,7 +315,7 @@ func _build_action_row(icon_texture: Texture2D, title: String, description: Stri
 	row.add_child(text_box)
 
 	var title_label := Label.new()
-	title_label.text = title
+	title_label.text = action_title
 	text_box.add_child(title_label)
 
 	var description_label := Label.new()

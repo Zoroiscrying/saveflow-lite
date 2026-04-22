@@ -11,6 +11,7 @@
 **/obj/
 *.csproj
 *.sln
+!/PluginDevelopment.csproj
 
 # Export / build artifacts
 /build/

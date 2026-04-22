@@ -6,11 +6,19 @@ const PADDING := 10
 const META_PREVIEW_EXPANDED := "_saveflow_node_source_preview_expanded"
 const META_DETAILS_EXPANDED := "_saveflow_node_source_details_expanded"
 const META_ADVANCED_EXPANDED := "_saveflow_node_source_advanced_expanded"
+const META_BUILT_INS_EXPANDED := "_saveflow_node_source_built_ins_expanded"
+const META_PARTICIPANTS_EXPANDED := "_saveflow_node_source_participants_expanded"
+const META_PATHS_EXPANDED := "_saveflow_node_source_paths_expanded"
+const META_DIAGNOSTICS_EXPANDED := "_saveflow_node_source_diagnostics_expanded"
 
 var _node_source: SaveFlowNodeSource
 var _last_signature: String = ""
 var _preview_expanded := true
 var _details_expanded := false
+var _built_ins_expanded := false
+var _participants_expanded := false
+var _paths_expanded := false
+var _diagnostics_expanded := false
 
 var _preview_toggle: Button
 var _content_panel: PanelContainer
@@ -18,21 +26,34 @@ var _status_chip: PanelContainer
 var _status_label: Label
 var _target_value: Label
 var _save_key_value: Label
+var _ownership_value: Label
+var _children_value: Label
 var _target_fields_value: Label
+var _built_ins_toggle: Button
+var _built_ins_box: VBoxContainer
 var _include_target_checkbox: CheckBox
 var _target_built_ins_box: VBoxContainer
 var _built_in_advanced_toggle: Button
 var _built_in_advanced_box: VBoxContainer
+var _participants_toggle: Button
+var _participants_box: VBoxContainer
 var _participant_candidates_box: VBoxContainer
+var _missing_title: Label
 var _missing_value: RichTextLabel
 var _discovery_mode_option: OptionButton
 var _details_toggle: Button
 var _details_box: VBoxContainer
+var _details_restore_contract_value: Label
+var _details_design_hint_value: Label
+var _paths_toggle: Button
+var _paths_box: VBoxContainer
 var _saved_fields_detail_value: Label
 var _included_paths_value: Label
 var _excluded_paths_value: Label
-var _supported_value: Label
 var _target_path_value: Label
+var _diagnostics_toggle: Button
+var _diagnostics_box: VBoxContainer
+var _supported_value: Label
 
 var _built_in_advanced_expanded := false
 
@@ -113,38 +134,60 @@ func _build_ui() -> void:
 
 	_target_value = _add_row(content, "Target")
 	_save_key_value = _add_row(content, "Save Key")
+	_ownership_value = _add_row(content, "Owns")
+	_children_value = _add_row(content, "Children")
 	_target_fields_value = _add_row(content, "Saved Fields")
+
+	_built_ins_toggle = Button.new()
+	_built_ins_toggle.flat = true
+	_built_ins_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_built_ins_toggle.pressed.connect(_on_built_ins_toggled)
+	content.add_child(_built_ins_toggle)
+
+	_built_ins_box = VBoxContainer.new()
+	_built_ins_box.add_theme_constant_override("separation", 6)
+	content.add_child(_built_ins_box)
 
 	var built_in_title := Label.new()
 	built_in_title.text = "Built-In State"
-	content.add_child(built_in_title)
+	_built_ins_box.add_child(built_in_title)
 
 	_include_target_checkbox = CheckBox.new()
 	_include_target_checkbox.text = "Include target built-ins"
 	_include_target_checkbox.toggled.connect(_on_include_target_toggled)
-	content.add_child(_include_target_checkbox)
+	_built_ins_box.add_child(_include_target_checkbox)
 
 	_target_built_ins_box = VBoxContainer.new()
 	_target_built_ins_box.add_theme_constant_override("separation", 4)
-	content.add_child(_target_built_ins_box)
+	_built_ins_box.add_child(_target_built_ins_box)
 
 	_built_in_advanced_toggle = Button.new()
 	_built_in_advanced_toggle.flat = true
 	_built_in_advanced_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_built_in_advanced_toggle.pressed.connect(_on_built_in_advanced_toggled)
-	content.add_child(_built_in_advanced_toggle)
+	_built_ins_box.add_child(_built_in_advanced_toggle)
 
 	_built_in_advanced_box = VBoxContainer.new()
 	_built_in_advanced_box.add_theme_constant_override("separation", 6)
-	content.add_child(_built_in_advanced_box)
+	_built_ins_box.add_child(_built_in_advanced_box)
+
+	_participants_toggle = Button.new()
+	_participants_toggle.flat = true
+	_participants_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_participants_toggle.pressed.connect(_on_participants_toggled)
+	content.add_child(_participants_toggle)
+
+	_participants_box = VBoxContainer.new()
+	_participants_box.add_theme_constant_override("separation", 6)
+	content.add_child(_participants_box)
 
 	var participant_title := Label.new()
 	participant_title.text = "Included Children"
-	content.add_child(participant_title)
+	_participants_box.add_child(participant_title)
 
 	var discovery_row := HBoxContainer.new()
 	discovery_row.add_theme_constant_override("separation", 10)
-	content.add_child(discovery_row)
+	_participants_box.add_child(discovery_row)
 
 	var discovery_label := Label.new()
 	discovery_label.custom_minimum_size.x = LABEL_WIDTH
@@ -161,17 +204,17 @@ func _build_ui() -> void:
 
 	_participant_candidates_box = VBoxContainer.new()
 	_participant_candidates_box.add_theme_constant_override("separation", 4)
-	content.add_child(_participant_candidates_box)
+	_participants_box.add_child(_participant_candidates_box)
 
-	var missing_title := Label.new()
-	missing_title.text = "Missing Children"
-	content.add_child(missing_title)
+	_missing_title = Label.new()
+	_missing_title.text = "Missing Children"
+	_participants_box.add_child(_missing_title)
 
 	_missing_value = RichTextLabel.new()
 	_missing_value.fit_content = true
 	_missing_value.scroll_active = false
 	_missing_value.selection_enabled = true
-	content.add_child(_missing_value)
+	_participants_box.add_child(_missing_value)
 
 	_details_toggle = Button.new()
 	_details_toggle.flat = true
@@ -183,11 +226,35 @@ func _build_ui() -> void:
 	_details_box.add_theme_constant_override("separation", 6)
 	content.add_child(_details_box)
 
-	_target_path_value = _add_row(_details_box, "Object Path")
-	_saved_fields_detail_value = _add_row(_details_box, "Saved Fields")
-	_included_paths_value = _add_row(_details_box, "Included Children")
-	_excluded_paths_value = _add_row(_details_box, "Excluded Children")
-	_supported_value = _add_row(_details_box, "Available Built-Ins")
+	_details_restore_contract_value = _add_row(_details_box, "Restore Contract")
+	_details_design_hint_value = _add_row(_details_box, "Design Hint")
+
+	_paths_toggle = Button.new()
+	_paths_toggle.flat = true
+	_paths_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_paths_toggle.pressed.connect(_on_paths_toggled)
+	content.add_child(_paths_toggle)
+
+	_paths_box = VBoxContainer.new()
+	_paths_box.add_theme_constant_override("separation", 6)
+	content.add_child(_paths_box)
+
+	_target_path_value = _add_row(_paths_box, "Object Path")
+	_saved_fields_detail_value = _add_row(_paths_box, "Saved Fields")
+	_included_paths_value = _add_row(_paths_box, "Included Children")
+	_excluded_paths_value = _add_row(_paths_box, "Excluded Children")
+
+	_diagnostics_toggle = Button.new()
+	_diagnostics_toggle.flat = true
+	_diagnostics_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_diagnostics_toggle.pressed.connect(_on_diagnostics_toggled)
+	content.add_child(_diagnostics_toggle)
+
+	_diagnostics_box = VBoxContainer.new()
+	_diagnostics_box.add_theme_constant_override("separation", 6)
+	content.add_child(_diagnostics_box)
+
+	_supported_value = _add_row(_diagnostics_box, "Available Built-Ins")
 
 	_apply_panel_styles(header_panel, _content_panel)
 
@@ -228,7 +295,11 @@ func _refresh() -> void:
 
 	_target_value.text = _format_target_display(plan)
 	_save_key_value.text = String(plan.get("save_key", ""))
+	_ownership_value.text = _describe_ownership_summary(plan)
+	_children_value.text = _describe_children_summary(plan)
 	_target_fields_value.text = _format_field_summary(PackedStringArray(plan.get("target_properties", PackedStringArray())))
+	_built_ins_toggle.text = _foldout_text("Built-In State", _built_ins_expanded)
+	_built_ins_box.visible = _built_ins_expanded
 	_include_target_checkbox.set_block_signals(true)
 	_include_target_checkbox.button_pressed = bool(_node_source != null and _node_source.include_target_built_ins)
 	_include_target_checkbox.set_block_signals(false)
@@ -240,17 +311,28 @@ func _refresh() -> void:
 	_built_in_advanced_toggle.text = _foldout_text("Advanced Built-Ins", _built_in_advanced_expanded)
 	_built_in_advanced_box.visible = _built_in_advanced_expanded
 	_rebuild_built_in_advanced_controls(target_options)
+	_participants_toggle.text = _foldout_text("Included Children", _participants_expanded)
+	_participants_box.visible = _participants_expanded
 	_rebuild_participant_controls(participant_candidates)
 
 	_missing_value.text = _format_list(missing_paths)
 	_missing_value.modulate = _warning_color()
+	_missing_title.visible = not missing_paths.is_empty()
+	_missing_value.visible = not missing_paths.is_empty()
 
-	_details_toggle.text = _foldout_text("Details", _details_expanded)
+	_details_toggle.text = _foldout_text("Contract", _details_expanded)
 	_details_box.visible = _details_expanded
+	_details_restore_contract_value.text = _describe_restore_contract(plan)
+	_details_design_hint_value.text = _describe_design_hint(plan)
+	_details_design_hint_value.modulate = _warning_color() if not PackedStringArray(plan.get("ownership_conflicts", PackedStringArray())).is_empty() else Color(1, 1, 1, 1)
+	_paths_toggle.text = _foldout_text("Paths", _paths_expanded)
+	_paths_box.visible = _paths_expanded
 	_target_path_value.text = String(plan.get("target_path", ""))
 	_saved_fields_detail_value.text = _format_list(plan.get("target_properties", PackedStringArray()))
 	_included_paths_value.text = _format_list(plan.get("included_paths", PackedStringArray()))
 	_excluded_paths_value.text = _format_list(plan.get("excluded_paths", PackedStringArray()))
+	_diagnostics_toggle.text = _foldout_text("Diagnostics", _diagnostics_expanded)
+	_diagnostics_box.visible = _diagnostics_expanded
 	_supported_value.text = _format_display_name_list(target_options)
 
 
@@ -480,6 +562,36 @@ func _format_display_name_list(options: Array) -> String:
 	return ", ".join(items)
 
 
+func _describe_restore_contract(plan: Dictionary) -> String:
+	if not bool(plan.get("valid", false)):
+		return "Restore cannot apply until the target node resolves."
+	return "Apply saved object state onto an already-resolved target node. SaveFlowNodeSource does not load scenes, create the target, or orchestrate restore order; the owning object must already exist."
+
+
+func _describe_ownership_summary(plan: Dictionary) -> String:
+	var conflict_count := PackedStringArray(plan.get("ownership_conflicts", PackedStringArray())).size()
+	if conflict_count > 0:
+		return "One object owner, with %d ownership conflict%s to fix." % [conflict_count, "" if conflict_count == 1 else "s"]
+	return "One authored or prefab-owned object."
+
+
+func _describe_children_summary(plan: Dictionary) -> String:
+	var participant_count := Array(plan.get("resolved_participants", [])).size()
+	var missing_count := PackedStringArray(plan.get("missing_paths", PackedStringArray())).size()
+	if participant_count == 0 and missing_count == 0:
+		return "No included child participants."
+	if missing_count == 0:
+		return "%d included child participant%s." % [participant_count, "" if participant_count == 1 else "s"]
+	return "%d included, %d missing." % [participant_count, missing_count]
+
+
+func _describe_design_hint(plan: Dictionary) -> String:
+	var conflicts: PackedStringArray = PackedStringArray(plan.get("ownership_conflicts", PackedStringArray()))
+	if not conflicts.is_empty():
+		return "One included child crosses another save-owner boundary. Compose explicit child sources if needed, but do not directly own a runtime set or a subtree that already has its own NodeSource."
+	return "Use NodeSource for one authored or prefab-owned object. Move managers, tables, caches, or changing runtime sets into DataSource or EntityCollectionSource."
+
+
 func _format_candidate_label(candidate: Dictionary) -> String:
 	var name: String = String(candidate.get("name", ""))
 	return name
@@ -500,6 +612,30 @@ func _on_preview_toggled() -> void:
 
 func _on_details_toggled() -> void:
 	_details_expanded = not _details_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_built_ins_toggled() -> void:
+	_built_ins_expanded = not _built_ins_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_participants_toggled() -> void:
+	_participants_expanded = not _participants_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_paths_toggled() -> void:
+	_paths_expanded = not _paths_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_diagnostics_toggled() -> void:
+	_diagnostics_expanded = not _diagnostics_expanded
 	_persist_foldout_state_to_source()
 	_refresh()
 
@@ -636,6 +772,10 @@ func _restore_foldout_state_from_source() -> void:
 	_preview_expanded = bool(_node_source.get_meta(META_PREVIEW_EXPANDED, _preview_expanded))
 	_details_expanded = bool(_node_source.get_meta(META_DETAILS_EXPANDED, _details_expanded))
 	_built_in_advanced_expanded = bool(_node_source.get_meta(META_ADVANCED_EXPANDED, _built_in_advanced_expanded))
+	_built_ins_expanded = bool(_node_source.get_meta(META_BUILT_INS_EXPANDED, _built_ins_expanded))
+	_participants_expanded = bool(_node_source.get_meta(META_PARTICIPANTS_EXPANDED, _participants_expanded))
+	_paths_expanded = bool(_node_source.get_meta(META_PATHS_EXPANDED, _paths_expanded))
+	_diagnostics_expanded = bool(_node_source.get_meta(META_DIAGNOSTICS_EXPANDED, _diagnostics_expanded))
 
 
 func _persist_foldout_state_to_source() -> void:
@@ -644,6 +784,10 @@ func _persist_foldout_state_to_source() -> void:
 	_node_source.set_meta(META_PREVIEW_EXPANDED, _preview_expanded)
 	_node_source.set_meta(META_DETAILS_EXPANDED, _details_expanded)
 	_node_source.set_meta(META_ADVANCED_EXPANDED, _built_in_advanced_expanded)
+	_node_source.set_meta(META_BUILT_INS_EXPANDED, _built_ins_expanded)
+	_node_source.set_meta(META_PARTICIPANTS_EXPANDED, _participants_expanded)
+	_node_source.set_meta(META_PATHS_EXPANDED, _paths_expanded)
+	_node_source.set_meta(META_DIAGNOSTICS_EXPANDED, _diagnostics_expanded)
 
 
 func _foldout_text(label_text: String, expanded: bool) -> String:

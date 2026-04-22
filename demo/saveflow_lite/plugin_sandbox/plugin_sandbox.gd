@@ -24,13 +24,8 @@ func _ready() -> void:
 
 func _configure_runtime() -> void:
 	saveflow.configure_with(
-		{
-			"save_root": "user://plugin_sandbox/saves",
-			"slot_index_file": "user://plugin_sandbox/slots.index",
-			"storage_format": 0,
-			"pretty_json_in_editor": true,
-			"use_safe_write": true,
-		}
+		"user://plugin_sandbox/saves",
+		"user://plugin_sandbox/slots.index"
 	)
 
 

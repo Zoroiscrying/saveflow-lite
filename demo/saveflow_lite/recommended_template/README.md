@@ -22,6 +22,12 @@ Open:
 - `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_data_source_case.tscn`
 - `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_entity_collection_case.tscn`
 - `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_csharp_case.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_slot_summary_case.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_autosave_case.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_in_game_save_panel_case.tscn`
+
+Regression checklist:
+- `res://addons/saveflow_lite/docs/recommended-case-regression-checklist.md`
 
 Recommended first pass:
 - Open `recommended_template_sandbox.tscn` as the case launcher
@@ -29,6 +35,9 @@ Recommended first pass:
 - Open `recommended_data_source_case.tscn` when you want to understand one system-owned dictionary with one `SaveFlowDataSource`
 - Open `recommended_entity_collection_case.tscn` when you want to understand one changing runtime set with `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
 - Open `recommended_csharp_case.tscn` when you want to call SaveFlow from C# through `SaveFlowClient`
+- Open `recommended_slot_summary_case.tscn` when you want to build a continue/load menu from `list_slot_summaries()` without loading full payloads
+- Open `recommended_autosave_case.tscn` when you want gameplay events to write autosave, checkpoint, and manual-save slots explicitly
+- Open `recommended_in_game_save_panel_case.tscn` when you want a fuller in-game save/load panel with slot rows, continue, delete, and overwrite confirmation
 - Open `recommended_template_overview.tscn` only after the single-path scenes feel clear
 
 What the template demonstrates:
@@ -45,7 +54,13 @@ Case scenes:
 - `recommended_entity_collection_case.tscn`
   One runtime actor set restored through `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
 - `recommended_csharp_case.tscn`
-  One minimal C# SaveData/LoadData flow using `SaveFlow.DotNet.SaveFlowClient`
+  One minimal C# SaveData/LoadData flow using `SaveFlow.DotNet.SaveFlowClient`, plus a slot-summary read for save-list style UI
+- `recommended_slot_summary_case.tscn`
+  One minimal save-list UI flow driven by `list_slot_summaries()` and `read_slot_summary()`
+- `recommended_autosave_case.tscn`
+  One minimal gameplay-event flow for autosave, checkpoint, manual save, and project-owned save gating
+- `recommended_in_game_save_panel_case.tscn`
+  One fuller in-game save/load panel flow driven by slot summaries plus explicit Continue, Load, Save, Delete, and overwrite confirmation
 - `recommended_template_overview.tscn`
   The original all-in-one scene kept for side-by-side comparison after the case scenes
 

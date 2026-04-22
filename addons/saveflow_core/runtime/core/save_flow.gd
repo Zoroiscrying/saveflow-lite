@@ -8,6 +8,7 @@ const FORMAT_BINARY := 2
 const INDEX_VERSION := 1
 const INDEX_SLOTS_KEY := "slots"
 const TEMP_FILE_SUFFIX := ".tmp"
+const BACKUP_FILE_SUFFIX := ".bak"
 const SaveFlowProjectSettingsScript := preload("res://addons/saveflow_core/runtime/core/saveflow_project_settings.gd")
 const SaveFlowSaveManagerBusScript := preload("res://addons/saveflow_core/runtime/core/saveflow_save_manager_bus.gd")
 
@@ -43,11 +44,59 @@ func configure(settings: SaveSettings) -> SaveResult:
 	return _ok_result(_settings)
 
 
-func configure_with(options: Dictionary = {}) -> SaveResult:
+func configure_with(
+	options_or_save_root: Variant = {},
+	slot_index_file: String = "",
+	storage_format: int = FORMAT_AUTO,
+	pretty_json_in_editor: bool = true,
+	use_safe_write: bool = true,
+	keep_last_backup: bool = true,
+	auto_create_dirs: bool = true,
+	include_meta_in_slot_file: bool = true,
+	project_title: String = "",
+	game_version: String = "",
+	data_version: int = 1,
+	save_schema: String = "main",
+	enforce_save_schema_match: bool = true,
+	enforce_data_version_match: bool = true,
+	verify_scene_path_on_load: bool = true,
+	file_extension_json: String = "json",
+	file_extension_binary: String = "sav",
+	log_level: int = 2
+) -> SaveResult:
+	if options_or_save_root is SaveSettings:
+		return configure(options_or_save_root)
+
+	if options_or_save_root is Dictionary:
+		var settings_from_options := SaveSettings.new()
+		var merge_result: SaveResult = _apply_settings_options(settings_from_options, options_or_save_root)
+		if not merge_result.ok:
+			return merge_result
+		return configure(settings_from_options)
+
 	var settings := SaveSettings.new()
-	var merge_result: SaveResult = _apply_settings_options(settings, options)
-	if not merge_result.ok:
-		return merge_result
+	if options_or_save_root != null:
+		var resolved_save_root := String(options_or_save_root).strip_edges()
+		if not resolved_save_root.is_empty():
+			settings.save_root = resolved_save_root
+	if not slot_index_file.strip_edges().is_empty():
+		settings.slot_index_file = slot_index_file.strip_edges()
+	settings.storage_format = storage_format
+	settings.pretty_json_in_editor = pretty_json_in_editor
+	settings.use_safe_write = use_safe_write
+	settings.keep_last_backup = keep_last_backup
+	settings.auto_create_dirs = auto_create_dirs
+	settings.include_meta_in_slot_file = include_meta_in_slot_file
+	settings.project_title = project_title
+	settings.game_version = game_version
+	settings.data_version = data_version
+	settings.save_schema = save_schema
+	settings.enforce_save_schema_match = enforce_save_schema_match
+	settings.enforce_data_version_match = enforce_data_version_match
+	settings.verify_scene_path_on_load = verify_scene_path_on_load
+	settings.file_extension_json = file_extension_json
+	settings.file_extension_binary = file_extension_binary
+	settings.log_level = log_level
 	return configure(settings)
 
 
@@ -79,7 +128,18 @@ func resolve_storage_format() -> int:
 	return FORMAT_BINARY
 
 
-func save_slot(slot_id: String, data: Variant, meta: Dictionary = {}) -> SaveResult:
+func save_slot(
+	slot_id: String,
+	data: Variant,
+	meta_or_display_name: Variant = {},
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra_meta: Dictionary = {}
+) -> SaveResult:
 	if slot_id.is_empty():
 		return _error_result(
 			SaveError.INVALID_ARGUMENT,
@@ -87,29 +147,106 @@ func save_slot(slot_id: String, data: Variant, meta: Dictionary = {}) -> SaveRes
 			"slot_id cannot be empty"
 		)
 
+	var meta_patch := _resolve_slot_meta_patch(
+		meta_or_display_name,
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra_meta
+	)
 	var payload: Dictionary = {
-		"meta": build_meta(slot_id, meta),
+		"meta": build_meta(slot_id, meta_patch),
 		"data": data,
 	}
 	return _save_payload(slot_id, payload, resolve_storage_format())
 
 
-func save_data(slot_id: String, data: Variant, meta: Dictionary = {}) -> SaveResult:
-	return save_slot(slot_id, data, meta)
+func save_data(
+	slot_id: String,
+	data: Variant,
+	meta_or_display_name: Variant = {},
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra_meta: Dictionary = {}
+) -> SaveResult:
+	return save_slot(
+		slot_id,
+		data,
+		meta_or_display_name,
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra_meta
+	)
 
 
-func save_scene(slot_id: String, root: Node, meta: Dictionary = {}, group_name := "saveflow") -> SaveResult:
-	return save_nodes(slot_id, root, meta, group_name)
+func save_scene(
+	slot_id: String,
+	root: Node,
+	meta_or_display_name: Variant = {},
+	group_name := "saveflow",
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra_meta: Dictionary = {}
+) -> SaveResult:
+	return save_nodes(
+		slot_id,
+		root,
+		meta_or_display_name,
+		group_name,
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra_meta
+	)
 
 
-func save_scope(slot_id: String, scope_root: SaveFlowScope, meta: Dictionary = {}, context: Dictionary = {}) -> SaveResult:
+func save_scope(
+	slot_id: String,
+	scope_root: SaveFlowScope,
+	meta_or_display_name: Variant = {},
+	context: Dictionary = {},
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra_meta: Dictionary = {}
+) -> SaveResult:
 	var gather_result: SaveResult = gather_scope(scope_root, context)
 	if not gather_result.ok:
 		return gather_result
 
-	var final_meta: Dictionary = meta.duplicate(true)
+	var final_meta := _resolve_slot_meta_patch(
+		meta_or_display_name,
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra_meta
+	)
 	if not final_meta.has("scene_path") and is_instance_valid(scope_root):
-		final_meta["scene_path"] = scope_root.scene_file_path
+		final_meta["scene_path"] = _resolve_scene_path_for_node(scope_root)
 	return save_slot(slot_id, {"graph": gather_result.data}, final_meta)
 
 
@@ -126,14 +263,41 @@ func load_slot(slot_id: String) -> SaveResult:
 
 	var payload: Dictionary = read_result.data
 	if not _is_valid_payload(payload):
-		return _error_result(
+		var backup_result := _try_read_slot_backup(path, format)
+		if backup_result.ok:
+			payload = backup_result.data
+		if not _is_valid_payload(payload):
+			return _error_result(
 			SaveError.INVALID_FORMAT,
 			"INVALID_FORMAT",
 			"save payload must contain meta and data",
 			{"slot_id": slot_id, "path": path}
 		)
 
-	return _ok_result(payload, {"slot_id": slot_id, "path": path, "format": format})
+	var slot_meta := Dictionary(payload.get("meta", {}))
+	var compatibility_report := _build_slot_compatibility_report(slot_meta)
+	if not bool(compatibility_report.get("compatible", true)):
+		return _error_result(
+			SaveError.MIGRATION_REQUIRED,
+			"MIGRATION_REQUIRED",
+			_build_compatibility_error_message(compatibility_report),
+			{
+				"slot_id": slot_id,
+				"path": path,
+				"format": format,
+				"compatibility_report": compatibility_report,
+			}
+		)
+
+	return _ok_result(
+		payload,
+		{
+			"slot_id": slot_id,
+			"path": path,
+			"format": format,
+			"compatibility_report": compatibility_report,
+		}
+	)
 
 
 func load_slot_data(slot_id: String) -> SaveResult:
@@ -152,7 +316,7 @@ func load_scene(slot_id: String, root: Node, strict := false, group_name := "sav
 
 
 func load_scope(slot_id: String, scope_root: SaveFlowScope, strict := false, context: Dictionary = {}) -> SaveResult:
-	var load_result: SaveResult = load_slot_data(slot_id)
+	var load_result: SaveResult = load_slot(slot_id)
 	if not load_result.ok:
 		return load_result
 	if not (load_result.data is Dictionary):
@@ -163,15 +327,28 @@ func load_scope(slot_id: String, scope_root: SaveFlowScope, strict := false, con
 			{"slot_id": slot_id}
 		)
 
-	var payload: Dictionary = load_result.data
-	if not payload.has("graph") or not (payload["graph"] is Dictionary):
+	var slot_payload: Dictionary = load_result.data
+	var scene_check := _validate_scene_restore_target(Dictionary(slot_payload.get("meta", {})), scope_root, "scope")
+	if not scene_check.ok:
+		return scene_check
+
+	var payload: Variant = slot_payload.get("data", {})
+	if not (payload is Dictionary):
+		return _error_result(
+			SaveError.INVALID_FORMAT,
+			"INVALID_FORMAT",
+			"slot data must be a dictionary to load a save graph",
+			{"slot_id": slot_id}
+		)
+	var payload_dict: Dictionary = payload
+	if not payload_dict.has("graph") or not (payload_dict["graph"] is Dictionary):
 		return _error_result(
 			SaveError.INVALID_FORMAT,
 			"INVALID_FORMAT",
 			"slot data must contain a graph dictionary",
 			{"slot_id": slot_id}
 		)
-	return apply_scope(scope_root, payload["graph"], strict, context)
+	return apply_scope(scope_root, payload_dict["graph"], strict, context)
 
 
 func load_slot_or_default(slot_id: String, default_data: Variant) -> SaveResult:
@@ -405,7 +582,19 @@ func _resolve_entity_scope_from_payload(node: Node, payload: Dictionary) -> Save
 	return null
 
 
-func save_nodes(slot_id: String, root: Node, meta: Dictionary = {}, group_name := "saveflow") -> SaveResult:
+func save_nodes(
+	slot_id: String,
+	root: Node,
+	meta_or_display_name: Variant = {},
+	group_name := "saveflow",
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra_meta: Dictionary = {}
+) -> SaveResult:
 	var collect_result: SaveResult = collect_nodes(root, group_name)
 	if not collect_result.ok:
 		return collect_result
@@ -413,14 +602,23 @@ func save_nodes(slot_id: String, root: Node, meta: Dictionary = {}, group_name :
 	var payload: Dictionary = {
 		"saveables": collect_result.data,
 	}
-	var final_meta: Dictionary = meta.duplicate(true)
+	var final_meta := _resolve_slot_meta_patch(
+		meta_or_display_name,
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra_meta
+	)
 	if not final_meta.has("scene_path") and is_instance_valid(root):
-		final_meta["scene_path"] = root.scene_file_path
+		final_meta["scene_path"] = _resolve_scene_path_for_node(root)
 	return save_slot(slot_id, payload, final_meta)
 
 
 func load_nodes(slot_id: String, root: Node, strict := false, group_name := "saveflow") -> SaveResult:
-	var load_result: SaveResult = load_slot_data(slot_id)
+	var load_result: SaveResult = load_slot(slot_id)
 	if not load_result.ok:
 		return load_result
 	if not (load_result.data is Dictionary):
@@ -431,15 +629,28 @@ func load_nodes(slot_id: String, root: Node, strict := false, group_name := "sav
 			{"slot_id": slot_id}
 		)
 
-	var payload: Dictionary = load_result.data
-	if not payload.has("saveables") or not (payload["saveables"] is Dictionary):
+	var slot_payload: Dictionary = load_result.data
+	var scene_check := _validate_scene_restore_target(Dictionary(slot_payload.get("meta", {})), root, "scene")
+	if not scene_check.ok:
+		return scene_check
+
+	var payload: Variant = slot_payload.get("data", {})
+	if not (payload is Dictionary):
+		return _error_result(
+			SaveError.INVALID_FORMAT,
+			"INVALID_FORMAT",
+			"slot data must be a dictionary to load saveable nodes",
+			{"slot_id": slot_id}
+		)
+	var payload_dict: Dictionary = payload
+	if not payload_dict.has("saveables") or not (payload_dict["saveables"] is Dictionary):
 		return _error_result(
 			SaveError.INVALID_FORMAT,
 			"INVALID_FORMAT",
 			"slot data must contain a saveables dictionary",
 			{"slot_id": slot_id}
 		)
-	return apply_nodes(root, payload["saveables"], strict, group_name)
+	return apply_nodes(root, payload_dict["saveables"], strict, group_name)
 
 
 func inspect_scene(root: Node, group_name := "saveflow") -> SaveResult:
@@ -592,6 +803,7 @@ func delete_slot(slot_id: String) -> SaveResult:
 		return locate_result
 
 	var path: String = String(locate_result.data["path"])
+	var backup_path := _build_backup_path(path)
 	var remove_error: int = DirAccess.remove_absolute(path)
 	if remove_error != OK:
 		return _error_result(
@@ -604,6 +816,9 @@ func delete_slot(slot_id: String) -> SaveResult:
 	var index_result: SaveResult = _remove_index_entry(slot_id)
 	if not index_result.ok:
 		return index_result
+
+	if FileAccess.file_exists(backup_path):
+		DirAccess.remove_absolute(backup_path)
 
 	return _ok_result({"slot_id": slot_id, "path": path})
 
@@ -710,11 +925,99 @@ func list_slots() -> SaveResult:
 	return _ok_result(slot_infos)
 
 
+func read_slot_summary(slot_id: String) -> SaveResult:
+	if slot_id.is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"slot_id cannot be empty"
+		)
+
+	var meta_result: SaveResult = _read_slot_meta_for_summary(slot_id)
+	if not meta_result.ok:
+		return meta_result
+
+	return _ok_result(
+		_build_slot_summary(slot_id, meta_result.data),
+		meta_result.meta
+	)
+
+
+func list_slot_summaries() -> SaveResult:
+	var index_result: SaveResult = _read_index_data()
+	if not index_result.ok:
+		return index_result
+
+	var slots_map: Dictionary = index_result.data[INDEX_SLOTS_KEY]
+	var summaries: Array = []
+	for slot_id_variant in slots_map.keys():
+		var slot_id := String(slot_id_variant)
+		var entry := Dictionary(slots_map.get(slot_id_variant, {}))
+		var meta := Dictionary(entry.get("meta", {}))
+		if meta.is_empty():
+			var meta_result: SaveResult = _read_slot_meta_for_summary(slot_id)
+			if not meta_result.ok:
+				continue
+			meta = meta_result.data
+		summaries.append(_build_slot_summary(slot_id, meta))
+
+	summaries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a.get("saved_at_unix", 0)) > int(b.get("saved_at_unix", 0))
+	)
+
+	return _ok_result(
+		summaries,
+		{
+			"slot_count": summaries.size(),
+		}
+	)
+
+
 func read_meta(slot_id: String) -> SaveResult:
 	var load_result: SaveResult = load_slot(slot_id)
 	if not load_result.ok:
 		return load_result
 	return _ok_result(load_result.data["meta"].duplicate(true), load_result.meta)
+
+
+func inspect_slot_storage(slot_id: String) -> SaveResult:
+	if slot_id.is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"slot_id cannot be empty"
+		)
+
+	var locate_result: SaveResult = _locate_slot(slot_id, false)
+	var path := ""
+	var format := resolve_storage_format()
+	if locate_result.ok:
+		path = String(locate_result.data["path"])
+		format = int(locate_result.data["format"])
+	else:
+		path = _build_slot_path(slot_id, format)
+
+	var backup_path := _build_backup_path(path)
+	var primary_probe := _probe_payload_file(path, format)
+	var backup_probe := _probe_payload_file(backup_path, format)
+	return _ok_result(
+		{
+			"slot_path": path,
+			"backup_path": backup_path,
+			"primary_exists": bool(primary_probe.get("exists", false)),
+			"primary_valid_payload": bool(primary_probe.get("valid_payload", false)),
+			"primary_probe_error": String(primary_probe.get("error_key", "")),
+			"backup_exists": bool(backup_probe.get("exists", false)),
+			"backup_valid_payload": bool(backup_probe.get("valid_payload", false)),
+			"backup_probe_error": String(backup_probe.get("error_key", "")),
+			"recovery_possible": not bool(primary_probe.get("valid_payload", false)) and bool(backup_probe.get("valid_payload", false)),
+		},
+		{
+			"slot_id": slot_id,
+			"path": path,
+			"format": format,
+		}
+	)
 
 
 func write_meta(slot_id: String, meta_patch: Dictionary) -> SaveResult:
@@ -746,10 +1049,92 @@ func _apply_settings_options(settings: SaveSettings, options: Dictionary) -> Sav
 	return _ok_result(settings)
 
 
+func build_slot_metadata_patch(
+	meta_patch_or_display_name: Variant = {},
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra: Dictionary = {}
+) -> Dictionary:
+	var business_meta: Dictionary = {
+		"display_name": "",
+		"save_type": "manual",
+		"chapter_name": "",
+		"location_name": "",
+		"playtime_seconds": 0,
+		"difficulty": "",
+		"thumbnail_path": "",
+	}
+	if meta_patch_or_display_name is Dictionary:
+		for key in meta_patch_or_display_name.keys():
+			business_meta[key] = meta_patch_or_display_name[key]
+		return business_meta
+
+	business_meta["display_name"] = String(meta_patch_or_display_name)
+	business_meta["save_type"] = save_type
+	business_meta["chapter_name"] = chapter_name
+	business_meta["location_name"] = location_name
+	business_meta["playtime_seconds"] = playtime_seconds
+	business_meta["difficulty"] = difficulty
+	business_meta["thumbnail_path"] = thumbnail_path
+	for key in extra.keys():
+		business_meta[key] = extra[key]
+	return business_meta
+
+
+func build_slot_metadata(
+	display_name: String = "",
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra: Dictionary = {}
+) -> Dictionary:
+	return build_slot_metadata_patch(
+		display_name,
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra
+	)
+
+
+func _resolve_slot_meta_patch(
+	meta_or_display_name: Variant = {},
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra_meta: Dictionary = {}
+) -> Dictionary:
+	var meta_patch := build_slot_metadata_patch(
+		meta_or_display_name,
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra_meta
+	)
+	return meta_patch.duplicate(true)
+
+
 func build_meta(slot_id: String, meta_patch: Dictionary = {}) -> Dictionary:
-	var base_meta: Dictionary = {
+	var base_meta: Dictionary = build_slot_metadata_patch(meta_patch)
+	base_meta.merge(
+		{
 		"slot_id": slot_id,
-		"display_name": slot_id,
 		"created_at_unix": Time.get_unix_time_from_system(),
 		"created_at_iso": Time.get_datetime_string_from_system(true, true),
 		"saved_at_unix": Time.get_unix_time_from_system(),
@@ -760,10 +1145,132 @@ func build_meta(slot_id: String, meta_patch: Dictionary = {}) -> Dictionary:
 		"game_version": _settings.game_version,
 		"data_version": _settings.data_version,
 		"save_schema": _settings.save_schema,
-	}
-	for key in meta_patch.keys():
-		base_meta[key] = meta_patch[key]
+		},
+		false
+	)
+	if String(base_meta.get("display_name", "")).is_empty():
+		base_meta["display_name"] = slot_id
 	return base_meta
+
+
+func _read_slot_meta_for_summary(slot_id: String) -> SaveResult:
+	var index_result: SaveResult = _read_index_data()
+	if index_result.ok:
+		var slots_map: Dictionary = index_result.data[INDEX_SLOTS_KEY]
+		if slots_map.has(slot_id):
+			var entry := Dictionary(slots_map[slot_id])
+			var indexed_meta := Dictionary(entry.get("meta", {}))
+			if not indexed_meta.is_empty():
+				return _ok_result(
+					indexed_meta.duplicate(true),
+					{
+						"slot_id": slot_id,
+						"from_index": true,
+					}
+				)
+
+	var locate_result: SaveResult = _locate_slot(slot_id)
+	if not locate_result.ok:
+		return locate_result
+
+	var path: String = String(locate_result.data["path"])
+	var format: int = int(locate_result.data["format"])
+	var read_result: SaveResult = _read_payload_file(path, format)
+	if not read_result.ok:
+		return read_result
+	if not _is_valid_payload(read_result.data):
+		return _error_result(
+			SaveError.INVALID_FORMAT,
+			"INVALID_FORMAT",
+			"save payload must contain meta and data",
+			{"slot_id": slot_id, "path": path}
+		)
+
+	return _ok_result(
+		Dictionary(read_result.data.get("meta", {})).duplicate(true),
+		{
+			"slot_id": slot_id,
+			"path": path,
+			"format": format,
+			"from_index": false,
+		}
+	)
+
+
+func _build_slot_summary(slot_id: String, slot_meta: Dictionary) -> Dictionary:
+	var custom_metadata := slot_meta.duplicate(true)
+	for key in [
+		"slot_id",
+		"display_name",
+		"save_type",
+		"chapter_name",
+		"location_name",
+		"playtime_seconds",
+		"difficulty",
+		"thumbnail_path",
+		"created_at_unix",
+		"created_at_iso",
+		"saved_at_unix",
+		"saved_at_iso",
+		"scene_path",
+		"project_title",
+		"game_version",
+		"data_version",
+		"save_schema",
+	]:
+		custom_metadata.erase(key)
+
+	return {
+		"slot_id": String(slot_meta.get("slot_id", slot_id)),
+		"display_name": String(slot_meta.get("display_name", slot_id)),
+		"save_type": String(slot_meta.get("save_type", "manual")),
+		"chapter_name": String(slot_meta.get("chapter_name", "")),
+		"location_name": String(slot_meta.get("location_name", "")),
+		"playtime_seconds": int(slot_meta.get("playtime_seconds", 0)),
+		"difficulty": String(slot_meta.get("difficulty", "")),
+		"thumbnail_path": String(slot_meta.get("thumbnail_path", "")),
+		"created_at_unix": int(slot_meta.get("created_at_unix", 0)),
+		"created_at_iso": String(slot_meta.get("created_at_iso", "")),
+		"saved_at_unix": int(slot_meta.get("saved_at_unix", 0)),
+		"saved_at_iso": String(slot_meta.get("saved_at_iso", "")),
+		"scene_path": String(slot_meta.get("scene_path", "")),
+		"project_title": String(slot_meta.get("project_title", "")),
+		"game_version": String(slot_meta.get("game_version", "")),
+		"data_version": int(slot_meta.get("data_version", 0)),
+		"save_schema": String(slot_meta.get("save_schema", "")),
+		"compatibility_report": _build_slot_compatibility_report(slot_meta),
+		"custom_metadata": custom_metadata,
+	}
+
+
+func inspect_slot_compatibility(slot_id: String) -> SaveResult:
+	var locate_result: SaveResult = _locate_slot(slot_id)
+	if not locate_result.ok:
+		return locate_result
+
+	var path: String = String(locate_result.data["path"])
+	var format: int = int(locate_result.data["format"])
+	var read_result: SaveResult = _read_payload_file(path, format)
+	if not read_result.ok:
+		return read_result
+	if not _is_valid_payload(read_result.data):
+		return _error_result(
+			SaveError.INVALID_FORMAT,
+			"INVALID_FORMAT",
+			"save payload must contain meta and data",
+			{"slot_id": slot_id, "path": path}
+		)
+
+	var payload: Dictionary = read_result.data
+	var compatibility_report := _build_slot_compatibility_report(Dictionary(payload.get("meta", {})))
+	return _ok_result(
+		compatibility_report,
+		{
+			"slot_id": slot_id,
+			"path": path,
+			"format": format,
+		}
+	)
 
 
 func set_value(path: String, value: Variant) -> SaveResult:
@@ -792,8 +1299,29 @@ func get_current_data() -> SaveResult:
 	return _ok_result(_current_data.duplicate(true))
 
 
-func save_current(slot_id: String, meta: Dictionary = {}) -> SaveResult:
-	return save_slot(slot_id, _current_data.duplicate(true), meta)
+func save_current(
+	slot_id: String,
+	meta_or_display_name: Variant = {},
+	save_type: String = "manual",
+	chapter_name: String = "",
+	location_name: String = "",
+	playtime_seconds: int = 0,
+	difficulty: String = "",
+	thumbnail_path: String = "",
+	extra_meta: Dictionary = {}
+) -> SaveResult:
+	return save_slot(
+		slot_id,
+		_current_data.duplicate(true),
+		meta_or_display_name,
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra_meta
+	)
 
 
 func load_current(slot_id: String) -> SaveResult:
@@ -1493,6 +2021,10 @@ func _write_save_manager_status() -> void:
 	var builtin_active := _is_builtin_save_manager_fallback_available()
 	var runtime_available := bridge_active or builtin_active
 	var dev_settings: Dictionary = {}
+	var current_scene_path := ""
+	var tree := get_tree()
+	if tree != null and is_instance_valid(tree.current_scene):
+		current_scene_path = _resolve_scene_path_for_node(tree.current_scene)
 	if bridge_active and _save_manager_bridge.has_method("get_dev_save_settings"):
 		var bridge_dev_settings: Variant = _save_manager_bridge.call("get_dev_save_settings")
 		if bridge_dev_settings is Dictionary:
@@ -1503,6 +2035,7 @@ func _write_save_manager_status() -> void:
 		{
 			"runtime_available": runtime_available,
 			"bridge_name": _get_save_manager_bridge_name() if bridge_active else ("SaveFlow (Built-in)" if builtin_active else ""),
+			"current_scene_path": current_scene_path,
 			"settings": _settings_to_status_dict(_settings),
 			"dev_settings": dev_settings,
 		}
@@ -1565,6 +2098,164 @@ func _get_save_manager_bridge_name() -> String:
 	if _save_manager_bridge.has_method("get_bridge_name"):
 		return String(_save_manager_bridge.call("get_bridge_name"))
 	return _save_manager_bridge.name
+
+
+func _build_slot_compatibility_report(slot_meta: Dictionary) -> Dictionary:
+	var report := {
+		"slot_game_version": String(slot_meta.get("game_version", "")),
+		"project_game_version": _settings.game_version,
+		"slot_data_version": int(slot_meta.get("data_version", 0)),
+		"project_data_version": _settings.data_version,
+		"slot_save_schema": String(slot_meta.get("save_schema", "")),
+		"project_save_schema": _settings.save_schema,
+		"schema_matches": true,
+		"data_version_matches": true,
+		"game_version_matches": true,
+		"compatible": true,
+		"reasons": PackedStringArray(),
+	}
+
+	var reasons: PackedStringArray = report["reasons"]
+	var slot_schema := String(report["slot_save_schema"])
+	var project_schema := String(report["project_save_schema"])
+	var schema_mismatch := not slot_schema.is_empty() and not project_schema.is_empty() and slot_schema != project_schema
+	report["schema_matches"] = not schema_mismatch
+	if schema_mismatch and _settings.enforce_save_schema_match:
+		report["schema_matches"] = false
+		report["compatible"] = false
+		reasons.append("SAVE_SCHEMA_MISMATCH")
+
+	var slot_data_version := int(report["slot_data_version"])
+	var project_data_version := int(report["project_data_version"])
+	var data_version_mismatch := slot_data_version > 0 and project_data_version > 0 and slot_data_version != project_data_version
+	report["data_version_matches"] = not data_version_mismatch
+	if data_version_mismatch and _settings.enforce_data_version_match:
+		report["data_version_matches"] = false
+		report["compatible"] = false
+		reasons.append("DATA_VERSION_MISMATCH")
+
+	var slot_game_version := String(report["slot_game_version"])
+	var project_game_version := String(report["project_game_version"])
+	if not slot_game_version.is_empty() and not project_game_version.is_empty() and slot_game_version != project_game_version:
+		report["game_version_matches"] = false
+		reasons.append("GAME_VERSION_DIFFERS")
+
+	report["reasons"] = reasons
+	return report
+
+
+func _build_compatibility_error_message(report: Dictionary) -> String:
+	var reasons := PackedStringArray(report.get("reasons", PackedStringArray()))
+	if reasons.has("SAVE_SCHEMA_MISMATCH"):
+		return "slot save_schema does not match the current project schema; migration is required before load"
+	if reasons.has("DATA_VERSION_MISMATCH"):
+		return "slot data_version does not match the current project data version; migration is required before load"
+	return "slot metadata is not compatible with the current SaveFlow project settings"
+
+
+func _validate_scene_restore_target(slot_meta: Dictionary, target: Node, target_kind: String) -> SaveResult:
+	if not _settings.verify_scene_path_on_load:
+		return _ok_result()
+
+	var expected_scene_path := String(slot_meta.get("scene_path", ""))
+	if expected_scene_path.is_empty():
+		return _ok_result()
+
+	var current_scene_path := _resolve_scene_path_for_node(target)
+	if current_scene_path == expected_scene_path:
+		return _ok_result(
+			{
+				"expected_scene_path": expected_scene_path,
+				"current_scene_path": current_scene_path,
+			}
+		)
+
+	var current_description := current_scene_path if not current_scene_path.is_empty() else "<no loaded scene path>"
+	return _error_result(
+		SaveError.INVALID_SAVEABLE,
+		"SCENE_PATH_MISMATCH",
+		"restore contract mismatch: saved %s expects scene `%s`, but the current restore target resolves to `%s`; load the expected scene first and retry the restore" % [
+			target_kind,
+			expected_scene_path,
+			current_description,
+		],
+		{
+			"expected_scene_path": expected_scene_path,
+			"current_scene_path": current_scene_path,
+			"target_kind": target_kind,
+		}
+	)
+
+
+func _resolve_scene_path_for_node(node: Node) -> String:
+	if node == null or not is_instance_valid(node):
+		return ""
+	if not node.scene_file_path.is_empty():
+		return node.scene_file_path
+	var tree := node.get_tree()
+	if tree != null and tree.current_scene != null and (node == tree.current_scene or tree.current_scene.is_ancestor_of(node)):
+		return tree.current_scene.scene_file_path
+	return ""
+
+
+func _build_backup_path(path: String) -> String:
+	return "%s%s" % [path, BACKUP_FILE_SUFFIX]
+
+
+func _write_slot_backup(path: String) -> SaveResult:
+	if not _settings.keep_last_backup or not FileAccess.file_exists(path):
+		return _ok_result()
+
+	var backup_path := _build_backup_path(path)
+	var ensure_result: SaveResult = _ensure_parent_dir(backup_path)
+	if not ensure_result.ok:
+		return ensure_result
+
+	var source := FileAccess.open(path, FileAccess.READ)
+	if source == null:
+		return _error_result(
+			SaveError.BACKUP_RESTORE_FAILED,
+			"BACKUP_READ_FAILED",
+			"failed to open slot file while creating backup",
+			{"path": path, "backup_path": backup_path, "open_error": FileAccess.get_open_error()}
+		)
+	var bytes := source.get_buffer(source.get_length())
+	source = null
+
+	var backup := FileAccess.open(backup_path, FileAccess.WRITE)
+	if backup == null:
+		return _error_result(
+			SaveError.BACKUP_RESTORE_FAILED,
+			"BACKUP_WRITE_FAILED",
+			"failed to write slot backup file",
+			{"path": path, "backup_path": backup_path, "open_error": FileAccess.get_open_error()}
+		)
+	backup.store_buffer(bytes)
+	backup = null
+	return _ok_result({"backup_path": backup_path})
+
+
+func _try_read_slot_backup(path: String, format: int) -> SaveResult:
+	var backup_path := _build_backup_path(path)
+	if not FileAccess.file_exists(backup_path):
+		return _error_result(
+			SaveError.BACKUP_RESTORE_FAILED,
+			"BACKUP_NOT_FOUND",
+			"no slot backup file is available",
+			{"path": path, "backup_path": backup_path}
+		)
+
+	var read_result := _read_payload_file(backup_path, format)
+	if not read_result.ok:
+		return read_result
+	if not _is_valid_payload(read_result.data):
+		return _error_result(
+			SaveError.BACKUP_RESTORE_FAILED,
+			"BACKUP_INVALID_FORMAT",
+			"slot backup exists but does not contain a valid save payload",
+			{"path": path, "backup_path": backup_path}
+		)
+	return _ok_result(read_result.data, {"backup_path": backup_path, "used_backup": true})
 
 
 func _run_named_entry_with_dev_settings(action: String, entry_name: String) -> SaveResult:
@@ -1669,6 +2360,7 @@ func _settings_to_status_dict(settings: SaveSettings) -> Dictionary:
 		"storage_format": settings.storage_format,
 		"pretty_json_in_editor": settings.pretty_json_in_editor,
 		"use_safe_write": settings.use_safe_write,
+		"keep_last_backup": settings.keep_last_backup,
 		"file_extension_json": settings.file_extension_json,
 		"file_extension_binary": settings.file_extension_binary,
 		"log_level": settings.log_level,
@@ -1678,36 +2370,85 @@ func _settings_to_status_dict(settings: SaveSettings) -> Dictionary:
 		"game_version": settings.game_version,
 		"data_version": settings.data_version,
 		"save_schema": settings.save_schema,
+		"enforce_save_schema_match": settings.enforce_save_schema_match,
+		"enforce_data_version_match": settings.enforce_data_version_match,
+		"verify_scene_path_on_load": settings.verify_scene_path_on_load,
 	}
 
 
 func _read_payload_file(path: String, format: int) -> SaveResult:
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
 	if file == null:
-		return _error_result(
+		var open_error_result := _error_result(
 			SaveError.READ_FAILED,
 			"READ_FAILED",
 			"failed to open save file for reading",
 			{"path": path, "open_error": FileAccess.get_open_error()}
 		)
+		var backup_open_result := _try_read_slot_backup(path, format)
+		if backup_open_result.ok:
+			return _ok_result(backup_open_result.data, backup_open_result.meta)
+		return open_error_result
 
 	if format == FORMAT_JSON:
 		var text: String = file.get_as_text()
 		var json := JSON.new()
 		var parse_error: int = json.parse(text)
 		if parse_error != OK:
-			return _error_result(
+			var parse_error_result := _error_result(
 				SaveError.INVALID_FORMAT,
 				"INVALID_FORMAT",
 				"failed to parse json save file",
 				{"path": path, "json_error": parse_error}
 			)
+			var backup_parse_result := _try_read_slot_backup(path, format)
+			if backup_parse_result.ok:
+				return _ok_result(backup_parse_result.data, backup_parse_result.meta)
+			return parse_error_result
 		var native_payload: Variant = JSON.to_native(json.data, true)
 		return _ok_result(native_payload, {"path": path, "format": format})
 
 	var bytes: PackedByteArray = file.get_buffer(file.get_length())
 	var payload: Variant = bytes_to_var(bytes)
 	return _ok_result(payload, {"path": path, "format": format})
+
+
+func _probe_payload_file(path: String, format: int) -> Dictionary:
+	var report := {
+		"path": path,
+		"format": format,
+		"exists": FileAccess.file_exists(path),
+		"valid_payload": false,
+		"error_key": "",
+	}
+	if not bool(report["exists"]):
+		report["error_key"] = "FILE_NOT_FOUND"
+		return report
+
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		report["error_key"] = "READ_FAILED"
+		return report
+
+	var payload: Variant = null
+	if format == FORMAT_JSON:
+		var text: String = file.get_as_text()
+		var json := JSON.new()
+		var parse_error: int = json.parse(text)
+		if parse_error != OK:
+			report["error_key"] = "INVALID_FORMAT"
+			return report
+		payload = json.data
+	else:
+		var bytes: PackedByteArray = file.get_buffer(file.get_length())
+		payload = bytes_to_var(bytes)
+
+	if not (payload is Dictionary) or not _is_valid_payload(payload):
+		report["error_key"] = "INVALID_PAYLOAD"
+		return report
+
+	report["valid_payload"] = true
+	return report
 
 
 func _write_payload_file(path: String, payload: Dictionary, format: int) -> SaveResult:
@@ -1721,13 +2462,18 @@ func _write_payload_file_safe(path: String, payload: Dictionary, format: int) ->
 	if FileAccess.file_exists(temp_path):
 		DirAccess.remove_absolute(temp_path)
 
-	var write_result: SaveResult = _write_payload_file_direct(temp_path, payload, format)
+	var write_result: SaveResult = _write_payload_file_direct(temp_path, payload, format, false)
 	if not write_result.ok:
 		return write_result
 
 	if FileAccess.file_exists(path):
+		var backup_result: SaveResult = _write_slot_backup(path)
+		if not backup_result.ok:
+			DirAccess.remove_absolute(temp_path)
+			return backup_result
 		var remove_error: int = DirAccess.remove_absolute(path)
 		if remove_error != OK:
+			DirAccess.remove_absolute(temp_path)
 			return _error_result(
 				SaveError.WRITE_FAILED,
 				"WRITE_FAILED",
@@ -1737,6 +2483,7 @@ func _write_payload_file_safe(path: String, payload: Dictionary, format: int) ->
 
 	var rename_error: int = DirAccess.rename_absolute(temp_path, path)
 	if rename_error != OK:
+		DirAccess.remove_absolute(temp_path)
 		return _error_result(
 			SaveError.WRITE_FAILED,
 			"WRITE_FAILED",
@@ -1747,10 +2494,14 @@ func _write_payload_file_safe(path: String, payload: Dictionary, format: int) ->
 	return _ok_result({"path": path, "format": format})
 
 
-func _write_payload_file_direct(path: String, payload: Dictionary, format: int) -> SaveResult:
+func _write_payload_file_direct(path: String, payload: Dictionary, format: int, create_backup := true) -> SaveResult:
 	var ensure_result: SaveResult = _ensure_parent_dir(path)
 	if not ensure_result.ok:
 		return ensure_result
+	if create_backup:
+		var backup_result: SaveResult = _write_slot_backup(path)
+		if not backup_result.ok:
+			return backup_result
 
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
@@ -1954,5 +2705,3 @@ func _error_result(error_code: int, error_key: String, error_message: String, me
 	result.error_message = error_message
 	result.meta = meta
 	return result
-
-

@@ -161,6 +161,10 @@ func gather_save_data() -> Variant:
 	for participant_path in included_paths:
 		if excluded_paths.has(participant_path):
 			continue
+		var ownership_conflict := _describe_participant_ownership_conflict(target_node, str(participant_path))
+		if not ownership_conflict.is_empty():
+			_warn_ownership_conflict(ownership_conflict)
+			continue
 		var participant := _resolve_included_node(participant_path)
 		if participant == null:
 			_warn_missing_participant(str(participant_path))
@@ -202,6 +206,10 @@ func apply_save_data(data: Variant, _context: Dictionary = {}) -> SaveResult:
 
 	var participant_payloads: Dictionary = Dictionary(payload.get("participants", {}))
 	for participant_path in included_paths:
+		var ownership_conflict := _describe_participant_ownership_conflict(target_node, str(participant_path))
+		if not ownership_conflict.is_empty():
+			_warn_ownership_conflict(ownership_conflict)
+			continue
 		var participant := _resolve_included_node(participant_path)
 		if participant == null:
 			_warn_missing_participant(str(participant_path))
@@ -262,6 +270,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("SaveFlowNodeSource plan is invalid: %s" % reason)
 	for missing_path in PackedStringArray(plan.get("missing_paths", PackedStringArray())):
 		warnings.append("Included path could not be resolved: %s" % missing_path)
+	for conflict_text in PackedStringArray(plan.get("ownership_conflicts", PackedStringArray())):
+		warnings.append("Included child crosses another save-owner boundary: %s" % conflict_text)
 	var missing_properties: PackedStringArray = PackedStringArray(plan.get("missing_properties", PackedStringArray()))
 	if not missing_properties.is_empty():
 		warnings.append("Missing target properties: %s" % ", ".join(missing_properties))
@@ -300,8 +310,13 @@ func describe_node_plan() -> Dictionary:
 			_append_unique(missing_properties, property_name)
 	var resolved_participants: Array = []
 	var missing_paths: PackedStringArray = []
+	var ownership_conflicts: PackedStringArray = []
 	for path_text in included_paths:
 		if excluded_paths.has(path_text):
+			continue
+		var ownership_conflict := _describe_participant_ownership_conflict(target_node, path_text)
+		if not ownership_conflict.is_empty():
+			ownership_conflicts.append(ownership_conflict)
 			continue
 		var participant := _resolve_included_node(path_text)
 		if participant == null:
@@ -330,6 +345,7 @@ func describe_node_plan() -> Dictionary:
 		"excluded_paths": excluded_paths.duplicate(),
 		"participant_discovery_mode": participant_discovery_mode,
 		"resolved_participants": resolved_participants,
+		"ownership_conflicts": ownership_conflicts,
 		"missing_properties": missing_properties,
 		"missing_paths": missing_paths,
 	}
@@ -509,6 +525,10 @@ func _resolve_included_node(path_text: String) -> Node:
 	var target_node := _resolve_target()
 	if target_node == null or path_text.is_empty():
 		return null
+	var ownership_conflict := _describe_participant_ownership_conflict(target_node, path_text)
+	if not ownership_conflict.is_empty():
+		_warn_ownership_conflict(ownership_conflict)
+		return null
 	var resolved := target_node.get_node_or_null(NodePath(path_text))
 	if _is_excluded_participant(resolved):
 		return null
@@ -657,6 +677,81 @@ func _describe_participant_icon_name(participant: Node) -> String:
 	return class_name_text
 
 
+func _describe_participant_ownership_conflict(target_node: Node, path_text: String) -> String:
+	if target_node == null or not target_node.is_inside_tree() or path_text.is_empty():
+		return ""
+	var resolved := target_node.get_node_or_null(NodePath(path_text))
+	if resolved == null:
+		return ""
+	if resolved is SaveFlowEntityCollectionSource:
+		return "%s is an EntityCollectionSource. Runtime sets should be owned directly by that collection source." % path_text
+
+	var entity_collection_target := _find_entity_collection_boundary(target_node, resolved)
+	if entity_collection_target != null:
+		var relative_collection_path := str(target_node.get_path_to(entity_collection_target))
+		return "%s enters runtime entity container `%s`, which is owned by an EntityCollectionSource." % [path_text, relative_collection_path]
+
+	if resolved is SaveFlowNodeSource:
+		return ""
+	var nested_target := _find_nested_node_source_boundary(target_node, resolved)
+	if nested_target != null:
+		var relative_target_path := str(target_node.get_path_to(nested_target))
+		return "%s enters object subtree `%s`, which already has its own NodeSource owner." % [path_text, relative_target_path]
+	return ""
+
+
+func _find_entity_collection_boundary(target_node: Node, resolved: Node) -> Node:
+	var collections: Array = []
+	_collect_entity_collection_sources(target_node, collections)
+	for collection_variant in collections:
+		var collection := collection_variant as SaveFlowEntityCollectionSource
+		if collection == null:
+			continue
+		var collection_target: Node = collection.call("_resolve_target") if collection.has_method("_resolve_target") else null
+		if not is_instance_valid(collection_target):
+			continue
+		if collection_target == resolved or collection_target.is_ancestor_of(resolved):
+			return collection_target
+	return null
+
+
+func _find_nested_node_source_boundary(target_node: Node, resolved: Node) -> Node:
+	var nested_sources: Array = []
+	_collect_node_sources(target_node, nested_sources)
+	for source_variant in nested_sources:
+		var nested_source := source_variant as SaveFlowNodeSource
+		if nested_source == null or nested_source == self:
+			continue
+		var nested_target: Node = nested_source.call("_resolve_target") if nested_source.has_method("_resolve_target") else nested_source.get_parent()
+		if not is_instance_valid(nested_target):
+			continue
+		if nested_target == target_node:
+			continue
+		if nested_target == resolved or nested_target.is_ancestor_of(resolved):
+			return nested_target
+	return null
+
+
+func _collect_entity_collection_sources(current: Node, into: Array) -> void:
+	for child_variant in current.get_children():
+		var child := child_variant as Node
+		if child == null:
+			continue
+		if child is SaveFlowEntityCollectionSource:
+			into.append(child)
+		_collect_entity_collection_sources(child, into)
+
+
+func _collect_node_sources(current: Node, into: Array) -> void:
+	for child_variant in current.get_children():
+		var child := child_variant as Node
+		if child == null:
+			continue
+		if child is SaveFlowNodeSource:
+			into.append(child)
+		_collect_node_sources(child, into)
+
+
 func _warn_missing_target() -> void:
 	if warn_on_missing_target and not Engine.is_editor_hint():
 		push_warning("SaveFlowNodeSource target could not be resolved.")
@@ -674,6 +769,12 @@ func _warn_missing_property(property_name: String) -> void:
 		"SaveFlowNodeSource '%s' could not find property '%s' on target '%s'." %
 		[name, property_name, _describe_target_path(_resolve_target())]
 	)
+
+
+func _warn_ownership_conflict(message: String) -> void:
+	if not warn_on_missing_participants or Engine.is_editor_hint():
+		return
+	push_warning("SaveFlowNodeSource '%s' skipped an included child because it crosses another save-owner boundary: %s" % [name, message])
 
 
 func _resolve_plan_reason(missing_properties: PackedStringArray, missing_paths: PackedStringArray) -> String:

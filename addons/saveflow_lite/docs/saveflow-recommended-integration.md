@@ -2,6 +2,9 @@
 
 This document defines the default user-facing SaveFlow Lite workflow.
 
+If your project has already moved into multi-scene restore, migration, cloud-save, or large runtime-world complexity, read this together with:
+- [saveflow-commercial-project-guide.md](saveflow-commercial-project-guide.md)
+
 The goal is simple:
 - one obvious way to save a gameplay object
 - one obvious way to save system state
@@ -22,6 +25,241 @@ This panel configures the `SaveFlow` singleton.
 
 Do not use it to replace per-source authoring decisions. Object, system, and
 runtime-set ownership still belongs on the matching SaveFlow components.
+
+## Reading slot state in `DevSaveManager`
+
+`DevSaveManager` is meant to answer four practical questions in order:
+
+1. can this slot be loaded under the current compatibility policy?
+2. is the current scene or scope the correct restore target?
+3. is the slot file itself healthy?
+4. is a backup available if the primary file is bad?
+
+Read the status badges in this order:
+
+- `Compatibility`
+  - answers whether the slot metadata satisfies the current `save_schema` and `data_version` policy
+  - if this says `Migration required`, stop here; this is not a restore-target problem
+- `Restore Contract`
+  - answers whether the current runtime scene matches the saved restore target
+  - if this says `Expected scene not active`, load the expected scene first and retry
+- `Slot Safety`
+  - answers whether the primary slot file is healthy and whether backup recovery is available
+  - this is where you see `Safe`, `Safe with backup`, `Backup recovery available`, or `No safe recovery`
+
+Use `Slot Details` when you need the underlying evidence:
+
+- `Slot Path`
+- `Primary File`
+- `Backup`
+- `Save Schema`
+- `Data Version`
+- `Game Version`
+- `Scene Path`
+
+Recommended debugging flow:
+
+1. if `Compatibility` is blocked, fix version/schema policy first
+2. if `Restore Contract` is blocked, load the expected scene first
+3. if `Slot Safety` reports an unreadable primary file, check whether backup recovery is available
+4. only after those checks pass should you treat the problem as a Source or gameplay-state issue
+
+This is intentional. SaveFlow Lite separates:
+
+- metadata compatibility
+- restore-target readiness
+- slot-file safety
+
+so users do not have to guess whether a failed load came from the wrong scene,
+an incompatible slot, or a damaged save file.
+
+## Business-side save workflow that still belongs in Lite
+
+As projects get more real, teams usually need three things before they need any
+Pro-style orchestration:
+
+- a real save-slot list in game UI
+- autosave and checkpoint triggers
+- a clear slot-metadata convention
+
+These are still Lite concerns when they stay local, explicit, and project-owned.
+
+### Save-slot list workflow
+
+Recommended rule:
+
+- use slot metadata for save-list rows
+- use full save payload only when the player actually loads a slot
+
+Typical save-list fields:
+
+- `display_name`
+- `save_type`
+- `chapter_name`
+- `location_name`
+- `playtime_seconds`
+- `difficulty`
+
+Baseline runtime entry points for this workflow:
+
+- `SaveFlow.read_slot_summary(slot_id)`
+- `SaveFlow.list_slot_summaries()`
+
+These reads are meant for:
+
+- continue buttons
+- load menus
+- QA slot inspection in gameplay UI
+- save-slot rows that should not trigger full restore logic
+
+Each slot summary keeps the common business-facing fields at the top level and
+exposes:
+
+- `compatibility_report`
+- `custom_metadata`
+
+Do not rebuild the whole UI by loading full gameplay payload just to render a
+continue screen or load menu.
+
+### Autosave and checkpoint workflow
+
+Recommended rule:
+
+- gameplay code decides when a save-worthy event happened
+- gameplay code chooses the slot strategy
+- gameplay code calls the SaveFlow entry point explicitly
+
+Typical examples:
+
+- door transition writes an autosave slot
+- shrine or bonfire writes a checkpoint slot
+- pause menu writes a manual save slot
+- settings menu writes system data immediately
+
+Use:
+
+- `save_scene()` when one scene/object tree owns the state
+- `save_scope()` when one domain graph should restore together
+- `save_data()` when one system/table/model owns the state
+
+### Slot metadata convention
+
+Recommended rule:
+
+- slot metadata is for business-facing slot summary
+- Sources and payload are for actual restore state
+
+Recommended helpers:
+
+- `SaveFlow.save_data(..., display_name, save_type, chapter_name, location_name, playtime_seconds, difficulty, thumbnail_path, extra_meta)` for the common explicit path
+- `SaveFlow.build_slot_metadata(...)`
+- `SaveFlow.build_slot_metadata_patch({...})` when you intentionally want override-by-key behavior
+
+Use it to start from the Lite baseline fields, then override the parts your game
+actually wants to show in save rows.
+
+Keep summary data such as:
+
+- save label
+- save type
+- chapter/location
+- playtime
+- progression summary
+
+Typical example:
+
+```gdscript
+SaveFlow.save_data(
+    "autosave_latest",
+    payload,
+    "Forest Gate",
+    "autosave",
+    "Chapter 2",
+    "Forest Gate",
+    1320,
+    "normal"
+)
+```
+
+out of the gameplay payload when the data mainly exists to render save rows.
+
+Likewise, keep machine-local settings, temporary debug values, and rebuildable
+caches outside the slot unless they really belong to player progression.
+
+### Scene-path verification
+
+`verify_scene_path_on_load` is a restore-contract precheck for scene and scope loads.
+
+When it is enabled:
+
+- SaveFlow records the owning `scene_path` in slot metadata during save
+- `load_scene()` and `load_scope()` require the expected scene to already be active before restore
+
+When it is disabled:
+
+- SaveFlow skips that scene-context precheck
+- restore continues against whatever save graph, source keys, and runtime identities resolve under the current target
+
+Use the disabled mode only when you intentionally want key/graph-based restore
+without a scene-level safety check.
+
+## One Project, Many Demo Profiles
+
+If one Godot project hosts several demos or sandboxes, do not force them to
+share one save folder.
+
+Recommended rule:
+
+- one shipped game usually exposes one primary save profile
+- one demo repository may host several isolated demo profiles
+
+In practice, that means each demo should have its own:
+
+- `save_root`
+- `slot_index_file`
+- optional dev-save root and dev slot index
+
+The scene that boots that demo should configure `SaveFlow` with those paths.
+
+Examples in this repository:
+
+- `complex_sandbox`
+  - `user://complex_sandbox/saves`
+  - `user://complex_sandbox/slots.index`
+- `plugin_sandbox`
+  - `user://plugin_sandbox/saves`
+  - `user://plugin_sandbox/slots.index`
+- `zelda_like`
+  - formal: `user://zelda_like_sandbox/saves`
+  - formal index: `user://zelda_like_sandbox/slots.index`
+  - dev: `user://zelda_like_sandbox/devSaves`
+  - dev index: `user://zelda_like_sandbox/dev-slots.index`
+
+This is profile isolation, not one shared multi-game slot system.
+
+Minimal pattern:
+
+```gdscript
+func _ready() -> void:
+    SaveFlow.configure_with(
+        "user://my_demo/saves",
+        "user://my_demo/slots.index"
+    )
+```
+
+If editor-side DevSaveManager should also follow that demo:
+
+```gdscript
+func build_dev_save_settings() -> Dictionary:
+    return {
+        "save_root": "user://my_demo/devSaves",
+        "slot_index_file": "user://my_demo/dev-slots.index",
+    }
+```
+
+Use this only when the repository truly hosts multiple demo experiences.
+If it is one game with player/world/runtime domains, keep one main profile and
+split the save graph with `SaveFlowScope` instead.
 
 ## The Three Main Paths
 
@@ -233,11 +471,23 @@ Start with `SaveFlowPrefabEntityFactory` unless the project already has a real r
 Rule 3.1:
 Pick restore policy before you write custom factory code. Most mistakes in runtime-entity saves come from the wrong restore behavior, not from serialization itself.
 
+Rule 3.2:
+Treat one runtime entity set as having one owner. If an `EntityCollectionSource` owns a runtime container, do not also sweep that same container from a parent `NodeSource` or broad `save_scene()` traversal.
+
 Rule 4:
 Put save logic as close to prefab ownership as possible.
 
 Rule 5:
 Use `SaveFlowScope` to organize domains and restore order, not to replace object ownership.
+
+Rule 6:
+Disabling `verify_scene_path_on_load` removes a scene-level safety check. It does not add staged restore, scene loading, or orchestration.
+
+Rule 7:
+Keep one `SaveFlowDataSource` focused on one system boundary. Split gameplay data, machine-local settings, session caches, and debug-only data instead of hiding them behind one large custom source.
+
+Rule 8:
+Use multiple simple prefab factories before you reach for routing inside one factory. When routing depends on pooling, spawn points, registries, or world state, move to a custom `SaveFlowEntityFactory`.
 
 ## What SaveFlow Should Feel Like
 

@@ -3,10 +3,16 @@ extends VBoxContainer
 
 const LABEL_WIDTH := 112
 const PADDING := 10
+const META_PREVIEW_EXPANDED := "_saveflow_entity_factory_preview_expanded"
+const META_CONTRACT_EXPANDED := "_saveflow_entity_factory_contract_expanded"
+const META_DESIGN_EXPANDED := "_saveflow_entity_factory_design_expanded"
+const META_DETAILS_EXPANDED := "_saveflow_entity_factory_details_expanded"
 
 var _entity_factory: SaveFlowEntityFactory
 var _last_signature: String = ""
 var _preview_expanded := true
+var _contract_expanded := false
+var _design_expanded := false
 var _details_expanded := false
 
 var _preview_toggle: Button
@@ -14,16 +20,21 @@ var _content_panel: PanelContainer
 var _status_chip: PanelContainer
 var _status_label: Label
 var _factory_value: Label
-var _reason_value: Label
 var _container_value: Label
 var _types_value: Label
-var _type_mode_value: Label
 var _routing_value: Label
+var _contract_toggle: Button
+var _contract_box: VBoxContainer
+var _type_mode_value: Label
 var _required_value: Label
 var _optional_value: Label
 var _capabilities_value: Label
+var _design_toggle: Button
+var _design_box: VBoxContainer
+var _design_hint_value: Label
 var _details_toggle: Button
 var _details_box: VBoxContainer
+var _reason_value: Label
 var _factory_path_value: Label
 var _container_path_value: Label
 
@@ -36,6 +47,7 @@ func _ready() -> void:
 
 func set_entity_factory(entity_factory: SaveFlowEntityFactory) -> void:
 	_entity_factory = entity_factory
+	_restore_foldout_state_from_factory()
 	_refresh()
 
 
@@ -102,14 +114,36 @@ func _build_ui() -> void:
 	content_padding.add_child(content)
 
 	_factory_value = _add_row(content, "Factory")
-	_reason_value = _add_row(content, "Invalid Reason")
 	_container_value = _add_row(content, "Container")
 	_types_value = _add_row(content, "Entity Types")
-	_type_mode_value = _add_row(content, "Type Mode")
 	_routing_value = _add_row(content, "Routing")
-	_required_value = _add_row(content, "Required")
-	_optional_value = _add_row(content, "Optional")
-	_capabilities_value = _add_row(content, "Implemented")
+
+	_contract_toggle = Button.new()
+	_contract_toggle.flat = true
+	_contract_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_contract_toggle.pressed.connect(_on_contract_toggled)
+	content.add_child(_contract_toggle)
+
+	_contract_box = VBoxContainer.new()
+	_contract_box.add_theme_constant_override("separation", 6)
+	content.add_child(_contract_box)
+
+	_type_mode_value = _add_row(_contract_box, "Type Mode")
+	_required_value = _add_row(_contract_box, "Required")
+	_optional_value = _add_row(_contract_box, "Optional")
+	_capabilities_value = _add_row(_contract_box, "Implemented")
+
+	_design_toggle = Button.new()
+	_design_toggle.flat = true
+	_design_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_design_toggle.pressed.connect(_on_design_toggled)
+	content.add_child(_design_toggle)
+
+	_design_box = VBoxContainer.new()
+	_design_box.add_theme_constant_override("separation", 6)
+	content.add_child(_design_box)
+
+	_design_hint_value = _add_row(_design_box, "Design Hint")
 
 	_details_toggle = Button.new()
 	_details_toggle.flat = true
@@ -121,6 +155,7 @@ func _build_ui() -> void:
 	_details_box.add_theme_constant_override("separation", 6)
 	content.add_child(_details_box)
 
+	_reason_value = _add_row(_details_box, "Reason")
 	_factory_path_value = _add_row(_details_box, "Factory Path")
 	_container_path_value = _add_row(_details_box, "Container Path")
 
@@ -158,19 +193,25 @@ func _refresh() -> void:
 	_content_panel.visible = _preview_expanded
 
 	_factory_value.text = _best_name(String(plan.get("factory_name", "")), String(plan.get("factory_path", "")))
-	_reason_value.text = _format_reason(plan)
-	_reason_value.visible = not valid
-	_reason_value.modulate = _warning_color() if not valid else Color(1, 1, 1, 1)
 	_container_value.text = _best_name(String(plan.get("target_container_name", "")), String(plan.get("target_container_path", "")))
 	_types_value.text = _format_types(PackedStringArray(plan.get("supported_entity_types", PackedStringArray())))
-	_type_mode_value.text = String(plan.get("type_key_mode", "<custom>"))
 	_routing_value.text = String(plan.get("routing_summary", "<custom>"))
+
+	_contract_toggle.text = _foldout_text("Contract", _contract_expanded)
+	_contract_box.visible = _contract_expanded
+	_type_mode_value.text = String(plan.get("type_key_mode", "<custom>"))
 	_required_value.text = _format_list_inline(PackedStringArray(plan.get("required_contract", PackedStringArray())))
 	_optional_value.text = _format_list_inline(PackedStringArray(plan.get("optional_hooks", PackedStringArray())))
 	_capabilities_value.text = _format_capabilities(plan)
 
-	_details_toggle.text = _foldout_text("Details", _details_expanded)
+	_design_toggle.text = _foldout_text("Design", _design_expanded)
+	_design_box.visible = _design_expanded
+	_design_hint_value.text = _describe_design_hint(plan)
+
+	_details_toggle.text = _foldout_text("Diagnostics", _details_expanded)
 	_details_box.visible = _details_expanded
+	_reason_value.text = _format_reason(plan)
+	_reason_value.modulate = _warning_color() if not valid else Color(1, 1, 1, 1)
 	_factory_path_value.text = String(plan.get("factory_path", ""))
 	_container_path_value.text = String(plan.get("target_container_path", ""))
 
@@ -347,14 +388,52 @@ func _format_reason(plan: Dictionary) -> String:
 	return reason_code
 
 
+func _describe_design_hint(plan: Dictionary) -> String:
+	if bool(plan.get("uses_prefab_scene", false)):
+		return "PrefabEntityFactory is for one prefab path and one container path. Use multiple factories when routes are simple but separate; write a custom EntityFactory when lookup or spawn routing becomes project-specific."
+	return "Use multiple factories for a few distinct prefab routes. Switch to a custom EntityFactory when routing depends on pooling, spawn points, registries, or other project-owned runtime systems."
+
+
 func _on_preview_toggled() -> void:
 	_preview_expanded = not _preview_expanded
+	_persist_foldout_state_to_factory()
+	_refresh()
+
+
+func _on_contract_toggled() -> void:
+	_contract_expanded = not _contract_expanded
+	_persist_foldout_state_to_factory()
+	_refresh()
+
+
+func _on_design_toggled() -> void:
+	_design_expanded = not _design_expanded
+	_persist_foldout_state_to_factory()
 	_refresh()
 
 
 func _on_details_toggled() -> void:
 	_details_expanded = not _details_expanded
+	_persist_foldout_state_to_factory()
 	_refresh()
+
+
+func _restore_foldout_state_from_factory() -> void:
+	if _entity_factory == null or not is_instance_valid(_entity_factory):
+		return
+	_preview_expanded = bool(_entity_factory.get_meta(META_PREVIEW_EXPANDED, _preview_expanded))
+	_contract_expanded = bool(_entity_factory.get_meta(META_CONTRACT_EXPANDED, _contract_expanded))
+	_design_expanded = bool(_entity_factory.get_meta(META_DESIGN_EXPANDED, _design_expanded))
+	_details_expanded = bool(_entity_factory.get_meta(META_DETAILS_EXPANDED, _details_expanded))
+
+
+func _persist_foldout_state_to_factory() -> void:
+	if _entity_factory == null or not is_instance_valid(_entity_factory):
+		return
+	_entity_factory.set_meta(META_PREVIEW_EXPANDED, _preview_expanded)
+	_entity_factory.set_meta(META_CONTRACT_EXPANDED, _contract_expanded)
+	_entity_factory.set_meta(META_DESIGN_EXPANDED, _design_expanded)
+	_entity_factory.set_meta(META_DETAILS_EXPANDED, _details_expanded)
 
 
 func _foldout_text(label_text: String, expanded: bool) -> String:

@@ -5,6 +5,7 @@ const ACTOR_PREFAB := preload("res://demo/saveflow_lite/recommended_template/sce
 const FACTORY_TYPE_KEY := "runtime_actor"
 
 @onready var _runtime_actors: Node = $StateRoot/RuntimeActors
+@onready var _actor_collection: SaveFlowEntityCollectionSource = $StateRoot/ActorCollection
 @onready var _actors_label: Label = $MarginContainer/PanelContainer/Content/ActorsLabel
 @onready var _status_output: TextEdit = $MarginContainer/PanelContainer/Content/StatusOutput
 
@@ -13,18 +14,14 @@ func _ready() -> void:
 	_configure_runtime()
 	_bind_buttons()
 	_reset_state(false)
+	_ensure_seed_slot()
 	_set_status("EntityCollection case ready. This scene stores a changing runtime set through EntityCollectionSource + PrefabEntityFactory.")
 
 
 func _configure_runtime() -> void:
 	SaveFlow.configure_with(
-		{
-			"save_root": "user://recommended_cases/entity_collection/saves",
-			"slot_index_file": "user://recommended_cases/entity_collection/slots.index",
-			"storage_format": 0,
-			"pretty_json_in_editor": true,
-			"use_safe_write": true,
-		}
+		"user://recommended_cases/entity_collection/saves",
+		"user://recommended_cases/entity_collection/slots.index"
 	)
 
 
@@ -37,9 +34,11 @@ func _bind_buttons() -> void:
 
 
 func _on_save_pressed() -> void:
-	var result: SaveResult = SaveFlow.save_scene(
+	_actor_collection.before_save({})
+	var payload: Variant = _actor_collection.gather_save_data()
+	var result: SaveResult = SaveFlow.save_data(
 		SLOT_ID,
-		$StateRoot,
+		payload,
 		{
 			"display_name": "EntityCollection Case",
 			"scene_path": scene_file_path,
@@ -49,8 +48,13 @@ func _on_save_pressed() -> void:
 
 
 func _on_load_pressed() -> void:
-	var result: SaveResult = SaveFlow.load_scene(SLOT_ID, $StateRoot, true)
-	_set_status(_format_result("Load", result))
+	var load_result: SaveResult = SaveFlow.load_data(SLOT_ID)
+	if not load_result.ok:
+		_set_status(_format_result("Load", load_result))
+		return
+	_actor_collection.before_load(load_result.data, {})
+	var apply_result: SaveResult = _actor_collection.apply_save_data(load_result.data, {})
+	_set_status(_format_result("Load", apply_result))
 
 
 func _on_spawn_pressed() -> void:
@@ -69,20 +73,25 @@ func _on_mutate_pressed() -> void:
 	if _runtime_actors.get_child_count() == 0:
 		_set_status("No runtime entity is available to mutate.")
 		return
-	var actor := _runtime_actors.get_child(0)
-	if actor.has_method("reset_state"):
+	var index := 0
+	for actor_variant in _runtime_actors.get_children():
+		var actor := actor_variant as Node2D
+		if actor == null or not actor.has_method("reset_state"):
+			index += 1
+			continue
 		actor.call(
 			"reset_state",
 			{
-				"actor_type": "runtime_actor",
-				"hp": 3,
-				"loot_table": ["rare_drop"],
-				"tags": PackedStringArray(["runtime", "mutated"]),
+				"actor_type": FACTORY_TYPE_KEY,
+				"hp": max(1, 3 + index),
+				"loot_table": ["rare_drop", "bonus_%d" % index],
+				"tags": PackedStringArray(["runtime", "mutated", "wave_%d" % index]),
 				"is_alerted": true,
-				"position": actor.position + Vector2(20, -10),
+				"position": actor.position + Vector2(20 + 8 * index, -10 - 4 * index),
 			}
 		)
-	_set_status("Mutated one runtime entity inside the changing collection.")
+		index += 1
+	_set_status("Mutated every runtime entity in the collection. Load uses clear-and-restore so the saved set fully replaces the current one.")
 
 
 func _on_reset_pressed() -> void:
@@ -99,7 +108,7 @@ func _reset_state(announce: bool) -> void:
 		_set_status("Reset the runtime collection back to two tracked actors.")
 
 
-func _spawn_actor(persistent_id: String, position: Vector2, hp: int, tags: PackedStringArray, loot_table: Array) -> void:
+func _spawn_actor(persistent_id: String, spawn_position: Vector2, hp: int, tags: PackedStringArray, loot_table: Array) -> void:
 	var actor := ACTOR_PREFAB.instantiate() as Node2D
 	actor.name = persistent_id
 	_runtime_actors.add_child(actor)
@@ -112,7 +121,7 @@ func _spawn_actor(persistent_id: String, position: Vector2, hp: int, tags: Packe
 				"loot_table": loot_table,
 				"tags": tags,
 				"is_alerted": false,
-				"position": position,
+				"position": spawn_position,
 			}
 		)
 	var identity := actor.get_node_or_null("Identity")
@@ -138,3 +147,17 @@ func _format_result(label: String, result: SaveResult) -> String:
 func _set_status(message: String) -> void:
 	_status_output.text = message
 	_refresh_labels()
+
+
+func _ensure_seed_slot() -> void:
+	if SaveFlow.slot_exists(SLOT_ID):
+		return
+	_actor_collection.before_save({})
+	SaveFlow.save_data(
+		SLOT_ID,
+		_actor_collection.gather_save_data(),
+		{
+			"display_name": "EntityCollection Case",
+			"scene_path": scene_file_path,
+		}
+	)

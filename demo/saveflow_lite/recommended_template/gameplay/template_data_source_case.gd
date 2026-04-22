@@ -11,18 +11,14 @@ func _ready() -> void:
 	_configure_runtime()
 	_bind_buttons()
 	_reset_state(false)
+	_ensure_seed_slot()
 	_set_status("DataSource case ready. This scene stores one system-owned dictionary through a custom SaveFlowDataSource.")
 
 
 func _configure_runtime() -> void:
 	SaveFlow.configure_with(
-		{
-			"save_root": "user://recommended_cases/data_source/saves",
-			"slot_index_file": "user://recommended_cases/data_source/slots.index",
-			"storage_format": 0,
-			"pretty_json_in_editor": true,
-			"use_safe_write": true,
-		}
+		"user://recommended_cases/data_source/saves",
+		"user://recommended_cases/data_source/slots.index"
 	)
 
 
@@ -51,12 +47,12 @@ func _on_load_pressed() -> void:
 
 
 func _on_mutate_pressed() -> void:
-	var system_state: Dictionary = Dictionary(_world_registry.get("system_state")).duplicate(true)
-	var opened_doors: Dictionary = Dictionary(system_state.get("opened_doors", {})).duplicate(true)
+	var system_state: Dictionary = _as_dictionary(_world_registry.get("system_state")).duplicate(true)
+	var opened_doors: Dictionary = _as_dictionary(system_state.get("opened_doors", {})).duplicate(true)
 	opened_doors["cellar_gate"] = true
 	system_state["opened_doors"] = opened_doors
 
-	var quest_flags: Dictionary = Dictionary(system_state.get("quest_flags", {})).duplicate(true)
+	var quest_flags: Dictionary = _as_dictionary(system_state.get("quest_flags", {})).duplicate(true)
 	quest_flags["found_map"] = true
 	system_state["quest_flags"] = quest_flags
 	system_state["pending_mail"] = ["starter_letter", "merchant_note", "boss_warning"]
@@ -88,3 +84,20 @@ func _format_result(label: String, result: SaveResult) -> String:
 func _set_status(message: String) -> void:
 	_status_output.text = message
 	_refresh_labels()
+
+
+func _ensure_seed_slot() -> void:
+	if SaveFlow.slot_exists(SLOT_ID):
+		return
+	SaveFlow.save_scene(
+		SLOT_ID,
+		$StateRoot,
+		{
+			"display_name": "DataSource Case",
+			"scene_path": scene_file_path,
+		}
+	)
+
+
+func _as_dictionary(value: Variant) -> Dictionary:
+	return value.duplicate(true) if value is Dictionary else {}

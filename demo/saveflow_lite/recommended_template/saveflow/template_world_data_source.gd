@@ -16,7 +16,7 @@ func gather_data() -> Dictionary:
 	var resolved_target := _resolve_target_node()
 	if resolved_target == null:
 		return {}
-	return Dictionary(resolved_target.get("system_state")).duplicate(true)
+	return _as_dictionary(resolved_target.get("system_state")).duplicate(true)
 
 
 func apply_data(data: Dictionary) -> void:
@@ -29,8 +29,10 @@ func apply_data(data: Dictionary) -> void:
 func describe_data_plan() -> Dictionary:
 	var resolved_target := _resolve_target_node()
 	var system_state: Dictionary = {}
+	var target_name := "<none>"
 	if resolved_target != null:
-		system_state = Dictionary(resolved_target.get("system_state"))
+		system_state = _as_dictionary(resolved_target.get("system_state")).duplicate(true)
+		target_name = resolved_target.name
 	return {
 		"valid": resolved_target != null,
 		"reason": "" if resolved_target != null else "TARGET_NOT_FOUND",
@@ -43,7 +45,7 @@ func describe_data_plan() -> Dictionary:
 		"summary": "Template world state",
 		"sections": PackedStringArray(system_state.keys()),
 		"details": {
-			"target": resolved_target.name if resolved_target != null else "<none>",
+			"target": target_name,
 			"target_path": str(_target_ref_path),
 		},
 	}
@@ -74,3 +76,9 @@ func _resolve_relative_node_path(node: Node) -> NodePath:
 	if not is_inside_tree() or not node.is_inside_tree():
 		return NodePath()
 	return get_path_to(node)
+
+
+func _as_dictionary(value: Variant) -> Dictionary:
+	if value is Dictionary:
+		return (value as Dictionary).duplicate(true)
+	return {}

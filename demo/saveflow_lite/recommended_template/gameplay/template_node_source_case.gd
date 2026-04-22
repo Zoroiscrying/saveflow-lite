@@ -18,13 +18,8 @@ func _ready() -> void:
 
 func _configure_runtime() -> void:
 	SaveFlow.configure_with(
-		{
-			"save_root": "user://recommended_cases/node_source/saves",
-			"slot_index_file": "user://recommended_cases/node_source/slots.index",
-			"storage_format": 0,
-			"pretty_json_in_editor": true,
-			"use_safe_write": true,
-		}
+		"user://recommended_cases/node_source/saves",
+		"user://recommended_cases/node_source/slots.index"
 	)
 
 

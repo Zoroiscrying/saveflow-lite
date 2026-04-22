@@ -8,6 +8,7 @@ const FORMAT_JSON := 1
 const FORMAT_BINARY := 2
 const SCOPE_DEV := "dev"
 const SCOPE_FORMAL := "formal"
+const BACKUP_FILE_SUFFIX := ".bak"
 
 const REFRESH_INTERVAL := 1.0
 const STATUS_TIMEOUT_SECONDS := 3
@@ -41,6 +42,7 @@ var _delete_scope := SCOPE_DEV
 var _refresh_timer := 0.0
 var _request_status_hold_until_unix := 0
 var _fallback_runtime: Node
+var _expanded_entry_keys: Dictionary = {}
 
 
 func _ready() -> void:
@@ -59,6 +61,12 @@ func _process(delta: float) -> void:
 
 func refresh_now() -> void:
 	_refresh_all()
+
+
+func focus_primary_input() -> void:
+	if _search_edit == null or not is_instance_valid(_search_edit):
+		return
+	_search_edit.grab_focus()
 
 
 func _build_ui() -> void:
@@ -155,7 +163,7 @@ func _build_ui() -> void:
 	var lists_split := HSplitContainer.new()
 	lists_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lists_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lists_split.custom_minimum_size.y = 260
+	lists_split.custom_minimum_size.y = 520
 	_content_root.add_child(lists_split)
 
 	lists_split.add_child(_build_scope_list_section("Dev Saves", SCOPE_DEV))
@@ -292,6 +300,11 @@ func _read_entries(scope: String) -> Array:
 	if entries.is_empty():
 		return []
 
+	for index in range(entries.size()):
+		if not (entries[index] is Dictionary):
+			continue
+		entries[index] = _attach_entry_reports(Dictionary(entries[index]), settings, status, runtime)
+
 	var search_text := _search_edit.text.strip_edges().to_lower()
 	var filtered: Array = []
 	for entry_variant in entries:
@@ -393,6 +406,7 @@ func _entry_from_meta(meta: Dictionary) -> Dictionary:
 		"display_name": display_name,
 		"created_at_unix": created_at,
 		"saved_at_unix": saved_at,
+		"meta": meta.duplicate(true),
 	}
 
 
@@ -414,6 +428,7 @@ func _sort_entries(a: Dictionary, b: Dictionary) -> bool:
 
 func _build_row(entry: Dictionary, scope: String) -> Control:
 	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(0, 96)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	panel.add_child(row)
@@ -426,6 +441,45 @@ func _build_row(entry: Dictionary, scope: String) -> Control:
 	title.text = String(entry.get("display_name", ""))
 	title.add_theme_font_size_override("font_size", 15)
 	text_box.add_child(title)
+
+	var status_row := HBoxContainer.new()
+	status_row.add_theme_constant_override("separation", 6)
+	text_box.add_child(status_row)
+
+	var compatibility_report := Dictionary(entry.get("compatibility_report", {}))
+	status_row.add_child(
+		_make_status_badge_clean(
+			"Compatibility",
+			_build_compatibility_status_text(compatibility_report).trim_prefix("Compatibility: "),
+			_build_compatibility_status_color(compatibility_report),
+			_build_compatibility_tooltip(
+				compatibility_report,
+				Dictionary(entry.get("meta", {}))
+			)
+		)
+	)
+
+	var restore_readiness_report := Dictionary(entry.get("restore_readiness_report", {}))
+	status_row.add_child(
+		_make_status_badge_clean(
+			"Restore Contract",
+			_build_restore_readiness_status_text(restore_readiness_report).trim_prefix("Restore Readiness: "),
+			_build_restore_readiness_status_color(restore_readiness_report),
+			_build_restore_readiness_tooltip(
+				restore_readiness_report,
+				Dictionary(entry.get("meta", {}))
+			)
+		)
+	)
+
+	status_row.add_child(
+		_make_status_badge_clean(
+			"Slot Safety",
+			_build_slot_safety_status_text(entry),
+			_build_slot_safety_summary_color(entry),
+			_build_slot_safety_tooltip(entry)
+		)
+	)
 
 	# Create a horizontal container for buttons
 	var button_row := HBoxContainer.new()
@@ -443,6 +497,43 @@ func _build_row(entry: Dictionary, scope: String) -> Control:
 
 	var entry_name := String(entry.get("name", ""))
 	var display_name := String(entry.get("display_name", entry_name))
+	var details_key := _entry_ui_key(scope, entry_name)
+	var details_expanded := bool(_expanded_entry_keys.get(details_key, false))
+
+	var details_toggle := Button.new()
+	details_toggle.flat = true
+	details_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	details_toggle.text = ("%s Slot Details" % ("v" if details_expanded else ">"))
+	details_toggle.pressed.connect(
+		func() -> void:
+			_expanded_entry_keys[details_key] = not details_expanded
+			_refresh_scope_list(scope)
+	)
+	text_box.add_child(details_toggle)
+
+	var details_box := VBoxContainer.new()
+	details_box.visible = details_expanded
+	details_box.add_theme_constant_override("separation", 4)
+	text_box.add_child(details_box)
+
+	if details_expanded:
+		var safety_summary := Label.new()
+		safety_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		safety_summary.text = _build_slot_safety_summary(entry)
+		safety_summary.modulate = _build_slot_safety_summary_color(entry)
+		details_box.add_child(safety_summary)
+
+		var storage_info := Dictionary(entry.get("storage_info", {}))
+		details_box.add_child(_make_detail_label("Slot Path", String(storage_info.get("slot_path", PATH_UNAVAILABLE))))
+		details_box.add_child(_make_detail_label("Primary File", _build_primary_status_text(storage_info)))
+		details_box.add_child(_make_detail_label("Backup", _build_backup_status_text(storage_info)))
+
+		var meta := Dictionary(entry.get("meta", {}))
+		details_box.add_child(_make_detail_label("Save Schema", _fallback_detail_text(String(meta.get("save_schema", "")))))
+		details_box.add_child(_make_detail_label("Data Version", _detail_number_text(meta.get("data_version", 0))))
+		details_box.add_child(_make_detail_label("Game Version", _fallback_detail_text(String(meta.get("game_version", "")))))
+		details_box.add_child(_make_detail_label("Scene Path", _fallback_detail_text(String(meta.get("scene_path", "")))))
+
 	if scope == SCOPE_DEV:
 		button_row.add_child(_make_row_button("Ld", _is_runtime_available(), func() -> void: _queue_load_request(entry_name)))
 		button_row.add_child(_make_row_button("Sv", _is_runtime_available(), func() -> void: _queue_save_request_named(entry_name)))
@@ -461,6 +552,208 @@ func _make_row_button(text: String, enabled: bool, action: Callable) -> Button:
 	button.disabled = not enabled
 	button.pressed.connect(action)
 	return button
+
+
+func _make_status_badge(title: String, value: String, tone: Color, tooltip: String) -> Control:
+	var panel := PanelContainer.new()
+	panel.tooltip_text = tooltip
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(tone.r, tone.g, tone.b, 0.14)
+	style.border_color = Color(tone.r, tone.g, tone.b, 0.55)
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_right = 8
+	style.corner_radius_bottom_left = 8
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
+	panel.add_theme_stylebox_override("panel", style)
+
+	var label := Label.new()
+	label.text = "%s · %s" % [title, value]
+	label.modulate = tone
+	label.add_theme_font_size_override("font_size", 11)
+	panel.add_child(label)
+	return panel
+
+
+func _make_status_badge_clean(title: String, value: String, tone: Color, tooltip: String) -> Control:
+	var panel := PanelContainer.new()
+	panel.tooltip_text = tooltip
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(tone.r, tone.g, tone.b, 0.14)
+	style.border_color = Color(tone.r, tone.g, tone.b, 0.55)
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_right = 8
+	style.corner_radius_bottom_left = 8
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
+	panel.add_theme_stylebox_override("panel", style)
+
+	var label := Label.new()
+	label.text = "%s | %s" % [title, value]
+	label.modulate = tone
+	label.add_theme_font_size_override("font_size", 11)
+	panel.add_child(label)
+	return panel
+
+
+func _make_detail_label(label_text: String, value_text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+
+	var label := Label.new()
+	label.custom_minimum_size.x = 84
+	label.text = label_text
+	label.modulate = get_theme_color("font_placeholder_color", "Editor")
+	row.add_child(label)
+
+	var value := Label.new()
+	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	value.text = value_text
+	row.add_child(value)
+	return row
+
+
+func _entry_ui_key(scope: String, entry_name: String) -> String:
+	return "%s:%s" % [scope, entry_name]
+
+
+func _fallback_detail_text(value: String) -> String:
+	return value if not value.is_empty() else "<none>"
+
+
+func _detail_number_text(value: Variant) -> String:
+	var number := int(value)
+	return str(number) if number > 0 else "<none>"
+
+
+func _build_backup_status_text(storage_info: Dictionary) -> String:
+	if storage_info.is_empty():
+		return "Unknown"
+	if bool(storage_info.get("recovery_possible", false)):
+		return "Backup can recover this slot at %s" % String(storage_info.get("backup_path", PATH_UNAVAILABLE))
+	if bool(storage_info.get("backup_exists", false)) and bool(storage_info.get("backup_valid_payload", false)):
+		return "Valid backup available at %s" % String(storage_info.get("backup_path", PATH_UNAVAILABLE))
+	if bool(storage_info.get("backup_exists", false)):
+		return "Backup exists but is not restorable: %s" % String(storage_info.get("backup_probe_error", "INVALID_BACKUP"))
+	return "No last-known-good backup beside this slot file."
+
+
+func _build_primary_status_text(storage_info: Dictionary) -> String:
+	if storage_info.is_empty():
+		return "Unknown"
+	if not bool(storage_info.get("primary_exists", false)):
+		return "Primary slot file is missing."
+	if bool(storage_info.get("primary_valid_payload", false)):
+		return "Primary slot file is readable."
+	return "Primary slot file is unreadable: %s" % String(storage_info.get("primary_probe_error", "READ_FAILED"))
+
+
+func _build_slot_safety_summary(entry: Dictionary) -> String:
+	var compatibility_report := Dictionary(entry.get("compatibility_report", {}))
+	if not bool(compatibility_report.get("compatible", true)):
+		return "Migration required before load. The slot metadata does not satisfy the current compatibility policy."
+
+	var storage_info := Dictionary(entry.get("storage_info", {}))
+	if bool(storage_info.get("primary_exists", false)) and not bool(storage_info.get("primary_valid_payload", false)):
+		if bool(storage_info.get("recovery_possible", false)):
+			return "Primary slot file is unreadable, but a valid backup can recover this slot."
+		if bool(storage_info.get("backup_exists", false)):
+			return "Primary slot file is unreadable, and the available backup is not restorable."
+		return "Primary slot file is unreadable, and no backup is available."
+
+	var readiness_report := Dictionary(entry.get("restore_readiness_report", {}))
+	match String(readiness_report.get("status", "ready")):
+		"blocked":
+			return "Compatible, but the current restore contract is not satisfied yet. Load the expected scene first."
+		"unknown":
+			return "Compatible, but restore-contract verification is waiting for runtime context."
+		"disabled":
+			return "Compatible. Scene-level restore-contract verification is disabled, so SaveFlow will restore against whatever target resolves now."
+		"advisory":
+			return "Compatible. This slot did not record a scene target, so scene-level restore-contract verification is advisory only."
+
+	if bool(storage_info.get("backup_exists", false)):
+		return "Safe to restore into the current target. A last-known-good backup is also available beside the slot."
+	return "Safe to restore into the current target."
+
+
+func _build_slot_safety_status_text(entry: Dictionary) -> String:
+	var compatibility_report := Dictionary(entry.get("compatibility_report", {}))
+	if not bool(compatibility_report.get("compatible", true)):
+		return "Migration required"
+
+	var storage_info := Dictionary(entry.get("storage_info", {}))
+	if bool(storage_info.get("primary_exists", false)) and not bool(storage_info.get("primary_valid_payload", false)):
+		if bool(storage_info.get("recovery_possible", false)):
+			return "Backup recovery available"
+		if bool(storage_info.get("backup_exists", false)):
+			return "Primary unreadable"
+		return "No safe recovery"
+
+	var readiness_report := Dictionary(entry.get("restore_readiness_report", {}))
+	match String(readiness_report.get("status", "ready")):
+		"blocked":
+			return "Wrong restore target"
+		"unknown":
+			return "Waiting for runtime"
+		"disabled":
+			return "Target check disabled"
+		"advisory":
+			return "Target not recorded"
+		_:
+			if bool(storage_info.get("backup_exists", false)):
+				return "Safe with backup"
+			return "Safe"
+
+
+func _build_slot_safety_tooltip(entry: Dictionary) -> String:
+	var lines: PackedStringArray = []
+	lines.append("Slot Safety | %s" % _build_slot_safety_status_text(entry))
+	lines.append(_build_slot_safety_summary(entry))
+
+	var storage_info := Dictionary(entry.get("storage_info", {}))
+	lines.append("Primary: %s" % _build_primary_status_text(storage_info))
+	lines.append("Backup: %s" % _build_backup_status_text(storage_info))
+
+	var compatibility_report := Dictionary(entry.get("compatibility_report", {}))
+	if not compatibility_report.is_empty():
+		lines.append(_build_compatibility_status_text(compatibility_report))
+
+	var readiness_report := Dictionary(entry.get("restore_readiness_report", {}))
+	if not readiness_report.is_empty():
+		lines.append(_build_restore_readiness_status_text(readiness_report))
+
+	return "\n".join(lines)
+
+
+func _build_slot_safety_summary_color(entry: Dictionary) -> Color:
+	var compatibility_report := Dictionary(entry.get("compatibility_report", {}))
+	if not bool(compatibility_report.get("compatible", true)):
+		return Color(0.96, 0.54, 0.54)
+	var storage_info := Dictionary(entry.get("storage_info", {}))
+	if bool(storage_info.get("primary_exists", false)) and not bool(storage_info.get("primary_valid_payload", false)):
+		return Color(0.96, 0.54, 0.54) if not bool(storage_info.get("recovery_possible", false)) else Color(0.95, 0.82, 0.46)
+	var readiness_report := Dictionary(entry.get("restore_readiness_report", {}))
+	match String(readiness_report.get("status", "ready")):
+		"blocked":
+			return Color(0.96, 0.54, 0.54)
+		"unknown":
+			return Color(0.95, 0.82, 0.46)
+		"disabled", "advisory":
+			return get_theme_color("font_placeholder_color", "Editor")
+		_:
+			return Color(0.60, 0.92, 0.70)
 
 
 func _queue_save_request() -> void:
@@ -583,7 +876,7 @@ func _sync_editor_runtime_settings_from_status(runtime: Node, status: Dictionary
 		if runtime.has_method("get_settings"):
 			return runtime.get_settings()
 		return SaveSettings.new()
-	return _configure_runtime_with_settings_dict(runtime, settings_data)
+	return _configure_runtime_with_settings(runtime, _settings_from_data(settings_data))
 
 
 func _sync_editor_dev_settings_from_status(runtime: Node, status: Dictionary = {}) -> SaveSettings:
@@ -591,20 +884,29 @@ func _sync_editor_dev_settings_from_status(runtime: Node, status: Dictionary = {
 		status = _read_runtime_status()
 	var settings_data := Dictionary(status.get("dev_settings", {}))
 	if settings_data.is_empty():
-		var derived := _build_derived_dev_settings_data(status)
-		if derived.is_empty():
+		var derived := _build_derived_dev_settings(status)
+		if derived == null:
 			return _sync_editor_runtime_settings_from_status(runtime, status)
-		return _configure_runtime_with_settings_dict(runtime, derived)
-	return _configure_runtime_with_settings_dict(runtime, settings_data)
+		return _configure_runtime_with_settings(runtime, derived)
+	return _configure_runtime_with_settings(runtime, _settings_from_data(settings_data))
 
 
-func _configure_runtime_with_settings_dict(runtime: Node, settings_data: Dictionary) -> SaveSettings:
-	var settings := SaveSettings.new()
+func _configure_runtime_with_settings(runtime: Node, settings: SaveSettings) -> SaveSettings:
+	if runtime.has_method("configure"):
+		runtime.configure(settings)
+	return settings
+
+
+func _settings_from_data(settings_data: Dictionary, fallback: SaveSettings = null) -> SaveSettings:
+	var settings := _clone_settings(fallback) if fallback != null else SaveSettings.new()
+	if settings_data.is_empty():
+		return settings
 	settings.save_root = String(settings_data.get("save_root", settings.save_root))
 	settings.slot_index_file = String(settings_data.get("slot_index_file", settings.slot_index_file))
 	settings.storage_format = int(settings_data.get("storage_format", settings.storage_format))
 	settings.pretty_json_in_editor = bool(settings_data.get("pretty_json_in_editor", settings.pretty_json_in_editor))
 	settings.use_safe_write = bool(settings_data.get("use_safe_write", settings.use_safe_write))
+	settings.keep_last_backup = bool(settings_data.get("keep_last_backup", settings.keep_last_backup))
 	settings.file_extension_json = String(settings_data.get("file_extension_json", settings.file_extension_json))
 	settings.file_extension_binary = String(settings_data.get("file_extension_binary", settings.file_extension_binary))
 	settings.log_level = int(settings_data.get("log_level", settings.log_level))
@@ -614,9 +916,338 @@ func _configure_runtime_with_settings_dict(runtime: Node, settings_data: Diction
 	settings.game_version = String(settings_data.get("game_version", settings.game_version))
 	settings.data_version = int(settings_data.get("data_version", settings.data_version))
 	settings.save_schema = String(settings_data.get("save_schema", settings.save_schema))
-	if runtime.has_method("configure"):
-		runtime.configure(settings)
+	settings.enforce_save_schema_match = bool(settings_data.get("enforce_save_schema_match", settings.enforce_save_schema_match))
+	settings.enforce_data_version_match = bool(settings_data.get("enforce_data_version_match", settings.enforce_data_version_match))
+	settings.verify_scene_path_on_load = bool(settings_data.get("verify_scene_path_on_load", settings.verify_scene_path_on_load))
 	return settings
+
+
+func _clone_settings(source: SaveSettings) -> SaveSettings:
+	var clone := SaveSettings.new()
+	if source == null:
+		return clone
+	clone.save_root = source.save_root
+	clone.slot_index_file = source.slot_index_file
+	clone.storage_format = source.storage_format
+	clone.pretty_json_in_editor = source.pretty_json_in_editor
+	clone.use_safe_write = source.use_safe_write
+	clone.keep_last_backup = source.keep_last_backup
+	clone.file_extension_json = source.file_extension_json
+	clone.file_extension_binary = source.file_extension_binary
+	clone.log_level = source.log_level
+	clone.include_meta_in_slot_file = source.include_meta_in_slot_file
+	clone.auto_create_dirs = source.auto_create_dirs
+	clone.project_title = source.project_title
+	clone.game_version = source.game_version
+	clone.data_version = source.data_version
+	clone.save_schema = source.save_schema
+	clone.enforce_save_schema_match = source.enforce_save_schema_match
+	clone.enforce_data_version_match = source.enforce_data_version_match
+	clone.verify_scene_path_on_load = source.verify_scene_path_on_load
+	return clone
+
+
+func _attach_entry_reports(entry: Dictionary, settings: SaveSettings, status: Dictionary, runtime: Node = null) -> Dictionary:
+	var meta := Dictionary(entry.get("meta", {}))
+	entry["storage_info"] = _build_entry_storage_info(String(entry.get("name", "")), settings, runtime)
+	entry["compatibility_report"] = _build_entry_compatibility_report(meta, settings)
+	entry["restore_readiness_report"] = _build_restore_readiness_report(meta, settings, status)
+	return entry
+
+
+func _build_entry_storage_info(entry_name: String, settings: SaveSettings, runtime: Node = null) -> Dictionary:
+	if runtime != null and runtime.has_method("inspect_slot_storage"):
+		var inspect_result = runtime.inspect_slot_storage(entry_name)
+		if inspect_result != null and inspect_result.ok and inspect_result.data is Dictionary:
+			return Dictionary(inspect_result.data)
+
+	var slot_path := ""
+	if runtime != null and runtime.has_method("get_slot_path"):
+		var path_result = runtime.get_slot_path(entry_name)
+		if path_result != null and path_result.ok:
+			slot_path = String(path_result.data)
+	if slot_path.is_empty():
+		slot_path = _resolve_slot_path_from_settings(entry_name, settings)
+
+	var backup_path := "%s%s" % [slot_path, BACKUP_FILE_SUFFIX] if not slot_path.is_empty() else ""
+	return {
+		"slot_path": slot_path,
+		"backup_path": backup_path,
+		"primary_exists": not slot_path.is_empty() and FileAccess.file_exists(slot_path),
+		"primary_valid_payload": not slot_path.is_empty() and _probe_payload_file(slot_path, _detect_format_for_path(slot_path, settings)),
+		"primary_probe_error": _probe_payload_error(slot_path, settings),
+		"backup_exists": not backup_path.is_empty() and FileAccess.file_exists(backup_path),
+		"backup_valid_payload": not backup_path.is_empty() and _probe_payload_file(backup_path, _detect_format_for_path(slot_path, settings)),
+		"backup_probe_error": _probe_payload_error(backup_path, settings),
+		"recovery_possible": (not slot_path.is_empty() and not _probe_payload_file(slot_path, _detect_format_for_path(slot_path, settings))) and (not backup_path.is_empty() and _probe_payload_file(backup_path, _detect_format_for_path(slot_path, settings))),
+	}
+
+
+func _resolve_slot_path_from_settings(entry_name: String, settings: SaveSettings) -> String:
+	if settings == null or entry_name.is_empty():
+		return ""
+	var candidates := [
+		settings.save_root.path_join("%s.%s" % [_sanitize_slot_id(entry_name), settings.file_extension_json]),
+		settings.save_root.path_join("%s.%s" % [_sanitize_slot_id(entry_name), settings.file_extension_binary]),
+	]
+	for candidate in candidates:
+		if FileAccess.file_exists(candidate):
+			return candidate
+	return candidates[0] if not candidates.is_empty() else ""
+
+
+func _detect_format_for_path(path: String, settings: SaveSettings) -> int:
+	if settings != null and path.get_extension().to_lower() == settings.file_extension_binary.to_lower():
+		return FORMAT_BINARY
+	return FORMAT_JSON
+
+
+func _probe_payload_file(path: String, format: int) -> bool:
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return false
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return false
+	if format == FORMAT_JSON:
+		var text := file.get_as_text()
+		var json := JSON.new()
+		if json.parse(text) != OK:
+			return false
+		var native_payload: Variant = json.data
+		return native_payload is Dictionary and native_payload.has("meta") and native_payload.has("data") and native_payload["meta"] is Dictionary
+	var bytes: PackedByteArray = file.get_buffer(file.get_length())
+	var payload: Variant = bytes_to_var(bytes)
+	return payload is Dictionary and payload.has("meta") and payload.has("data") and payload["meta"] is Dictionary
+
+
+func _probe_payload_error(path: String, settings: SaveSettings) -> String:
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return "FILE_NOT_FOUND"
+	var format := _detect_format_for_path(path, settings)
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return "READ_FAILED"
+	if format == FORMAT_JSON:
+		var text := file.get_as_text()
+		var json := JSON.new()
+		if json.parse(text) != OK:
+			return "INVALID_FORMAT"
+		var native_payload: Variant = json.data
+		if not (native_payload is Dictionary and native_payload.has("meta") and native_payload.has("data") and native_payload["meta"] is Dictionary):
+			return "INVALID_PAYLOAD"
+		return ""
+	var bytes: PackedByteArray = file.get_buffer(file.get_length())
+	var payload: Variant = bytes_to_var(bytes)
+	if not (payload is Dictionary and payload.has("meta") and payload.has("data") and payload["meta"] is Dictionary):
+		return "INVALID_PAYLOAD"
+	return ""
+
+
+func _sanitize_slot_id(slot_id: String) -> String:
+	var sanitized := slot_id.strip_edges()
+	sanitized = sanitized.replace("/", "_")
+	sanitized = sanitized.replace("\\", "_")
+	sanitized = sanitized.replace(":", "_")
+	sanitized = sanitized.replace("*", "_")
+	sanitized = sanitized.replace("?", "_")
+	sanitized = sanitized.replace("\"", "_")
+	sanitized = sanitized.replace("<", "_")
+	sanitized = sanitized.replace(">", "_")
+	sanitized = sanitized.replace("|", "_")
+	if sanitized.is_empty():
+		sanitized = "slot"
+	return sanitized
+
+
+func _build_entry_compatibility_report(meta: Dictionary, settings: SaveSettings) -> Dictionary:
+	var report := {
+		"slot_game_version": String(meta.get("game_version", "")),
+		"project_game_version": settings.game_version,
+		"slot_data_version": int(meta.get("data_version", 0)),
+		"project_data_version": settings.data_version,
+		"slot_save_schema": String(meta.get("save_schema", "")),
+		"project_save_schema": settings.save_schema,
+		"schema_matches": true,
+		"data_version_matches": true,
+		"game_version_matches": true,
+		"compatible": true,
+		"reasons": PackedStringArray(),
+	}
+
+	var reasons: PackedStringArray = report["reasons"]
+	var slot_schema := String(report["slot_save_schema"])
+	var project_schema := String(report["project_save_schema"])
+	var schema_mismatch := not slot_schema.is_empty() and not project_schema.is_empty() and slot_schema != project_schema
+	report["schema_matches"] = not schema_mismatch
+	if schema_mismatch and settings.enforce_save_schema_match:
+		report["compatible"] = false
+		reasons.append("SAVE_SCHEMA_MISMATCH")
+
+	var slot_data_version := int(report["slot_data_version"])
+	var project_data_version := int(report["project_data_version"])
+	var data_version_mismatch := slot_data_version > 0 and project_data_version > 0 and slot_data_version != project_data_version
+	report["data_version_matches"] = not data_version_mismatch
+	if data_version_mismatch and settings.enforce_data_version_match:
+		report["compatible"] = false
+		reasons.append("DATA_VERSION_MISMATCH")
+
+	var slot_game_version := String(report["slot_game_version"])
+	var project_game_version := String(report["project_game_version"])
+	if not slot_game_version.is_empty() and not project_game_version.is_empty() and slot_game_version != project_game_version:
+		report["game_version_matches"] = false
+		reasons.append("GAME_VERSION_DIFFERS")
+
+	report["reasons"] = reasons
+	return report
+
+
+func _build_compatibility_status_text(report: Dictionary) -> String:
+	if report.is_empty():
+		return "Compatibility: Unknown"
+	var reasons := PackedStringArray(report.get("reasons", PackedStringArray()))
+	if not bool(report.get("compatible", true)):
+		return "Compatibility: Migration required"
+	if not reasons.is_empty():
+		return "Compatibility: Compatible with differences"
+	return "Compatibility: OK"
+
+
+func _build_compatibility_status_color(report: Dictionary) -> Color:
+	if report.is_empty():
+		return get_theme_color("font_placeholder_color", "Editor")
+	var reasons := PackedStringArray(report.get("reasons", PackedStringArray()))
+	if not bool(report.get("compatible", true)):
+		return Color(0.96, 0.54, 0.54)
+	if not reasons.is_empty():
+		return Color(0.95, 0.82, 0.46)
+	return Color(0.60, 0.92, 0.70)
+
+
+func _build_compatibility_tooltip(report: Dictionary, _meta: Dictionary) -> String:
+	if report.is_empty():
+		return "Compatibility could not be derived from slot metadata."
+
+	var lines: PackedStringArray = []
+	lines.append(_build_compatibility_status_text(report))
+	lines.append("Slot schema: %s | Project schema: %s" % [
+		String(report.get("slot_save_schema", "")),
+		String(report.get("project_save_schema", "")),
+	])
+	lines.append("Slot data version: %d | Project data version: %d" % [
+		int(report.get("slot_data_version", 0)),
+		int(report.get("project_data_version", 0)),
+	])
+	if String(report.get("slot_game_version", "")).is_empty() and String(report.get("project_game_version", "")).is_empty():
+		lines.append("Game version: not compared")
+	else:
+		lines.append("Slot game version: %s | Project game version: %s" % [
+			String(report.get("slot_game_version", "")),
+			String(report.get("project_game_version", "")),
+		])
+	var reasons := PackedStringArray(report.get("reasons", PackedStringArray()))
+	lines.append("Reasons: %s" % ("none" if reasons.is_empty() else ", ".join(reasons)))
+	return "\n".join(lines)
+
+
+func _build_restore_readiness_report(meta: Dictionary, settings: SaveSettings, status: Dictionary) -> Dictionary:
+	var expected_scene_path := String(meta.get("scene_path", ""))
+	var current_scene_path := String(status.get("current_scene_path", ""))
+	var runtime_active := _is_runtime_status_active(status)
+	var report := {
+		"ready": true,
+		"status": "ready",
+		"expected_scene_path": expected_scene_path,
+		"current_scene_path": current_scene_path,
+		"reason": "",
+	}
+
+	if not settings.verify_scene_path_on_load:
+		report["status"] = "disabled"
+		report["reason"] = "SCENE_PATH_CHECK_DISABLED"
+		return report
+
+	if expected_scene_path.is_empty():
+		report["status"] = "advisory"
+		report["reason"] = "NO_SAVED_SCENE_PATH"
+		return report
+
+	if not runtime_active:
+		report["ready"] = false
+		report["status"] = "unknown"
+		report["reason"] = "RUNTIME_UNAVAILABLE"
+		return report
+
+	if current_scene_path.is_empty():
+		report["ready"] = false
+		report["status"] = "unknown"
+		report["reason"] = "CURRENT_SCENE_UNKNOWN"
+		return report
+
+	if current_scene_path != expected_scene_path:
+		report["ready"] = false
+		report["status"] = "blocked"
+		report["reason"] = "SCENE_PATH_MISMATCH"
+		return report
+
+	return report
+
+
+func _build_restore_readiness_status_text(report: Dictionary) -> String:
+	if report.is_empty():
+		return "Restore Contract: Unknown"
+	match String(report.get("status", "ready")):
+		"blocked":
+			return "Restore Contract: Expected scene not active"
+		"unknown":
+			return "Restore Contract: Runtime context missing"
+		"disabled":
+			return "Restore Contract: Scene target check disabled"
+		"advisory":
+			return "Restore Contract: No scene target recorded"
+		_:
+			return "Restore Contract: Ready"
+
+
+func _build_restore_readiness_status_color(report: Dictionary) -> Color:
+	if report.is_empty():
+		return get_theme_color("font_placeholder_color", "Editor")
+	match String(report.get("status", "ready")):
+		"blocked":
+			return Color(0.96, 0.54, 0.54)
+		"unknown":
+			return Color(0.95, 0.82, 0.46)
+		"disabled", "advisory":
+			return get_theme_color("font_placeholder_color", "Editor")
+		_:
+			return Color(0.60, 0.92, 0.70)
+
+
+func _build_restore_readiness_tooltip(report: Dictionary, meta: Dictionary) -> String:
+	if report.is_empty():
+		return "Restore contract could not be evaluated."
+
+	var lines: PackedStringArray = []
+	lines.append(_build_restore_readiness_status_text(report))
+	var expected_scene_path := String(report.get("expected_scene_path", ""))
+	var current_scene_path := String(report.get("current_scene_path", ""))
+	lines.append("Saved scene path: %s" % (expected_scene_path if not expected_scene_path.is_empty() else "<none recorded>"))
+	lines.append("Current runtime scene: %s" % (current_scene_path if not current_scene_path.is_empty() else "<unknown>"))
+	match String(report.get("reason", "")):
+		"SCENE_PATH_CHECK_DISABLED":
+			lines.append("Scene-path verification is disabled, so SaveFlow will not enforce the restore contract against the current scene target.")
+		"NO_SAVED_SCENE_PATH":
+			lines.append("This slot did not record a scene path, so SaveFlow cannot verify that the expected scene is already active before restore.")
+		"RUNTIME_UNAVAILABLE":
+			lines.append("SaveFlow verifies this restore contract against the running scene target, but no runtime context is available right now.")
+		"CURRENT_SCENE_UNKNOWN":
+			lines.append("SaveFlow runtime is active, but it has not reported the current restore target yet.")
+		"SCENE_PATH_MISMATCH":
+			lines.append("This restore contract expects the saved scene to already be active before restore. Load the expected scene first and retry.")
+		_:
+			lines.append("The current runtime scene satisfies the saved restore contract.")
+	if meta.has("scope_path") and not String(meta.get("scope_path", "")).is_empty():
+		lines.append("Saved scope path: %s" % String(meta.get("scope_path", "")))
+	return "\n".join(lines)
 
 
 func _read_runtime_status() -> Dictionary:
@@ -624,38 +1255,28 @@ func _read_runtime_status() -> Dictionary:
 
 
 func _resolve_formal_save_root_display(status: Dictionary = {}) -> String:
-	var settings := Dictionary(status.get("settings", {}))
-	var save_root := String(settings.get("save_root", _get_editor_default_save_root()))
+	var save_root := _formal_settings_from_status(status).save_root
 	if save_root.is_empty():
 		return PATH_UNAVAILABLE
 	return _globalize_user_path(save_root)
 
 
 func _resolve_formal_slot_index_display(status: Dictionary = {}) -> String:
-	var settings := Dictionary(status.get("settings", {}))
-	var slot_index := String(settings.get("slot_index_file", _get_editor_default_slot_index()))
+	var slot_index := _formal_settings_from_status(status).slot_index_file
 	if slot_index.is_empty():
 		return PATH_UNAVAILABLE
 	return _globalize_user_path(slot_index)
 
 
 func _resolve_dev_save_root_display(status: Dictionary = {}) -> String:
-	var settings := Dictionary(status.get("dev_settings", {}))
-	var save_root := String(settings.get("save_root", ""))
-	if save_root.is_empty():
-		var derived := _build_derived_dev_settings_data(status)
-		save_root = String(derived.get("save_root", ""))
+	var save_root := _dev_settings_from_status(status).save_root
 	if save_root.is_empty():
 		return PATH_UNAVAILABLE
 	return _globalize_user_path(save_root)
 
 
 func _resolve_dev_slot_index_display(status: Dictionary = {}) -> String:
-	var settings := Dictionary(status.get("dev_settings", {}))
-	var slot_index := String(settings.get("slot_index_file", ""))
-	if slot_index.is_empty():
-		var derived := _build_derived_dev_settings_data(status)
-		slot_index = String(derived.get("slot_index_file", ""))
+	var slot_index := _dev_settings_from_status(status).slot_index_file
 	if slot_index.is_empty():
 		return PATH_UNAVAILABLE
 	return _globalize_user_path(slot_index)
@@ -697,11 +1318,11 @@ func _open_dev_save_folder() -> void:
 	_open_folder_path(path, "Dev save folder is unavailable.")
 
 
-func _build_derived_dev_settings_data(status: Dictionary) -> Dictionary:
-	var formal := Dictionary(status.get("settings", {}))
-	var formal_root := String(formal.get("save_root", _get_editor_default_save_root()))
+func _build_derived_dev_settings(status: Dictionary) -> SaveSettings:
+	var formal_settings := _formal_settings_from_status(status)
+	var formal_root := formal_settings.save_root
 	if formal_root.is_empty():
-		return {}
+		return null
 
 	var formal_root_clean := formal_root.trim_suffix("/")
 	formal_root_clean = formal_root_clean.trim_suffix("\\")
@@ -714,16 +1335,41 @@ func _build_derived_dev_settings_data(status: Dictionary) -> Dictionary:
 	else:
 		dev_root = formal_root_clean.path_join("devSaves")
 
-	var slot_index := String(formal.get("slot_index_file", _get_editor_default_slot_index()))
+	var slot_index := formal_settings.slot_index_file
 	var dev_index := ""
 	if not slot_index.is_empty():
 		var idx_parent := slot_index.get_base_dir()
 		dev_index = idx_parent.path_join("dev-slots.index")
 
-	var derived: Dictionary = {"save_root": dev_root}
+	var derived := _clone_settings(formal_settings)
+	derived.save_root = dev_root
 	if not dev_index.is_empty():
-		derived["slot_index_file"] = dev_index
+		derived.slot_index_file = dev_index
 	return derived
+
+
+func _formal_settings_from_status(status: Dictionary = {}) -> SaveSettings:
+	if status.is_empty():
+		status = _read_runtime_status()
+	var fallback := SaveSettings.new()
+	fallback.save_root = _get_editor_default_save_root()
+	fallback.slot_index_file = _get_editor_default_slot_index()
+	return _settings_from_data(Dictionary(status.get("settings", {})), fallback)
+
+
+func _dev_settings_from_status(status: Dictionary = {}) -> SaveSettings:
+	if status.is_empty():
+		status = _read_runtime_status()
+	var explicit_dev := _settings_from_data(Dictionary(status.get("dev_settings", {})))
+	if not explicit_dev.save_root.is_empty() or not explicit_dev.slot_index_file.is_empty():
+		return explicit_dev
+	var derived := _build_derived_dev_settings(status)
+	if derived != null:
+		return derived
+	var fallback := SaveSettings.new()
+	fallback.save_root = "user://devSaves"
+	fallback.slot_index_file = "user://dev-slots.index"
+	return fallback
 
 
 func _open_folder_path(path: String, unavailable_message: String) -> void:
@@ -739,7 +1385,10 @@ func _open_folder_path(path: String, unavailable_message: String) -> void:
 
 
 func _is_runtime_available() -> bool:
-	var status := _read_runtime_status()
+	return _is_runtime_status_active(_read_runtime_status())
+
+
+func _is_runtime_status_active(status: Dictionary) -> bool:
 	return bool(status.get("runtime_available", false)) and int(Time.get_unix_time_from_system()) - int(status.get("updated_at_unix", 0)) <= STATUS_TIMEOUT_SECONDS
 
 
@@ -764,32 +1413,6 @@ func _format_unix_time(value: int) -> String:
 
 
 func _get_default_settings_for_scope(scope: String, status: Dictionary) -> SaveSettings:
-	var settings := SaveSettings.new()
-	
 	if scope == SCOPE_DEV:
-		# For dev saves, try to derive from formal settings or use defaults
-		var derived := _build_derived_dev_settings_data(status)
-		if not derived.is_empty():
-			settings.save_root = String(derived.get("save_root", ""))
-			settings.slot_index_file = String(derived.get("slot_index_file", ""))
-		else:
-			# Fallback to user://devSaves
-			settings.save_root = "user://devSaves"
-			settings.slot_index_file = "user://dev-slots.index"
-	else:
-		# For formal saves, use project settings or defaults
-		var formal_settings := Dictionary(status.get("settings", {}))
-		settings.save_root = String(formal_settings.get("save_root", "user://saves"))
-		settings.slot_index_file = String(formal_settings.get("slot_index_file", "user://slots.index"))
-	
-	# Set other defaults
-	settings.storage_format = 0  # FORMAT_AUTO
-	settings.pretty_json_in_editor = true
-	settings.use_safe_write = true
-	settings.file_extension_json = "json"
-	settings.file_extension_binary = "sav"
-	settings.log_level = 1  # INFO level
-	settings.include_meta_in_slot_file = true
-	settings.auto_create_dirs = true
-	
-	return settings
+		return _dev_settings_from_status(status)
+	return _formal_settings_from_status(status)

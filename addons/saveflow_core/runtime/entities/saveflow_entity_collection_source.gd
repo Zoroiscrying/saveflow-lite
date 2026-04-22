@@ -189,9 +189,12 @@ func describe_entity_collection_plan() -> Dictionary:
 		"valid": target != null and _is_entity_collection_plan_factory_valid(factory, saveflow_autoload_available),
 		"reason": _resolve_plan_reason(target, factory, saveflow_autoload_available),
 		"source_key": get_source_key(),
+		"entity_container_name": _describe_node_name(target),
+		"entity_container_path": _describe_node_path(target),
 		"target_name": _describe_node_name(target),
 		"target_path": _describe_node_path(target),
 		"target_resolution": _describe_target_resolution(target, factory, factory_plan),
+		"double_collection_conflicts": _detect_ancestor_node_source_conflicts(target),
 		"entity_factory_name": _describe_node_name(factory),
 		"entity_factory_path": _describe_node_path(factory),
 		"entity_factory_plan": factory_plan,
@@ -242,6 +245,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("SaveFlowEntityCollectionSource plan is invalid: %s" % String(plan.get("reason", "INVALID_ENTITY_COLLECTION")))
 	for path_text in PackedStringArray(plan.get("missing_identity_nodes", PackedStringArray())):
 		warnings.append("Runtime entity is missing SaveFlowIdentity: %s" % path_text)
+	for conflict_text in PackedStringArray(plan.get("double_collection_conflicts", PackedStringArray())):
+		warnings.append("Runtime set may be double-collected by parent object save logic: %s" % conflict_text)
 	return warnings
 
 
@@ -646,6 +651,52 @@ func _describe_factory_spawn_summary(factory_plan: Dictionary) -> String:
 	if not supported_entity_types.is_empty():
 		return "Factory handles `%s`.%s" % [type_summary, _describe_spawn_container_suffix(auto_create_container, container_name)]
 	return "Custom entity factory flow.%s" % _describe_spawn_container_suffix(auto_create_container, container_name)
+
+
+func _detect_ancestor_node_source_conflicts(target: Node) -> PackedStringArray:
+	var conflicts: PackedStringArray = []
+	if target == null or not target.is_inside_tree():
+		return conflicts
+	var scene_root := target.get_tree().current_scene
+	if scene_root == null:
+		return conflicts
+	var node_sources: Array = []
+	_collect_node_sources(scene_root, node_sources)
+	for source_variant in node_sources:
+		var node_source := source_variant as SaveFlowNodeSource
+		if node_source == null:
+			continue
+		var source_target: Node = node_source.call("_resolve_target") if node_source.has_method("_resolve_target") else node_source.get_parent()
+		if not is_instance_valid(source_target):
+			continue
+		if not source_target.is_ancestor_of(target):
+			continue
+		var relative_target_path := str(source_target.get_path_to(target))
+		if _node_source_collects_runtime_container(node_source, relative_target_path):
+			_append_unique_string(conflicts, "%s -> %s" % [_describe_node_path(node_source), relative_target_path])
+	return conflicts
+
+
+func _collect_node_sources(current: Node, into: Array) -> void:
+	for child_variant in current.get_children():
+		var child := child_variant as Node
+		if child == null:
+			continue
+		if child is SaveFlowNodeSource:
+			into.append(child)
+		_collect_node_sources(child, into)
+
+
+func _node_source_collects_runtime_container(node_source: SaveFlowNodeSource, relative_target_path: String) -> bool:
+	if relative_target_path.is_empty():
+		return false
+	for included_path_variant in node_source.included_paths:
+		var included_path := String(included_path_variant)
+		if included_path == relative_target_path:
+			return true
+		if relative_target_path.begins_with(included_path + "/"):
+			return true
+	return false
 
 
 func _describe_spawn_container_suffix(auto_create_container: bool, container_name: String) -> String:

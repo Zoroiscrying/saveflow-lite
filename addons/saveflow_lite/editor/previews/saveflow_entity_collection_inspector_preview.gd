@@ -3,10 +3,18 @@ extends VBoxContainer
 
 const LABEL_WIDTH := 112
 const PADDING := 10
+const META_PREVIEW_EXPANDED := "_saveflow_entity_collection_preview_expanded"
+const META_OPTIONS_EXPANDED := "_saveflow_entity_collection_options_expanded"
+const META_MEMBERS_EXPANDED := "_saveflow_entity_collection_members_expanded"
+const META_CONTRACT_EXPANDED := "_saveflow_entity_collection_contract_expanded"
+const META_DETAILS_EXPANDED := "_saveflow_entity_collection_details_expanded"
 
 var _entity_collection_source: SaveFlowEntityCollectionSource
 var _last_signature: String = ""
 var _preview_expanded := true
+var _options_expanded := false
+var _members_expanded := false
+var _contract_expanded := false
 var _details_expanded := false
 
 var _preview_toggle: Button
@@ -15,19 +23,29 @@ var _status_chip: PanelContainer
 var _status_label: Label
 var _target_value: Label
 var _factory_value: Label
-var _source_key_value: Label
 var _restore_policy_value: Label
+var _entity_count_value: Label
+var _options_toggle: Button
+var _options_box: VBoxContainer
+var _auto_register_checkbox: CheckBox
+var _direct_children_checkbox: CheckBox
+var _members_toggle: Button
+var _members_box: VBoxContainer
+var _missing_title: Label
+var _missing_value: RichTextLabel
+var _entities_title: Label
+var _entities_value: RichTextLabel
+var _details_toggle: Button
+var _details_box: VBoxContainer
+var _contract_toggle: Button
+var _contract_box: VBoxContainer
+var _source_key_value: Label
+var _ownership_value: Label
+var _restore_contract_value: Label
 var _failure_policy_value: Label
 var _container_strategy_value: Label
 var _factory_types_value: Label
 var _factory_spawn_value: Label
-var _entity_count_value: Label
-var _auto_register_checkbox: CheckBox
-var _direct_children_checkbox: CheckBox
-var _missing_value: RichTextLabel
-var _entities_value: RichTextLabel
-var _details_toggle: Button
-var _details_box: VBoxContainer
 var _target_path_value: Label
 var _factory_path_value: Label
 func _ready() -> void:
@@ -38,6 +56,7 @@ func _ready() -> void:
 
 func set_entity_collection_source(entity_collection_source: SaveFlowEntityCollectionSource) -> void:
 	_entity_collection_source = entity_collection_source
+	_restore_foldout_state_from_source()
 	_refresh()
 
 
@@ -103,45 +122,73 @@ func _build_ui() -> void:
 	content.add_theme_constant_override("separation", 10)
 	content_padding.add_child(content)
 
-	_target_value = _add_row(content, "Container")
+	_target_value = _add_row(content, "Entity Container")
 	_factory_value = _add_row(content, "Entity Factory")
-	_source_key_value = _add_row(content, "Save Key")
 	_restore_policy_value = _add_row(content, "Restore")
-	_failure_policy_value = _add_row(content, "Failure")
-	_container_strategy_value = _add_row(content, "Container Mode")
-	_factory_types_value = _add_row(content, "Factory Types")
-	_factory_spawn_value = _add_row(content, "Spawn Path")
 	_entity_count_value = _add_row(content, "Entities")
+
+	_options_toggle = Button.new()
+	_options_toggle.flat = true
+	_options_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_options_toggle.pressed.connect(_on_options_toggled)
+	content.add_child(_options_toggle)
+
+	_options_box = VBoxContainer.new()
+	_options_box.add_theme_constant_override("separation", 6)
+	content.add_child(_options_box)
 
 	_auto_register_checkbox = CheckBox.new()
 	_auto_register_checkbox.text = "Auto-register this entity factory"
 	_auto_register_checkbox.toggled.connect(_on_auto_register_toggled)
-	content.add_child(_auto_register_checkbox)
+	_options_box.add_child(_auto_register_checkbox)
 
 	_direct_children_checkbox = CheckBox.new()
 	_direct_children_checkbox.text = "Scan direct children only"
 	_direct_children_checkbox.toggled.connect(_on_direct_children_toggled)
-	content.add_child(_direct_children_checkbox)
+	_options_box.add_child(_direct_children_checkbox)
 
-	var missing_title := Label.new()
-	missing_title.text = "Missing Identity"
-	content.add_child(missing_title)
+	_members_toggle = Button.new()
+	_members_toggle.flat = true
+	_members_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_members_toggle.pressed.connect(_on_members_toggled)
+	content.add_child(_members_toggle)
+
+	_members_box = VBoxContainer.new()
+	_members_box.add_theme_constant_override("separation", 6)
+	content.add_child(_members_box)
+
+	_missing_title = Label.new()
+	_missing_title.text = "Missing Identity"
+	_members_box.add_child(_missing_title)
 
 	_missing_value = RichTextLabel.new()
 	_missing_value.fit_content = true
 	_missing_value.scroll_active = false
 	_missing_value.selection_enabled = true
-	content.add_child(_missing_value)
+	_members_box.add_child(_missing_value)
 
-	var entities_title := Label.new()
-	entities_title.text = "Entity Members"
-	content.add_child(entities_title)
+	_entities_title = Label.new()
+	_entities_title.text = "Entity Members"
+	_members_box.add_child(_entities_title)
 
 	_entities_value = RichTextLabel.new()
 	_entities_value.fit_content = true
 	_entities_value.scroll_active = false
 	_entities_value.selection_enabled = true
-	content.add_child(_entities_value)
+	_members_box.add_child(_entities_value)
+
+	_contract_toggle = Button.new()
+	_contract_toggle.flat = true
+	_contract_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_contract_toggle.pressed.connect(_on_contract_toggled)
+	content.add_child(_contract_toggle)
+
+	_contract_box = VBoxContainer.new()
+	_contract_box.add_theme_constant_override("separation", 6)
+	content.add_child(_contract_box)
+
+	_restore_contract_value = _add_row(_contract_box, "Restore Contract")
+	_ownership_value = _add_row(_contract_box, "Ownership")
 
 	_details_toggle = Button.new()
 	_details_toggle.flat = true
@@ -153,7 +200,12 @@ func _build_ui() -> void:
 	_details_box.add_theme_constant_override("separation", 6)
 	content.add_child(_details_box)
 
-	_target_path_value = _add_row(_details_box, "Container Path")
+	_source_key_value = _add_row(_details_box, "Save Key")
+	_failure_policy_value = _add_row(_details_box, "Failure")
+	_container_strategy_value = _add_row(_details_box, "Container Mode")
+	_factory_types_value = _add_row(_details_box, "Factory Types")
+	_factory_spawn_value = _add_row(_details_box, "Spawn Path")
+	_target_path_value = _add_row(_details_box, "Entity Container Path")
 	_factory_path_value = _add_row(_details_box, "Factory Path")
 	_apply_panel_styles(header_panel, _content_panel)
 
@@ -193,14 +245,11 @@ func _refresh() -> void:
 
 	_target_value.text = _best_name(String(plan.get("target_name", "")), String(plan.get("target_path", "")))
 	_factory_value.text = _best_name(String(plan.get("entity_factory_name", "")), String(plan.get("entity_factory_path", "")))
-	_source_key_value.text = String(plan.get("source_key", ""))
 	_restore_policy_value.text = String(plan.get("restore_policy_name", "Create Missing"))
-	_failure_policy_value.text = String(plan.get("failure_policy_name", "Fail On Missing Or Invalid"))
-	_container_strategy_value.text = String(plan.get("target_resolution", "<none>"))
-	_factory_types_value.text = _format_list(plan.get("factory_supported_entity_types", PackedStringArray()))
-	_factory_spawn_value.text = String(plan.get("factory_spawn_summary", ""))
-	_entity_count_value.text = str(int(plan.get("entity_count", 0)))
+	_entity_count_value.text = _describe_entity_count(plan)
 
+	_options_toggle.text = _foldout_text("Options", _options_expanded)
+	_options_box.visible = _options_expanded
 	_auto_register_checkbox.set_block_signals(true)
 	_auto_register_checkbox.button_pressed = bool(plan.get("auto_register_factory", false))
 	_auto_register_checkbox.set_block_signals(false)
@@ -209,13 +258,32 @@ func _refresh() -> void:
 	_direct_children_checkbox.button_pressed = bool(plan.get("include_direct_children_only", false))
 	_direct_children_checkbox.set_block_signals(false)
 
+	_members_toggle.text = _foldout_text("Members", _members_expanded)
+	_members_box.visible = _members_expanded
 	_missing_value.text = _format_list(missing_identities)
 	_missing_value.modulate = _warning_color()
 	_entities_value.text = _format_entity_candidates(entity_candidates)
+	_missing_title.visible = not missing_identities.is_empty()
+	_missing_value.visible = not missing_identities.is_empty()
+	_entities_title.visible = not entity_candidates.is_empty()
+	_entities_value.visible = not entity_candidates.is_empty()
 
-	_details_toggle.text = _foldout_text("Details", _details_expanded)
+	_contract_toggle.text = _foldout_text("Contract", _contract_expanded)
+	_contract_box.visible = _contract_expanded
+	_restore_contract_value.text = _describe_restore_contract(plan)
+	_ownership_value.text = _describe_ownership(plan)
+
+	_details_toggle.text = _foldout_text("Diagnostics", _details_expanded)
 	_details_box.visible = _details_expanded
-	_target_path_value.text = String(plan.get("target_path", ""))
+	_source_key_value.text = String(plan.get("source_key", ""))
+	var guardrails_text := _format_guardrails(plan)
+	_failure_policy_value.text = String(plan.get("failure_policy_name", "Fail On Missing Or Invalid"))
+	if not guardrails_text.is_empty():
+		_failure_policy_value.text = "%s | %s" % [_failure_policy_value.text, guardrails_text]
+	_container_strategy_value.text = String(plan.get("target_resolution", "<none>"))
+	_factory_types_value.text = _format_list(plan.get("factory_supported_entity_types", PackedStringArray()))
+	_factory_spawn_value.text = String(plan.get("factory_spawn_summary", ""))
+	_target_path_value.text = String(plan.get("entity_container_path", plan.get("target_path", "")))
 	_factory_path_value.text = String(plan.get("entity_factory_path", ""))
 
 func _read_plan() -> Dictionary:
@@ -291,13 +359,62 @@ func _format_entity_candidates(candidates: Array) -> String:
 	return "\n".join(lines)
 
 
+func _describe_entity_count(plan: Dictionary) -> String:
+	var entity_count := int(plan.get("entity_count", 0))
+	var missing_count := PackedStringArray(plan.get("missing_identity_nodes", PackedStringArray())).size()
+	if missing_count == 0:
+		return str(entity_count)
+	return "%d (%d missing identity)" % [entity_count, missing_count]
+
+
+func _describe_restore_contract(plan: Dictionary) -> String:
+	if not bool(plan.get("valid", false)):
+		return "Restore cannot proceed until the container and entity factory resolve."
+	return "Restore runs against an existing runtime container. SaveFlow does not load the owning scene for this collection or orchestrate scene transitions; the correct scene or scope must already be active before load."
+
+
+func _describe_ownership(plan: Dictionary) -> String:
+	var container_name := _best_name(String(plan.get("entity_container_name", "")), String(plan.get("entity_container_path", "")))
+	if container_name == "<none>":
+		return "This collection should own one runtime entity container."
+	return "This source owns the runtime set inside `%s`. Do not also save that same set through a parent object source or broad scene traversal." % container_name
+
+
+func _format_guardrails(plan: Dictionary) -> String:
+	var lines: PackedStringArray = []
+	var conflicts: PackedStringArray = PackedStringArray(plan.get("double_collection_conflicts", PackedStringArray()))
+	if not conflicts.is_empty():
+		lines.append("Possible overlap with parent object save logic: %s" % ", ".join(conflicts))
+	return "\n".join(lines)
+
+
 func _on_preview_toggled() -> void:
 	_preview_expanded = not _preview_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_options_toggled() -> void:
+	_options_expanded = not _options_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_members_toggled() -> void:
+	_members_expanded = not _members_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_contract_toggled() -> void:
+	_contract_expanded = not _contract_expanded
+	_persist_foldout_state_to_source()
 	_refresh()
 
 
 func _on_details_toggled() -> void:
 	_details_expanded = not _details_expanded
+	_persist_foldout_state_to_source()
 	_refresh()
 
 
@@ -321,6 +438,26 @@ func _mark_collection_dirty() -> void:
 	if _entity_collection_source == null or not is_instance_valid(_entity_collection_source):
 		return
 	_entity_collection_source.notify_property_list_changed()
+
+
+func _restore_foldout_state_from_source() -> void:
+	if _entity_collection_source == null or not is_instance_valid(_entity_collection_source):
+		return
+	_preview_expanded = bool(_entity_collection_source.get_meta(META_PREVIEW_EXPANDED, _preview_expanded))
+	_options_expanded = bool(_entity_collection_source.get_meta(META_OPTIONS_EXPANDED, _options_expanded))
+	_members_expanded = bool(_entity_collection_source.get_meta(META_MEMBERS_EXPANDED, _members_expanded))
+	_contract_expanded = bool(_entity_collection_source.get_meta(META_CONTRACT_EXPANDED, _contract_expanded))
+	_details_expanded = bool(_entity_collection_source.get_meta(META_DETAILS_EXPANDED, _details_expanded))
+
+
+func _persist_foldout_state_to_source() -> void:
+	if _entity_collection_source == null or not is_instance_valid(_entity_collection_source):
+		return
+	_entity_collection_source.set_meta(META_PREVIEW_EXPANDED, _preview_expanded)
+	_entity_collection_source.set_meta(META_OPTIONS_EXPANDED, _options_expanded)
+	_entity_collection_source.set_meta(META_MEMBERS_EXPANDED, _members_expanded)
+	_entity_collection_source.set_meta(META_CONTRACT_EXPANDED, _contract_expanded)
+	_entity_collection_source.set_meta(META_DETAILS_EXPANDED, _details_expanded)
 
 
 func _foldout_text(label_text: String, expanded: bool) -> String:

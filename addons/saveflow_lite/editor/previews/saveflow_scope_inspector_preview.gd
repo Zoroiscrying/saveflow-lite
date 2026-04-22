@@ -6,10 +6,16 @@ extends VBoxContainer
 
 const LABEL_WIDTH := 112
 const PADDING := 10
+const META_PREVIEW_EXPANDED := "_saveflow_scope_preview_expanded"
+const META_CONTRACT_EXPANDED := "_saveflow_scope_contract_expanded"
+const META_MEMBERS_EXPANDED := "_saveflow_scope_members_expanded"
+const META_DETAILS_EXPANDED := "_saveflow_scope_details_expanded"
 
 var _scope: SaveFlowScope
 var _last_signature: String = ""
 var _preview_expanded := true
+var _contract_expanded := false
+var _members_expanded := false
 var _details_expanded := false
 
 var _preview_toggle: Button
@@ -17,19 +23,22 @@ var _content_panel: PanelContainer
 var _status_chip: PanelContainer
 var _status_label: Label
 var _scope_key_value: Label
-var _namespace_value: Label
-var _phase_value: Label
 var _restore_policy_value: Label
 var _child_scopes_value: Label
 var _child_sources_value: Label
-var _enabled_checkbox: CheckBox
-var _save_enabled_checkbox: CheckBox
-var _load_enabled_checkbox: CheckBox
-var _details_toggle: Button
-var _details_box: VBoxContainer
-var _reason_value: Label
+var _contract_toggle: Button
+var _contract_box: VBoxContainer
+var _restore_contract_value: Label
+var _flow_value: Label
+var _members_toggle: Button
+var _members_box: VBoxContainer
 var _scope_list_value: RichTextLabel
 var _source_list_value: RichTextLabel
+var _details_toggle: Button
+var _details_box: VBoxContainer
+var _namespace_value: Label
+var _phase_value: Label
+var _reason_value: Label
 
 
 func _ready() -> void:
@@ -40,6 +49,7 @@ func _ready() -> void:
 
 func set_scope(scope: SaveFlowScope) -> void:
 	_scope = scope
+	_restore_foldout_state_from_scope()
 	_refresh()
 
 
@@ -106,26 +116,52 @@ func _build_ui() -> void:
 	content_padding.add_child(content)
 
 	_scope_key_value = _add_row(content, "Scope Key")
-	_namespace_value = _add_row(content, "Namespace")
-	_phase_value = _add_row(content, "Phase")
 	_restore_policy_value = _add_row(content, "Domain Restore")
 	_child_scopes_value = _add_row(content, "Child Domains")
 	_child_sources_value = _add_row(content, "Leaf Sources")
 
-	_enabled_checkbox = CheckBox.new()
-	_enabled_checkbox.text = "Enabled"
-	_enabled_checkbox.disabled = true
-	content.add_child(_enabled_checkbox)
+	_contract_toggle = Button.new()
+	_contract_toggle.flat = true
+	_contract_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_contract_toggle.pressed.connect(_on_contract_toggled)
+	content.add_child(_contract_toggle)
 
-	_save_enabled_checkbox = CheckBox.new()
-	_save_enabled_checkbox.text = "Save enabled"
-	_save_enabled_checkbox.disabled = true
-	content.add_child(_save_enabled_checkbox)
+	_contract_box = VBoxContainer.new()
+	_contract_box.add_theme_constant_override("separation", 6)
+	content.add_child(_contract_box)
 
-	_load_enabled_checkbox = CheckBox.new()
-	_load_enabled_checkbox.text = "Load enabled"
-	_load_enabled_checkbox.disabled = true
-	content.add_child(_load_enabled_checkbox)
+	_restore_contract_value = _add_row(_contract_box, "Restore Contract")
+	_flow_value = _add_row(_contract_box, "Flow")
+
+	_members_toggle = Button.new()
+	_members_toggle.flat = true
+	_members_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_members_toggle.pressed.connect(_on_members_toggled)
+	content.add_child(_members_toggle)
+
+	_members_box = VBoxContainer.new()
+	_members_box.add_theme_constant_override("separation", 6)
+	content.add_child(_members_box)
+
+	var scope_list_title := Label.new()
+	scope_list_title.text = "Child Domains"
+	_members_box.add_child(scope_list_title)
+
+	_scope_list_value = RichTextLabel.new()
+	_scope_list_value.fit_content = true
+	_scope_list_value.scroll_active = false
+	_scope_list_value.selection_enabled = true
+	_members_box.add_child(_scope_list_value)
+
+	var source_list_title := Label.new()
+	source_list_title.text = "Leaf Sources"
+	_members_box.add_child(source_list_title)
+
+	_source_list_value = RichTextLabel.new()
+	_source_list_value.fit_content = true
+	_source_list_value.scroll_active = false
+	_source_list_value.selection_enabled = true
+	_members_box.add_child(_source_list_value)
 
 	_details_toggle = Button.new()
 	_details_toggle.flat = true
@@ -137,27 +173,9 @@ func _build_ui() -> void:
 	_details_box.add_theme_constant_override("separation", 6)
 	content.add_child(_details_box)
 
+	_namespace_value = _add_row(_details_box, "Namespace")
+	_phase_value = _add_row(_details_box, "Phase")
 	_reason_value = _add_row(_details_box, "Reason")
-
-	var scope_list_title := Label.new()
-	scope_list_title.text = "Child Domains"
-	_details_box.add_child(scope_list_title)
-
-	_scope_list_value = RichTextLabel.new()
-	_scope_list_value.fit_content = true
-	_scope_list_value.scroll_active = false
-	_scope_list_value.selection_enabled = true
-	_details_box.add_child(_scope_list_value)
-
-	var source_list_title := Label.new()
-	source_list_title.text = "Leaf Sources"
-	_details_box.add_child(source_list_title)
-
-	_source_list_value = RichTextLabel.new()
-	_source_list_value.fit_content = true
-	_source_list_value.scroll_active = false
-	_source_list_value.selection_enabled = true
-	_details_box.add_child(_source_list_value)
 
 	_apply_panel_styles(header_panel, _content_panel)
 
@@ -194,21 +212,25 @@ func _refresh() -> void:
 	_content_panel.visible = _preview_expanded
 
 	_scope_key_value.text = String(plan.get("scope_key", ""))
-	_namespace_value.text = String(plan.get("key_namespace", ""))
-	_phase_value.text = str(int(plan.get("phase", 0)))
 	_restore_policy_value.text = String(plan.get("restore_policy_name", "Inherit"))
 	_child_scopes_value.text = str(int(plan.get("child_scope_count", 0)))
 	_child_sources_value.text = str(int(plan.get("child_source_count", 0)))
 
-	_enabled_checkbox.button_pressed = bool(plan.get("enabled", false))
-	_save_enabled_checkbox.button_pressed = bool(plan.get("save_enabled", false))
-	_load_enabled_checkbox.button_pressed = bool(plan.get("load_enabled", false))
+	_contract_toggle.text = _foldout_text("Contract", _contract_expanded)
+	_contract_box.visible = _contract_expanded
+	_restore_contract_value.text = _describe_restore_contract(plan)
+	_flow_value.text = _describe_flow(plan)
 
-	_details_toggle.text = _foldout_text("Details", _details_expanded)
-	_details_box.visible = _details_expanded
-	_reason_value.text = _format_reason(plan)
+	_members_toggle.text = _foldout_text("Members", _members_expanded)
+	_members_box.visible = _members_expanded
 	_scope_list_value.text = _format_list(plan.get("child_scope_keys", PackedStringArray()))
 	_source_list_value.text = _format_list(plan.get("child_source_keys", PackedStringArray()))
+
+	_details_toggle.text = _foldout_text("Diagnostics", _details_expanded)
+	_details_box.visible = _details_expanded
+	_namespace_value.text = String(plan.get("key_namespace", ""))
+	_phase_value.text = str(int(plan.get("phase", 0)))
+	_reason_value.text = _format_reason(plan)
 
 
 ## Read only the fixed `describe_scope_plan()` schema. Scope preview content is
@@ -292,14 +314,67 @@ func _format_reason(plan: Dictionary) -> String:
 	return reason_code
 
 
+func _describe_flow(plan: Dictionary) -> String:
+	var enabled := bool(plan.get("enabled", false))
+	var save_enabled := bool(plan.get("save_enabled", false))
+	var load_enabled := bool(plan.get("load_enabled", false))
+	if not enabled:
+		return "Disabled"
+	if save_enabled and load_enabled:
+		return "Save + Load"
+	if save_enabled:
+		return "Save only"
+	if load_enabled:
+		return "Load only"
+	return "No active flow"
+
+
+func _describe_restore_contract(plan: Dictionary) -> String:
+	if not bool(plan.get("load_enabled", false)):
+		return "Load is disabled for this domain, so it does not currently participate in restore."
+	return "Restore this domain on the scope root that owns it. When scene-path verification is enabled, the expected scene must already be active before scope load; disabling that check removes a safety guard, not the need for orchestration."
+
+
 func _on_preview_toggled() -> void:
 	_preview_expanded = not _preview_expanded
+	_persist_foldout_state_to_scope()
+	_refresh()
+
+
+func _on_contract_toggled() -> void:
+	_contract_expanded = not _contract_expanded
+	_persist_foldout_state_to_scope()
+	_refresh()
+
+
+func _on_members_toggled() -> void:
+	_members_expanded = not _members_expanded
+	_persist_foldout_state_to_scope()
 	_refresh()
 
 
 func _on_details_toggled() -> void:
 	_details_expanded = not _details_expanded
+	_persist_foldout_state_to_scope()
 	_refresh()
+
+
+func _restore_foldout_state_from_scope() -> void:
+	if _scope == null or not is_instance_valid(_scope):
+		return
+	_preview_expanded = bool(_scope.get_meta(META_PREVIEW_EXPANDED, _preview_expanded))
+	_contract_expanded = bool(_scope.get_meta(META_CONTRACT_EXPANDED, _contract_expanded))
+	_members_expanded = bool(_scope.get_meta(META_MEMBERS_EXPANDED, _members_expanded))
+	_details_expanded = bool(_scope.get_meta(META_DETAILS_EXPANDED, _details_expanded))
+
+
+func _persist_foldout_state_to_scope() -> void:
+	if _scope == null or not is_instance_valid(_scope):
+		return
+	_scope.set_meta(META_PREVIEW_EXPANDED, _preview_expanded)
+	_scope.set_meta(META_CONTRACT_EXPANDED, _contract_expanded)
+	_scope.set_meta(META_MEMBERS_EXPANDED, _members_expanded)
+	_scope.set_meta(META_DETAILS_EXPANDED, _details_expanded)
 
 
 func _foldout_text(label_text: String, expanded: bool) -> String:

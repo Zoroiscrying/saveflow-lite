@@ -190,9 +190,10 @@ func _queue_quick_access_panel_show() -> void:
 func _focus_save_manager_panel() -> void:
 	if _save_manager_panel == null:
 		return
+	_make_host_dock_visible(_save_manager_panel)
 	_save_manager_panel.show()
 	_focus_control_tab(_save_manager_panel)
-	_save_manager_panel.grab_focus()
+	_focus_panel_primary_control(_save_manager_panel)
 	if _save_manager_panel.has_method("refresh_now"):
 		_save_manager_panel.call("refresh_now")
 
@@ -200,9 +201,10 @@ func _focus_save_manager_panel() -> void:
 func _focus_settings_panel() -> void:
 	if _settings_panel == null:
 		return
+	_make_host_dock_visible(_settings_panel)
 	_settings_panel.show()
 	_focus_control_tab(_settings_panel)
-	_settings_panel.grab_focus()
+	_focus_panel_primary_control(_settings_panel)
 
 
 func _repair_setup() -> void:
@@ -314,3 +316,21 @@ func _focus_control_tab(control: Control) -> void:
 			return
 		control = parent as Control
 		parent = parent.get_parent()
+
+
+func _focus_panel_primary_control(panel: Control) -> void:
+	if panel == null:
+		return
+	if panel.has_method("focus_primary_input"):
+		panel.call_deferred("focus_primary_input")
+
+
+func _make_host_dock_visible(control: Control) -> void:
+	if control == null:
+		return
+	var node: Node = control
+	while node != null:
+		if node is EditorDock:
+			node.make_visible()
+			return
+		node = node.get_parent()

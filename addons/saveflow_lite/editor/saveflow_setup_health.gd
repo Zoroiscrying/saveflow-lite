@@ -8,6 +8,7 @@ const AUTOLOAD_PATH := "res://addons/saveflow_core/runtime/core/save_flow.gd"
 const PROJECT_SETTINGS_PATH := "res://addons/saveflow_core/runtime/core/saveflow_project_settings.gd"
 const LITE_PLUGIN_CONFIG_PATH := "res://addons/saveflow_lite/plugin.cfg"
 const CORE_VERSION_PATH := "res://addons/saveflow_core/version.txt"
+const NUGET_CONFIG_PATH := "res://nuget.config"
 const LEGACY_AUTOLOAD_NAME := "Save"
 const PROJECT_SETTINGS_KEY := "saveflow_lite/settings/save_root"
 
@@ -141,6 +142,8 @@ static func inspect_setup() -> Dictionary:
 			"The `SaveFlow` singleton is not visible yet. If the plugin was just enabled, reload the project once."
 		)
 
+	_append_csharp_checks(checks)
+
 	return _build_report(checks)
 
 
@@ -174,6 +177,92 @@ static func _build_report(checks: Array[Dictionary]) -> Dictionary:
 
 static func _dir_exists(path: String) -> bool:
 	return DirAccess.open(path) != null
+
+
+static func _append_csharp_checks(checks: Array[Dictionary]) -> void:
+	var assembly_name := String(ProjectSettings.get_setting("dotnet/project/assembly_name", "")).strip_edges()
+	if assembly_name.is_empty():
+		_add_warning(
+			checks,
+			"C# assembly name",
+			"No `dotnet/project/assembly_name` is configured. C# demo helpers and project-side C# scripts will stay unavailable until the project is configured for .NET."
+		)
+		return
+
+	var csproj_path := "res://%s.csproj" % assembly_name
+	if FileAccess.file_exists(csproj_path):
+		_add_ok(
+			checks,
+			"C# project file",
+			"`%s.csproj` is present for the main Godot C# assembly." % assembly_name
+		)
+	else:
+		_add_error(
+			checks,
+			"C# project file",
+			"`%s.csproj` is missing. Case 4 and any project-owned C# scripts need a main Godot C# project file." % assembly_name
+		)
+
+	var nuget_detail := _inspect_nuget_config()
+	match String(nuget_detail.get("state", "warning")):
+		"ok":
+			_add_ok(checks, "C# package source", String(nuget_detail.get("detail", "")))
+		"error":
+			_add_error(checks, "C# package source", String(nuget_detail.get("detail", "")))
+		_:
+			_add_warning(checks, "C# package source", String(nuget_detail.get("detail", "")))
+
+	var assembly_output_paths := [
+		"res://.godot/mono/temp/bin/Debug/%s.dll" % assembly_name,
+		"res://.godot/mono/temp/bin/ExportDebug/%s.dll" % assembly_name,
+		"res://.godot/mono/temp/bin/Release/%s.dll" % assembly_name,
+		"res://.godot/mono/temp/bin/ExportRelease/%s.dll" % assembly_name,
+	]
+	var built_assembly_path := ""
+	for candidate in assembly_output_paths:
+		if FileAccess.file_exists(candidate):
+			built_assembly_path = candidate
+			break
+
+	if built_assembly_path.is_empty():
+		_add_warning(
+			checks,
+			"C# assembly build",
+			"No built `%s.dll` was found under `.godot/mono/temp/bin`. Case 4 stays in guidance-only mode until the project C# assembly is built once." % assembly_name
+		)
+	else:
+		_add_ok(
+			checks,
+			"C# assembly build",
+			"`%s` is available. Project-side C# scripts can be instantiated by the editor/runtime." % built_assembly_path.replace("res://", "")
+		)
+
+
+static func _inspect_nuget_config() -> Dictionary:
+	if not FileAccess.file_exists(NUGET_CONFIG_PATH):
+		return {
+			"state": "warning",
+			"detail": "`nuget.config` is missing. If `dotnet build` cannot resolve `Godot.NET.Sdk`, add a local GodotSharp package source.",
+		}
+
+	var file := FileAccess.open(NUGET_CONFIG_PATH, FileAccess.READ)
+	if file == null:
+		return {
+			"state": "warning",
+			"detail": "`nuget.config` exists but could not be read. Verify that a local GodotSharp package source is configured.",
+		}
+
+	var content := file.get_as_text()
+	if content.contains("GodotSharp\\Tools\\nupkgs") or content.contains("GodotSharp/Tools/nupkgs"):
+		return {
+			"state": "ok",
+			"detail": "`nuget.config` includes a local GodotSharp package source for `Godot.NET.Sdk`.",
+		}
+
+	return {
+		"state": "warning",
+		"detail": "`nuget.config` was found, but no local `GodotSharp/Tools/nupkgs` source was detected. `dotnet build` may fail to resolve `Godot.NET.Sdk`.",
+	}
 
 
 static func _is_lite_plugin_enabled() -> bool:

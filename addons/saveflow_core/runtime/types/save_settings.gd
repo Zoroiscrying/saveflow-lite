@@ -19,6 +19,9 @@ extends Resource
 ## Write to a temp file first, then replace the final slot file. Keep this on
 ## unless you have a very specific platform reason to skip safe writes.
 @export var use_safe_write: bool = true
+## Keep one last-known-good backup beside each slot file before overwriting it.
+## This is the baseline local recovery path in Lite/Core, not a full backup system.
+@export var keep_last_backup: bool = true
 ## File extension used when JSON is the resolved storage format.
 @export var file_extension_json: String = "json"
 ## File extension used when binary is the resolved storage format.
@@ -41,3 +44,12 @@ extends Resource
 ## Logical save schema identifier written into slot metadata. Use this when the
 ## project distinguishes several save graphs or storage schemas.
 @export var save_schema: String = "main"
+## Fail loads when the slot save schema does not match the current project schema.
+@export var enforce_save_schema_match: bool = true
+## Fail loads when the slot data version does not match the current project data version.
+@export var enforce_data_version_match: bool = true
+## Fail scene/scope loads when the saved scene path does not match the current
+## restore target. When this is disabled, SaveFlow skips the scene-context
+## precheck and continues restore against whatever scope graph, source keys, and
+## runtime identities resolve under the current target.
+@export var verify_scene_path_on_load: bool = true

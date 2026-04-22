@@ -6,10 +6,14 @@ extends VBoxContainer
 
 const LABEL_WIDTH := 112
 const PADDING := 10
+const META_PREVIEW_EXPANDED := "_saveflow_data_source_preview_expanded"
+const META_DESIGN_EXPANDED := "_saveflow_data_source_design_expanded"
+const META_DETAILS_EXPANDED := "_saveflow_data_source_details_expanded"
 
 var _data_source: SaveFlowDataSource
 var _last_signature: String = ""
 var _preview_expanded := true
+var _design_expanded := false
 var _details_expanded := false
 
 var _preview_toggle: Button
@@ -17,15 +21,16 @@ var _content_panel: PanelContainer
 var _status_chip: PanelContainer
 var _status_label: Label
 var _source_key_value: Label
-var _version_value: Label
-var _phase_value: Label
 var _summary_value: Label
+var _flow_value: Label
+var _design_toggle: Button
+var _design_box: VBoxContainer
+var _design_hint_value: Label
 var _sections_value: Label
-var _enabled_checkbox: CheckBox
-var _save_enabled_checkbox: CheckBox
-var _load_enabled_checkbox: CheckBox
 var _details_toggle: Button
 var _details_box: VBoxContainer
+var _version_value: Label
+var _phase_value: Label
 var _reason_value: Label
 var _details_value: RichTextLabel
 
@@ -38,6 +43,7 @@ func _ready() -> void:
 
 func set_data_source(data_source: SaveFlowDataSource) -> void:
 	_data_source = data_source
+	_restore_foldout_state_from_source()
 	_refresh()
 
 
@@ -104,25 +110,21 @@ func _build_ui() -> void:
 	content_padding.add_child(content)
 
 	_source_key_value = _add_row(content, "Save Key")
-	_version_value = _add_row(content, "Version")
-	_phase_value = _add_row(content, "Phase")
 	_summary_value = _add_row(content, "Summary")
-	_sections_value = _add_row(content, "Sections")
+	_flow_value = _add_row(content, "Flow")
 
-	_enabled_checkbox = CheckBox.new()
-	_enabled_checkbox.text = "Enabled"
-	_enabled_checkbox.disabled = true
-	content.add_child(_enabled_checkbox)
+	_design_toggle = Button.new()
+	_design_toggle.flat = true
+	_design_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_design_toggle.pressed.connect(_on_design_toggled)
+	content.add_child(_design_toggle)
 
-	_save_enabled_checkbox = CheckBox.new()
-	_save_enabled_checkbox.text = "Save enabled"
-	_save_enabled_checkbox.disabled = true
-	content.add_child(_save_enabled_checkbox)
+	_design_box = VBoxContainer.new()
+	_design_box.add_theme_constant_override("separation", 6)
+	content.add_child(_design_box)
 
-	_load_enabled_checkbox = CheckBox.new()
-	_load_enabled_checkbox.text = "Load enabled"
-	_load_enabled_checkbox.disabled = true
-	content.add_child(_load_enabled_checkbox)
+	_design_hint_value = _add_row(_design_box, "Design Hint")
+	_sections_value = _add_row(_design_box, "Sections")
 
 	_details_toggle = Button.new()
 	_details_toggle.flat = true
@@ -134,6 +136,8 @@ func _build_ui() -> void:
 	_details_box.add_theme_constant_override("separation", 6)
 	content.add_child(_details_box)
 
+	_version_value = _add_row(_details_box, "Version")
+	_phase_value = _add_row(_details_box, "Phase")
 	_reason_value = _add_row(_details_box, "Reason")
 
 	_details_value = RichTextLabel.new()
@@ -177,17 +181,18 @@ func _refresh() -> void:
 	_content_panel.visible = _preview_expanded
 
 	_source_key_value.text = String(plan.get("source_key", ""))
-	_version_value.text = str(int(plan.get("data_version", 1)))
-	_phase_value.text = str(int(plan.get("phase", 0)))
 	_summary_value.text = String(plan.get("summary", "Custom SaveFlowDataSource"))
+	_flow_value.text = _describe_flow(plan)
+
+	_design_toggle.text = _foldout_text("Design", _design_expanded)
+	_design_box.visible = _design_expanded
+	_design_hint_value.text = _describe_design_hint()
 	_sections_value.text = _format_sections(plan.get("sections", PackedStringArray()))
 
-	_enabled_checkbox.button_pressed = bool(plan.get("enabled", false))
-	_save_enabled_checkbox.button_pressed = bool(plan.get("save_enabled", false))
-	_load_enabled_checkbox.button_pressed = bool(plan.get("load_enabled", false))
-
-	_details_toggle.text = _foldout_text("Details", _details_expanded)
+	_details_toggle.text = _foldout_text("Diagnostics", _details_expanded)
 	_details_box.visible = _details_expanded
+	_version_value.text = str(int(plan.get("data_version", 1)))
+	_phase_value.text = str(int(plan.get("phase", 0)))
 	_reason_value.text = String(plan.get("reason", ""))
 	_details_value.text = _format_details(Dictionary(plan.get("details", {})))
 
@@ -243,6 +248,21 @@ func _format_sections(values: Variant) -> String:
 	return ", ".join(items)
 
 
+func _describe_flow(plan: Dictionary) -> String:
+	var enabled := bool(plan.get("enabled", false))
+	var save_enabled := bool(plan.get("save_enabled", false))
+	var load_enabled := bool(plan.get("load_enabled", false))
+	if not enabled:
+		return "Disabled"
+	if save_enabled and load_enabled:
+		return "Save + Load"
+	if save_enabled:
+		return "Save only"
+	if load_enabled:
+		return "Load only"
+	return "No active flow"
+
+
 func _format_details(values: Dictionary) -> String:
 	if values.is_empty():
 		return "<none>"
@@ -253,14 +273,42 @@ func _format_details(values: Dictionary) -> String:
 	return "\n".join(lines)
 
 
+func _describe_design_hint() -> String:
+	return "Keep one DataSource focused on one system, model, queue, or table. Split gameplay state, machine-local settings, session caches, and debug-only data into separate persistence paths."
+
+
 func _on_preview_toggled() -> void:
 	_preview_expanded = not _preview_expanded
+	_persist_foldout_state_to_source()
+	_refresh()
+
+
+func _on_design_toggled() -> void:
+	_design_expanded = not _design_expanded
+	_persist_foldout_state_to_source()
 	_refresh()
 
 
 func _on_details_toggled() -> void:
 	_details_expanded = not _details_expanded
+	_persist_foldout_state_to_source()
 	_refresh()
+
+
+func _restore_foldout_state_from_source() -> void:
+	if _data_source == null or not is_instance_valid(_data_source):
+		return
+	_preview_expanded = bool(_data_source.get_meta(META_PREVIEW_EXPANDED, _preview_expanded))
+	_design_expanded = bool(_data_source.get_meta(META_DESIGN_EXPANDED, _design_expanded))
+	_details_expanded = bool(_data_source.get_meta(META_DETAILS_EXPANDED, _details_expanded))
+
+
+func _persist_foldout_state_to_source() -> void:
+	if _data_source == null or not is_instance_valid(_data_source):
+		return
+	_data_source.set_meta(META_PREVIEW_EXPANDED, _preview_expanded)
+	_data_source.set_meta(META_DESIGN_EXPANDED, _design_expanded)
+	_data_source.set_meta(META_DETAILS_EXPANDED, _details_expanded)
 
 
 func _foldout_text(label_text: String, expanded: bool) -> String:
