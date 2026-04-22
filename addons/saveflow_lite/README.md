@@ -8,6 +8,11 @@ Main paths:
 - `SaveFlowEntityCollectionSource` for runtime entity sets
 - `SaveFlowScope` for domain boundaries and restore order
 
+Start with one ownership model:
+- one object -> `SaveFlowNodeSource`
+- one system -> `SaveFlowDataSource`
+- one runtime set -> `SaveFlowEntityCollectionSource` + `SaveFlowPrefabEntityFactory`
+
 Default runtime entity path:
 - `SaveFlowPrefabEntityFactory`
 
@@ -19,6 +24,7 @@ Project repository:
 
 Useful docs:
 - `addons/saveflow_lite/docs/saveflow-recommended-integration.md`
+- `addons/saveflow_lite/docs/saveflow-common-authoring-mistakes.md`
 - `addons/saveflow_lite/docs/saveflow-commercial-project-guide.md`
 
 Editor debugging flow:

@@ -29,11 +29,14 @@ Open:
 Regression checklist:
 - `res://addons/saveflow_lite/docs/recommended-case-regression-checklist.md`
 
+Common authoring mistakes:
+- `res://addons/saveflow_lite/docs/saveflow-common-authoring-mistakes.md`
+
 Recommended first pass:
 - Open `recommended_template_sandbox.tscn` as the case launcher
-- Open `recommended_node_source_case.tscn` when you want to understand one authored object with one `SaveFlowNodeSource`
-- Open `recommended_data_source_case.tscn` when you want to understand one system-owned dictionary with one `SaveFlowDataSource`
-- Open `recommended_entity_collection_case.tscn` when you want to understand one changing runtime set with `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
+- Open `recommended_node_source_case.tscn` when you want to save one authored or prefab-owned object with `SaveFlowNodeSource`
+- Open `recommended_data_source_case.tscn` when you want to save one system, model, table, or queue with `SaveFlowDataSource`
+- Open `recommended_entity_collection_case.tscn` when you want to save one changing runtime set with `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
 - Open `recommended_csharp_case.tscn` when you want to call SaveFlow from C# through `SaveFlowClient`
 - Open `recommended_slot_summary_case.tscn` when you want to build a continue/load menu from `list_slot_summaries()` without loading full payloads
 - Open `recommended_autosave_case.tscn` when you want gameplay events to write autosave, checkpoint, and manual-save slots explicitly
@@ -41,9 +44,9 @@ Recommended first pass:
 - Open `recommended_template_overview.tscn` only after the single-path scenes feel clear
 
 What the template demonstrates:
-- one local prefab-owned `SaveFlowNodeSource` on `Player`
-- one custom `SaveFlowDataSource` for world state
-- one `SaveFlowEntityCollectionSource` with an entity factory; the collection owns descriptor gather/apply and the factory owns runtime find/spawn/apply behavior
+- one object path through `SaveFlowNodeSource`
+- one system path through `SaveFlowDataSource`
+- one runtime-set path through `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
 - one `save_scene()` / `load_scene()` entry over a single `StateRoot`
 
 Case scenes:

@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.1.7`
+- Plugin version: `0.1.8`
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 
@@ -20,14 +20,14 @@ It is built for developers who do not just need to write save files, but need a 
   <img src="addons/saveflow_lite/docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
 </p>
 
-## At A Glance
+## Start With One Ownership Model
 
-Use SaveFlow Lite when your project looks like one of these:
+Start with the smallest ownership model that matches what you are saving:
 
 | You Need To Save | Typical Example | Recommended Path |
 | --- | --- | --- |
 | One authored or prefab-owned object | `player`, `chest`, `NPC`, `door`, `lever` | `SaveFlowNodeSource` |
-| One system, model, table, or queue | quest log, inventory backend, world progression table | custom `SaveFlowDataSource` |
+| One system, model, table, or queue | quest log, inventory backend, world progression table | `SaveFlowDataSource` |
 | A changing set of runtime entities | room enemies, dropped loot, summoned units | `SaveFlowEntityCollectionSource` + `SaveFlowPrefabEntityFactory` |
 
 If your save must restore several domains in order, add `SaveFlowScope` as a domain boundary and put the right leaf sources inside it.
@@ -71,10 +71,18 @@ slot path, primary file state, backup state, schema, versions, and saved scene p
 
 ## Start Here
 
+- Start with one object:
+  `SaveFlowNodeSource`
+- Start with one system:
+  `SaveFlowDataSource`
+- Start with one runtime set:
+  `SaveFlowEntityCollectionSource` + `SaveFlowPrefabEntityFactory`
 - Quick component choice:
   [saveflow-quick-selection-map.md](addons/saveflow_lite/docs/saveflow-quick-selection-map.md)
 - Recommended integration path:
   [saveflow-recommended-integration.md](addons/saveflow_lite/docs/saveflow-recommended-integration.md)
+- Common authoring mistakes:
+  [saveflow-common-authoring-mistakes.md](addons/saveflow_lite/docs/saveflow-common-authoring-mistakes.md)
 - Commercial-project guide:
   [saveflow-commercial-project-guide.md](addons/saveflow_lite/docs/saveflow-commercial-project-guide.md)
 - Concept relationship map:
@@ -100,7 +108,7 @@ Examples:
 
 ### Save one game system
 
-Use a custom `SaveFlowDataSource` when the state belongs to a system rather than one scene node.
+Use `SaveFlowDataSource` when the state belongs to a system rather than one scene node.
 
 Examples:
 - quest log

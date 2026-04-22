@@ -14,7 +14,7 @@ const OVERVIEW_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/re
 
 func _ready() -> void:
 	_bind_buttons()
-	_status_output.text = "Choose one case by ownership model first. Open the combined overview only after the single-path scenes feel clear."
+	_status_output.text = "Start with one object, one system, or one runtime set. Open the combined overview only after those three paths feel clear."
 
 
 func _bind_buttons() -> void:

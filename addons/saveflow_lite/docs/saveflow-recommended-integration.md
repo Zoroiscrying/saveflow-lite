@@ -4,6 +4,7 @@ This document defines the default user-facing SaveFlow Lite workflow.
 
 If your project has already moved into multi-scene restore, migration, cloud-save, or large runtime-world complexity, read this together with:
 - [saveflow-commercial-project-guide.md](saveflow-commercial-project-guide.md)
+- [saveflow-common-authoring-mistakes.md](saveflow-common-authoring-mistakes.md)
 
 The goal is simple:
 - one obvious way to save a gameplay object

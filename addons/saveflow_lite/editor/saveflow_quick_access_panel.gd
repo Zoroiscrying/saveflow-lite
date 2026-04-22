@@ -102,30 +102,30 @@ func _build_ui() -> void:
 
 	content.add_child(_build_intro_panel())
 	content.add_child(_build_section(
-		"Recommended Cases",
+		"Start With One Ownership Model",
 		[
 			{
 				"icon": SaveFlowIcon,
 				"title": "Open Case Launcher",
-				"description": "Start from the launcher scene and branch into the right SaveFlow path.",
+				"description": "Open the launcher scene, then branch into the one object, one system, or one runtime-set path.",
 				"action": func() -> void: _emit_scene(CASE_LAUNCHER_SCENE),
 			},
 			{
 				"icon": NodeSourceIcon,
-				"title": "Open NodeSource Case",
-				"description": "One authored object plus one included child node.",
+				"title": "Open One Object Case",
+				"description": "Use SaveFlowNodeSource for one authored or prefab-owned object.",
 				"action": func() -> void: _emit_scene(NODE_SOURCE_CASE_SCENE),
 			},
 			{
 				"icon": DataSourceIcon,
-				"title": "Open DataSource Case",
-				"description": "One system-owned dictionary through a custom SaveFlowDataSource.",
+				"title": "Open One System Case",
+				"description": "Use SaveFlowDataSource for one system, model, table, or queue.",
 				"action": func() -> void: _emit_scene(DATA_SOURCE_CASE_SCENE),
 			},
 			{
 				"icon": EntityCollectionIcon,
-				"title": "Open Entity Collection Case",
-				"description": "One changing runtime set through EntityCollectionSource + PrefabEntityFactory.",
+				"title": "Open One Runtime Set Case",
+				"description": "Use EntityCollectionSource + PrefabEntityFactory for one changing runtime set.",
 				"action": func() -> void: _emit_scene(ENTITY_COLLECTION_CASE_SCENE),
 			},
 			{
@@ -155,7 +155,7 @@ func _build_ui() -> void:
 			{
 				"icon": ScopeIcon,
 				"title": "Open Combined Overview",
-				"description": "Keep the all-in-one recommended template scene available for side-by-side comparison.",
+				"description": "Use the all-in-one overview only after the three ownership paths already make sense.",
 				"action": func() -> void: _emit_scene(OVERVIEW_SCENE),
 			},
 		]
@@ -230,7 +230,7 @@ func _build_header() -> Control:
 	text_box.add_child(title_label)
 
 	var subtitle_label := Label.new()
-	subtitle_label.text = "Start from the right demo case, then jump into the editor panels that matter."
+	subtitle_label.text = "Start with one object, one system, or one runtime set. Use the overview only after the smallest matching case feels clear."
 	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_box.add_child(subtitle_label)
 
@@ -249,7 +249,7 @@ func _build_intro_panel() -> Control:
 	panel.add_child(padding)
 
 	var label := Label.new()
-	label.text = "Rule of thumb: open the smallest case that matches your ownership model first. Use the combined overview only after the single-path scenes feel clear."
+	label.text = "Rule of thumb: start with one object, one system, or one runtime set. Open the combined overview only after the single-path cases feel obvious."
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	padding.add_child(label)
 	return panel

@@ -251,6 +251,171 @@ Recommended focus:
 - autosave and checkpoint integration examples
 - better business-facing save-slot ergonomics without adding Pro orchestration concepts
 
+## Current Roadmap Checkpoint
+
+The recent Lite work has already pushed several roadmap items from "planned"
+into "baseline product behavior".
+
+These lines are no longer the highest-priority unknowns:
+
+- `Inspector and Diagnostics`
+- `Unified Save Settings Panel`
+- `Business-Facing Save Workflow`
+- `Baseline C# Parity` foundation
+
+That does **not** mean those areas are finished forever.
+It means the next Lite release should avoid re-opening them as the main theme
+unless a concrete regression or authoring pain point appears.
+
+The next release should focus on the parts of the roadmap that still have the
+largest gap between "works" and "feels finished":
+
+- `Common Built-In Support`
+- `Documentation and Template Quality`
+
+## Next Release Working Plan
+
+The next Lite release should be framed as:
+
+- **Built-ins + onboarding polish**
+
+The goal is not to add new SaveFlow concepts.
+The goal is to make the most common Lite workflows feel easier to adopt,
+easier to trust, and easier to copy into a real project.
+
+### Must Have
+
+#### 1. One focused built-in expansion pass
+
+Target problem:
+
+- `SaveFlowNodeSource` is already usable, but users still hit avoidable
+  handwritten save logic for common Godot runtime nodes and meaningful local
+  object state
+
+This release should:
+
+- add a small, intentional batch of high-value built-ins
+- prefer common gameplay/runtime nodes over UI widget state
+- prefer built-ins that remove real handwritten save/apply code
+- avoid "feature flood" node coverage
+
+Acceptance bar:
+
+- users can cover more real object-owned state without writing a custom source
+- the newly added built-ins are easy to explain in one sentence each
+- the preview stays understandable after the new coverage lands
+
+#### 2. README / Quick Access / template alignment
+
+Target problem:
+
+- Lite now has several good entry points, but the wording and emphasis still
+  differ between README, Quick Access, and the recommended template scenes
+
+This release should:
+
+- make the first three recommended Lite paths visually and verbally consistent
+- keep the same component names and same use-case wording across:
+  - root README
+  - Lite README
+  - Quick Access
+  - recommended template case launcher
+  - case scene descriptions
+
+The three default paths should stay explicit:
+
+- one object -> `SaveFlowNodeSource`
+- one system -> `SaveFlowDataSource`
+- one runtime set -> `SaveFlowEntityCollectionSource`
+
+Acceptance bar:
+
+- a new user can open the plugin and see the same mental model in every entry
+  path
+- the recommended template feels like a direct extension of the docs, not a
+  parallel explanation
+
+#### 3. Short "common authoring mistakes" checklist
+
+Target problem:
+
+- Lite now has clearer ownership boundaries, but users still need a short,
+  practical rule set they can check quickly
+
+This release should:
+
+- document the most important Lite authoring rules in one short checklist
+- keep the list practical and workflow-oriented
+
+The checklist should reinforce:
+
+- one subtree, one save owner
+- runtime sets belong to `EntityCollectionSource`
+- child nodes with their own `NodeSource` are not directly owned twice
+- disabling scene-path verification removes a safety guard, not the need for
+  restore order
+
+Acceptance bar:
+
+- the checklist is short enough to read in under a minute
+- it complements previews and warnings instead of duplicating full docs
+
+### Nice To Have
+
+These are worth doing if they stay small and do not derail the main release
+theme.
+
+#### 1. One more pass of template simplification
+
+- reduce unnecessary lines in case scripts
+- make business-facing save-flow examples easier to copy into a game project
+- tighten UI/status text in the recommended cases
+
+#### 2. One more pass of preview wording consistency
+
+- use the same short terms across previews where possible
+- avoid subtle wording drift between:
+  - `Restore Contract`
+  - `Compatibility`
+  - `Slot Safety`
+  - `Entity Container`
+  - `Routing`
+
+#### 3. Extra smoke checks for newly added built-ins
+
+- if a new built-in has non-trivial behavior, add a small runtime test
+- keep smoke coverage focused on real workflows, not exhaustive permutations
+
+### Not In This Release
+
+The next Lite release should **not** become a grab-bag of unrelated bigger
+systems.
+
+Keep these out of scope:
+
+- migration frameworks
+- cloud save
+- reference repair systems
+- staged multi-scene restore orchestration
+- multithreaded seamless save pipelines
+- heavy editor automation or wizard-style setup systems
+- a large new panel just to explain features already covered by Quick Access or
+  existing previews
+
+### Release Readiness Check
+
+Before shipping this next Lite release, verify:
+
+1. the recommended template still demonstrates the same three core save
+   ownership models clearly
+2. the new built-ins reduce handwritten code in common object workflows
+3. the README and Quick Access still agree on the first-use path
+4. smoke tests still pass for:
+   - recommended cases
+   - editor entry points
+   - core runtime save/load behavior
+
 ## What Lite Should Explicitly Avoid
 
 Do not overload Lite with:

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.8
+
+Updated in this release:
+- Expanded built-in serializer coverage with a focused pass over common node-owned state, including `BaseButton`, `Range`, `OptionButton`, `LineEdit`, `TextEdit`, `Area3D`, and `NavigationAgent3D`
+- Hardened built-in serializer registry loading so new serializers resolve consistently in editor and CLI test environments
+- Unified onboarding language across the root README, Lite README, Quick Access, and recommended template around the same three starting paths:
+  - one object -> `SaveFlowNodeSource`
+  - one system -> `SaveFlowDataSource`
+  - one runtime set -> `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory`
+- Added a short `saveflow-common-authoring-mistakes.md` checklist to reinforce the most important Lite authoring rules without making users read the full architecture docs
+- Clarified the Lite roadmap so built-in coverage stays focused on meaningful runtime/object state instead of drifting into broad UI-widget persistence
+- Added runtime coverage for the new built-ins and kept editor-entry smoke checks green during the onboarding polish pass
+
 ## 0.1.7
 
 Updated in this release:

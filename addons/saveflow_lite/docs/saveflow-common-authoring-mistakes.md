@@ -1,0 +1,88 @@
+# SaveFlow Common Authoring Mistakes
+
+Read this checklist before assuming a save/load bug is inside SaveFlow itself.
+
+The goal is simple:
+- catch the most common Lite authoring mistakes in under a minute
+- keep ownership boundaries obvious
+- keep restore behavior understandable
+
+## One-Minute Checklist
+
+### 1. One subtree, one save owner
+
+Ask:
+- is this subtree owned by one `SaveFlowNodeSource`?
+- one `SaveFlowDataSource`?
+- or one `SaveFlowEntityCollectionSource`?
+
+Do not let the same subtree be owned twice.
+
+### 2. Runtime sets belong to `SaveFlowEntityCollectionSource`
+
+If a container holds runtime entities that can appear or disappear:
+- let `SaveFlowEntityCollectionSource` own that set
+- let the entity prefab own its own local save logic
+
+Do not also sweep that same runtime container from a parent `NodeSource` or a broad `save_scene()` traversal.
+
+### 3. Child nodes with their own `NodeSource` are not directly owned twice
+
+If a child already has its own `SaveFlowNodeSource`:
+- the parent can reference that child source as a participant
+- the parent should not also directly own that child subtree as ordinary object state
+
+Use composition, not duplicate ownership.
+
+### 4. `SaveFlowDataSource` should stay focused on one system boundary
+
+Good:
+- one quest log
+- one inventory backend
+- one world progression table
+
+Bad:
+- gameplay progression
+- machine-local settings
+- session cache
+- debug-only values
+
+all mixed into one large data source.
+
+### 5. `verify_scene_path_on_load` is a safety guard, not orchestration
+
+If it is enabled:
+- SaveFlow checks whether the expected scene is already active before restore
+
+If it is disabled:
+- SaveFlow skips that scene-level safety check
+- it does **not** gain staged restore, scene loading, or orchestration logic
+
+### 6. Start with the simplest entity-factory path
+
+Start with:
+- `SaveFlowPrefabEntityFactory`
+
+Move to:
+- custom `SaveFlowEntityFactory`
+
+only when routing depends on pooling, authored spawn points, registries, or project-owned runtime lookup rules.
+
+### 7. Save UI from business data unless the UI node really owns meaningful state
+
+Usually:
+- UI should be rebuilt from gameplay or system data
+
+Only store UI node state directly when it truly behaves like meaningful local runtime state.
+
+## If Something Looks Wrong
+
+Check in this order:
+
+1. `Compatibility`
+2. `Restore Contract`
+3. `Slot Safety`
+4. save-owner boundaries
+5. source-specific gameplay logic
+
+If the first three are already green, the next most likely cause is ownership or authoring shape, not file corruption or version policy.

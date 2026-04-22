@@ -1,6 +1,11 @@
 class_name SaveFlowBuiltInSerializerRegistry
 extends RefCounted
 
+const _SERIALIZER_AREA_3D := preload("res://addons/saveflow_core/runtime/serializers/saveflow_serializer_area_3d.gd")
+const _SERIALIZER_NAVIGATION_AGENT_3D := preload(
+	"res://addons/saveflow_core/runtime/serializers/saveflow_serializer_navigation_agent_3d.gd"
+)
+
 static func all_serializers() -> Array:
 	var serializers: Array = []
 	for serializer_type in _serializer_types():
@@ -13,6 +18,11 @@ static func _serializer_types() -> Array:
 		SaveFlowSerializerNode2D,
 		SaveFlowSerializerNode3D,
 		SaveFlowSerializerControl,
+		SaveFlowSerializerBaseButton,
+		SaveFlowSerializerRange,
+		SaveFlowSerializerOptionButton,
+		SaveFlowSerializerLineEdit,
+		SaveFlowSerializerTextEdit,
 		SaveFlowSerializerAnimationPlayer,
 		SaveFlowSerializerTimer,
 		SaveFlowSerializerAudioStreamPlayer,
@@ -29,7 +39,9 @@ static func _serializer_types() -> Array:
 		SaveFlowSerializerRigidBody2D,
 		SaveFlowSerializerRigidBody3D,
 		SaveFlowSerializerArea2D,
+		_SERIALIZER_AREA_3D,
 		SaveFlowSerializerNavigationAgent2D,
+		_SERIALIZER_NAVIGATION_AGENT_3D,
 		SaveFlowSerializerTileMapLayer,
 		SaveFlowSerializerTileMap,
 	]
