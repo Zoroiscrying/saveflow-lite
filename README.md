@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.1.8`
+- Plugin version: `0.1.9`
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 
@@ -27,7 +27,7 @@ Start with the smallest ownership model that matches what you are saving:
 | You Need To Save | Typical Example | Recommended Path |
 | --- | --- | --- |
 | One authored or prefab-owned object | `player`, `chest`, `NPC`, `door`, `lever` | `SaveFlowNodeSource` |
-| One system, model, table, or queue | quest log, inventory backend, world progression table | `SaveFlowDataSource` |
+| One system, model, table, or queue | quest log, inventory backend, world progression table | `SaveFlowTypedDataSource` or custom `SaveFlowDataSource` |
 | A changing set of runtime entities | room enemies, dropped loot, summoned units | `SaveFlowEntityCollectionSource` + `SaveFlowPrefabEntityFactory` |
 
 If your save must restore several domains in order, add `SaveFlowScope` as a domain boundary and put the right leaf sources inside it.
@@ -56,7 +56,7 @@ place for project-level defaults.
 It is not the place for object-owned or system-owned save behavior. Keep those
 decisions on:
 - `SaveFlowNodeSource`
-- `SaveFlowDataSource`
+- `SaveFlowTypedDataSource` / `SaveFlowDataSource`
 - `SaveFlowEntityCollectionSource`
 - `SaveFlowScope`
 
@@ -74,13 +74,15 @@ slot path, primary file state, backup state, schema, versions, and saved scene p
 - Start with one object:
   `SaveFlowNodeSource`
 - Start with one system:
-  `SaveFlowDataSource`
+  `SaveFlowTypedDataSource` if exported typed fields are enough, custom `SaveFlowDataSource` if gather/apply logic is project-specific
 - Start with one runtime set:
   `SaveFlowEntityCollectionSource` + `SaveFlowPrefabEntityFactory`
 - Quick component choice:
   [saveflow-quick-selection-map.md](addons/saveflow_lite/docs/saveflow-quick-selection-map.md)
 - Recommended integration path:
   [saveflow-recommended-integration.md](addons/saveflow_lite/docs/saveflow-recommended-integration.md)
+- Recommended template:
+  `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn`
 - Common authoring mistakes:
   [saveflow-common-authoring-mistakes.md](addons/saveflow_lite/docs/saveflow-common-authoring-mistakes.md)
 - Commercial-project guide:
@@ -108,13 +110,17 @@ Examples:
 
 ### Save one game system
 
-Use `SaveFlowDataSource` when the state belongs to a system rather than one scene node.
+Use `SaveFlowTypedDataSource` when the state belongs to a typed data object
+rather than one scene node.
 
 Examples:
 - quest log
 - inventory model
 - world progression table
 - event queue
+
+Use a custom `SaveFlowDataSource` when the source itself must translate tables,
+registries, caches, or external manager state during gather/apply.
 
 ### Save runtime entities in one area
 
@@ -139,7 +145,7 @@ SaveFlow Lite focuses on:
 - a hierarchical save graph workflow through `save_scope()` and `load_scope()`
 - a node-centric workflow through `SaveFlowNodeSource` for built-in Godot node state
 - exported-field persistence by default, instead of hand-written serializer glue
-- system and table persistence through custom `SaveFlowDataSource`
+- system and table persistence through typed data resources or custom `SaveFlowDataSource`
 - readable JSON in editor and binary output in exported builds
 - lighter boilerplate for multi-system saves
 - integration seams for runtime entity factories through `SaveFlowEntityCollectionSource`, `SaveFlowPrefabEntityFactory`, and `SaveFlowEntityFactory`
@@ -154,7 +160,8 @@ SaveFlow Lite focuses on:
 - `SaveFlow.inspect_scope()` for graph diagnostics
 - `SaveFlow.save_nodes()` and `SaveFlow.load_nodes()` for custom saveable-node workflows
 - `SaveFlowNodeSource` for target-node built-ins and selected child participants
-- `SaveFlowDataSource` for manager, table, queue, and model-style state
+- `SaveFlowTypedData` and `SaveFlowTypedDataSource` for typed manager/model-style state
+- `SaveFlowDataSource` for custom manager, table, queue, and registry adapters
 - `SaveFlowEntityCollectionSource` and `SaveFlow.restore_entities()` as the runtime-entity seam
 - `SaveFlowPrefabEntityFactory` as the default low-boilerplate runtime factory
 - slot operations: save, load, delete, copy, rename, list
@@ -429,7 +436,7 @@ That keeps the save graph explicit in the scene while still letting the project 
 - `Report Only`: SaveFlow restores what it can and reports the failures in the result
 - `Fail On Missing Or Invalid`: the load fails if any entity is missing or cannot be restored
 
-### Option 4: Save non-node system state through SaveFlowDataSource
+### Option 4: Save non-node system state through typed data
 
 Not every commercial save problem lives on scene nodes.
 Some state belongs to:
@@ -439,33 +446,61 @@ Some state belongs to:
 - event queues
 - profile registries
 
-That is what `SaveFlowDataSource` is for.
+That is what `SaveFlowTypedDataSource` is for.
 
-The recommended path is a custom `SaveFlowDataSource`.
+The recommended first path is `SaveFlowTypedData`, a typed Resource convenience
+base. Gameplay code edits fields; SaveFlow converts those fields to the normal
+Variant/Dictionary payload at the graph boundary.
+
+Recommended data object:
+
+```gdscript
+# world_state_data.gd
+class_name WorldStateData
+extends SaveFlowTypedData
+
+@export var chapter := 1
+@export var unlocked_regions: PackedStringArray = []
+@export var quest_flags := {}
+```
 
 Recommended scene workflow:
 
-```gdscript
-# world_data_source.gd
-extends SaveFlowDataSource
-
-@export_node_path("Node") var world_state_path: NodePath
-
-func gather_data() -> Dictionary:
-    var world_state := get_node_or_null(world_state_path)
-    if world_state == null:
-        return {}
-    return Dictionary(world_state.system_state).duplicate(true)
-
-func apply_data(data: Dictionary) -> void:
-    var world_state := get_node_or_null(world_state_path)
-    if world_state == null:
-        return
-    world_state.system_state = data.duplicate(true)
+```text
+WorldState
+|- SaveFlowTypedDataSource
 ```
 
-`SaveFlowDataSource` can also provide editor preview metadata through
-`describe_data_plan()`.
+Prefer assigning the `SaveFlowTypedData` resource directly to
+`SaveFlowTypedDataSource` when the scene owns that data.
+
+The source itself is contract-based, not Resource-only. It accepts any object
+that implements:
+
+```gdscript
+func to_saveflow_payload() -> Dictionary
+func apply_saveflow_payload(payload: Dictionary) -> void
+```
+
+That means a target `Node`, a target property holding `RefCounted` data, or a
+custom `Resource` can be used without extending `SaveFlowTypedData`. Use this
+when gameplay code creates or swaps the data at runtime.
+
+Use a custom `SaveFlowDataSource` when the source itself needs bespoke
+translation logic:
+
+```gdscript
+extends SaveFlowDataSource
+
+func gather_data() -> Dictionary:
+    return export_payload_from_my_registry()
+
+func apply_data(data: Dictionary) -> void:
+    import_payload_into_my_registry(data)
+```
+
+`SaveFlowTypedDataSource` and custom `SaveFlowDataSource` can both provide
+editor preview metadata through `describe_data_plan()`.
 
 That preview uses a fixed top-level schema:
 - `valid`
@@ -495,10 +530,12 @@ SaveGraphRoot
 This is the preferred path when the state is:
 - not naturally represented by exported node fields
 - owned by a manager or service
-- stored in a dictionary, table, queue, or registry
+- stored in typed data, a table, queue, or registry
 
-The main path is a custom `SaveFlowDataSource`.
-Separate adapter-node patterns are possible, but they are no longer the recommended starting point.
+Start with `SaveFlowTypedDataSource` when one object can provide a coherent
+payload through the payload-provider contract. Move to a custom
+`SaveFlowDataSource` when the source itself needs broader adapter logic rather
+than just field persistence.
 
 ## Demo
 

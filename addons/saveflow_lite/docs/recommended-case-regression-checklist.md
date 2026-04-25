@@ -1,17 +1,23 @@
-# SaveFlow Recommended Case Regression Checklist
+# SaveFlow Recommended Template Regression Checklist
 
 Use this checklist when changing:
 
-- `recommended_template` demo scenes
+- `recommended_template`
 - `Quick Access`
 - `SaveFlow Settings`
 - `DevSaveManager`
-- C# wrapper onboarding
 
-The goal is not pixel-perfect UI verification. The goal is to catch broken
-workflow links early.
+The goal is to keep the recommended path small and project-like.
 
 ## Editor Entry Points
+
+### SaveFlow Quick Access
+
+- the panel instantiates without script errors
+- `popup_quick_access()` still works
+- `Open Recommended Template` emits the project workflow scene path
+- `Open DevSaveManager` still emits the expected signal
+- `Open SaveFlow Settings` still emits the expected signal
 
 ### SaveFlow Settings
 
@@ -26,69 +32,33 @@ workflow links early.
 - `refresh_now()` does not error
 - the search field still exists and can receive focus
 
-### SaveFlow Quick Access
+## Recommended Template
 
-- the panel instantiates without script errors
-- `popup_quick_access()` still works
-- `Open DevSaveManager` still emits the expected signal
-- `Open SaveFlow Settings` still emits the expected signal
-- `Open Case Launcher` still emits an `open_scene_requested` path
+### Project Workflow
 
-## Recommended Cases
+- the hub scene opens without errors
+- the hub has authored portals for forest and dungeon rooms
+- Esc opens the main save menu
+- main-scene save/load restores the current location
+- entering a room instantiates an authored room scene
+- each room has a visible save pad, load pad, mutate pad, and exit pad
+- room save/load writes only that room slot
+- room reset clears runtime coins and restores authored defaults
 
-### Case 1: SaveFlowNodeSource
+### SaveFlow Components
 
-- the scene opens without errors
-- `Mutate` updates the state text
-- `Save` succeeds
-- `Load` succeeds
+- room `WorldSource` is `SaveFlowTypedDataSource` and saves `TemplateRoomSaveData`
+- room `PlayerSource` targets `RoomPlayer` and includes `AnimationPlayer`
+- room `RuntimeCoinCollectionSource` targets `RuntimeCoins`
+- room `RuntimeCoinFactory` uses `SaveFlowPrefabEntityFactory`
+- no standalone case-manager scripts are required for NodeSource/DataSource/EntityCollection examples
+- no room-state dictionary adapter script should be reintroduced unless the example truly needs custom gather/apply code
 
-### Case 2: SaveFlowDataSource
+### Directory Shape
 
-- the scene opens without errors
-- the scene auto-seeds or otherwise makes `Load` meaningful on first open
-- `Mutate` updates system-owned state
-- `Save` succeeds
-- `Load` succeeds
-
-### Case 3: SaveFlowEntityCollectionSource
-
-- the scene opens without errors
-- the initial runtime set is present
-- `Spawn Runtime` increases runtime actor count
-- `Mutate` changes all runtime actors, not only one
-- `Load` restores the saved set with clear-and-restore behavior
-- no duplicate-save-key failure occurs
-
-### Case 4: SaveFlow C# Wrapper
-
-- the scene opens without errors
-- if the C# assembly is available, the scene reports ready state
-- if the C# assembly is unavailable, the scene shows guidance instead of throwing runtime errors
-- `StateLabel` always renders a meaningful state line
-
-### Case 5: Slot Summary UI
-
-- the scene opens without errors
-- `Seed Sample Slots` creates three list rows
-- selecting a row renders summary details
-- `Load Selected Payload` appends payload details without null-instance errors
-
-### Case 6: Autosave and Checkpoint Workflow
-
-- the scene opens without errors
-- `Door Transition -> Autosave` creates or refreshes a slot summary row
-- `Shrine -> Checkpoint` creates or refreshes a slot summary row
-- `Pause Menu -> Manual Save` creates or refreshes a slot summary row
-- save gating can block saves without throwing runtime errors
-
-### Case 7: In-Game Save/Load Panel
-
-- the scene opens without errors
-- the slot list renders all fixed slot rows
-- `Continue Latest` succeeds when seeded slots exist
-- `Save Selected` and overwrite flow remain reachable
-- `Delete Selected` and confirmation flow remain reachable
+- `recommended_template/gameplay` should expose `project_workflow` only
+- standalone case scenes should not return to `recommended_template/scenes/cases`
+- legacy starter/launcher scenes should not be reintroduced as first-class template entry points
 
 ## Smoke Test Rule
 

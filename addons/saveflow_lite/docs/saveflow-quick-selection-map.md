@@ -9,7 +9,8 @@ Use it like a decision tree:
 
 If one gameplay feature contains multiple kinds of state, split them:
 - object-owned state -> `SaveFlowNodeSource`
-- system-owned state -> `SaveFlowDataSource`
+- typed system-owned state -> `SaveFlowTypedDataSource`
+- custom system/table adapters -> `SaveFlowDataSource`
 - runtime entity sets -> `SaveFlowEntityCollectionSource`
 - domain grouping / restore order -> `SaveFlowScope`
 
@@ -23,7 +24,7 @@ flowchart TD
     A --> E["Several domains that must restore in order<br/>(player -> world -> runtime actors)"]
 
     B --> B2["Use SaveFlowNodeSource"]
-    C --> C2["Use SaveFlowDataSource"]
+    C --> C2["Use SaveFlowTypedDataSource or SaveFlowDataSource"]
     D --> D2["Use SaveFlowEntityCollectionSource"]
     E --> E2["Use SaveFlowScope"]
 ```
@@ -50,7 +51,7 @@ Use it when:
 - exported fields are the main payload
 - built-in Godot state such as transform or animation should travel with the object
 - selected child nodes conceptually belong to the same object
-- if one extra system model is also involved, keep `SaveFlowNodeSource` for the object and add a separate `SaveFlowDataSource`
+- if one extra system model is also involved, keep `SaveFlowNodeSource` for the object and add a separate typed data source or custom data source
 
 Do not use it when:
 - the real state belongs to a manager, registry, table, queue, or world model
@@ -64,7 +65,7 @@ Player
 |- SaveFlowNodeSource
 ```
 
-### 2. `SaveFlowDataSource`
+### 2. `SaveFlowTypedDataSource` / `SaveFlowDataSource`
 
 Choose this when the mental model is:
 - save this quest table
@@ -81,7 +82,7 @@ Common examples:
 
 Use it when:
 - the state does not naturally belong to one scene object
-- you need custom gather/apply code
+- typed exported fields can represent the model, or you need custom gather/apply code
 - the data already lives in a model, manager, or service object
 - if you cannot clearly gather and apply one coherent payload, restructure the system first
 
@@ -95,8 +96,23 @@ Typical shape:
 WorldModel
 SaveGraphRoot
 |- WorldScope
-   |- WorldDataSource
+   |- WorldTypedDataSource
 ```
+
+Start with `SaveFlowTypedDataSource` when your system state can be expressed as
+one payload-provider object. The simplest provider is a `SaveFlowTypedData`
+resource:
+
+```gdscript
+class_name RoomSaveData
+extends SaveFlowTypedData
+
+@export var door_open := false
+@export var collected_coins: PackedStringArray = []
+```
+
+Use custom `SaveFlowDataSource` when the source must translate a registry,
+service, queue, or several runtime structures into one payload.
 
 ### 3. `SaveFlowEntityCollectionSource`
 

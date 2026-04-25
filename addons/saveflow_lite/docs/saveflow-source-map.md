@@ -21,8 +21,19 @@ Use it to answer two questions quickly:
 
 - [saveflow_node_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_node_source.gd)
   Main user path for saving one Godot object. Handles exported fields, built-ins, and selected child participants.
+- [saveflow_typed_data.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_typed_data.gd)
+  Typed business-data resource. Converts exported fields to and from SaveFlow payload dictionaries.
+- [saveflow_typed_data_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_typed_data_source.gd)
+  Low-boilerplate source for typed payload-provider state.
 - [saveflow_data_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_data_source.gd)
-  Base class for custom system/model/table sources. User code lives here for non-node state.
+  Base class for custom system/model/table adapters. User code lives here when gather/apply logic is project-specific.
+
+### `addons/saveflow_core/runtime/dotnet`
+
+- [SaveFlowClient.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs)
+  Thin C# wrapper around the `SaveFlow` autoload.
+- [SaveFlowTypedData.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowTypedData.cs)
+  C# typed-data helper. Provides encoded payload helpers (`SaveFlowEncodedPayload`, `ISaveFlowEncodedPayloadProvider`, `SaveFlowJsonStateProvider`, `SaveFlowBinaryStateProvider`) for source-generated JSON, binary bytes, or project-owned encoders, plus reflection convenience helpers (`SaveFlowTypedResource`, `SaveFlowTypedRefCounted`, `SaveFlowTypedPayload`) for small state.
 
 ### `addons/saveflow_core/runtime/entities`
 
@@ -76,22 +87,27 @@ Use it to answer two questions quickly:
 
 ## Recommended Reading Order
 
-1. [saveflow-recommended-integration.md](F:/Coding-Projects/Godot/plugin-development/docs/saveflow-recommended-integration.md)
+1. [saveflow-recommended-integration.md](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_lite/docs/saveflow-recommended-integration.md)
 2. [save_flow.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/core/save_flow.gd)
 3. [saveflow_node_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_node_source.gd)
-4. [saveflow_data_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_data_source.gd)
-5. [saveflow_entity_collection_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd)
-6. [saveflow_prefab_entity_factory.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_prefab_entity_factory.gd)
-7. [saveflow_entity_factory.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_factory.gd)
+4. [saveflow_typed_data.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_typed_data.gd)
+5. [saveflow_typed_data_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_typed_data_source.gd)
+6. [SaveFlowTypedData.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowTypedData.cs)
+7. [saveflow_data_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_data_source.gd)
+8. [saveflow_entity_collection_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd)
+9. [saveflow_prefab_entity_factory.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_prefab_entity_factory.gd)
+10. [saveflow_entity_factory.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_factory.gd)
 
 ## Naming Rules
 
 - `SaveFlowNodeSource`
-  Use when the user mental model is “save this object�?
+  Use when the user mental model is "save this object".
+- `SaveFlowTypedDataSource`
+  Use when the user mental model is "save this typed system/model or payload provider".
 - `SaveFlowDataSource`
-  Use when the user mental model is “save this system/model/table�?
+  Use when the user mental model is "save this custom system/model/table adapter".
 - `SaveFlowEntityCollectionSource`
-  Use when the user mental model is “save this changing runtime set�?
+  Use when the user mental model is "save this changing runtime set".
 - `SaveFlowEntityFactory`
   Use when the project already owns runtime entity creation and lookup.
 

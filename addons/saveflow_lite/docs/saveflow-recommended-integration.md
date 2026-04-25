@@ -127,15 +127,66 @@ continue screen or load menu.
 Recommended rule:
 
 - gameplay code decides when a save-worthy event happened
-- gameplay code chooses the slot strategy
+- gameplay code owns the current integer `active_slot_index`
+- gameplay code chooses whether the event writes the active slot or a separate project-owned slot
 - gameplay code calls the SaveFlow entry point explicitly
 
 Typical examples:
 
-- door transition writes an autosave slot
-- shrine or bonfire writes a checkpoint slot
+- door transition autosaves the active slot
+- shrine or bonfire records checkpoint state and saves the active slot
 - pause menu writes a manual save slot
 - settings menu writes system data immediately
+
+Important boundary:
+
+- SaveFlow does not maintain "the player's current slot"
+- SaveFlow writes exactly the `slot_id` passed to `save_data()`, `save_scene()`, or `save_scope()`
+- the game should keep its own active-slot/session state, then pass a stable storage key to SaveFlow
+
+Use an integer slot index for gameplay identity, selection, and sorting. Derive
+the SaveFlow storage key from that index, then store string labels such as
+`Forest Gate` or `Manual Slot 2` as metadata.
+
+Minimal active-slot pattern:
+
+```gdscript
+var active_slot_index := 1
+
+func slot_id_for_index(slot_index: int) -> String:
+    return "slot_%d" % slot_index
+
+func load_slot(slot_index: int) -> void:
+    var slot_id := slot_id_for_index(slot_index)
+    var result := SaveFlow.load_data(slot_id)
+    if result.ok:
+        active_slot_index = slot_index
+        apply_payload(result.data)
+
+func manual_save(slot_index: int) -> void:
+    var result := SaveFlow.save_data(
+        slot_id_for_index(slot_index),
+        build_payload(),
+        "Manual Save",
+        "manual",
+        "",
+        "",
+        0,
+        "normal",
+        "",
+        {"slot_index": slot_index}
+    )
+    if result.ok:
+        active_slot_index = slot_index
+
+func autosave_after_door() -> void:
+    SaveFlow.save_data(slot_id_for_index(active_slot_index), build_payload(), "Door Autosave", "autosave")
+
+func checkpoint_reached(checkpoint_id: String) -> void:
+    var payload := build_payload()
+    payload["active_checkpoint_id"] = checkpoint_id
+    SaveFlow.save_data(slot_id_for_index(active_slot_index), payload, "Checkpoint", "checkpoint")
+```
 
 Use:
 
@@ -170,15 +221,20 @@ Keep summary data such as:
 Typical example:
 
 ```gdscript
+var active_slot_index := 1
+var slot_id := "slot_%d" % active_slot_index
+
 SaveFlow.save_data(
-    "autosave_latest",
+    slot_id,
     payload,
     "Forest Gate",
     "autosave",
     "Chapter 2",
     "Forest Gate",
     1320,
-    "normal"
+    "normal",
+    "",
+    {"slot_index": active_slot_index}
 )
 ```
 
@@ -221,6 +277,8 @@ In practice, that means each demo should have its own:
 - optional dev-save root and dev slot index
 
 The scene that boots that demo should configure `SaveFlow` with those paths.
+For the recommended template, keep that setup in a small scene node such as
+`SaveFlowConfigurator` instead of burying path setup inside gameplay scripts.
 
 Examples in this repository:
 
@@ -238,15 +296,21 @@ Examples in this repository:
 
 This is profile isolation, not one shared multi-game slot system.
 
-Minimal pattern:
+Minimal scene pattern:
 
-```gdscript
-func _ready() -> void:
-    SaveFlow.configure_with(
-        "user://my_demo/saves",
-        "user://my_demo/slots.index"
-    )
+- Add a `SaveFlowConfigurator` node under the template root scene.
+- Set `base_root` to the demo root, for example `user://recommended_template`.
+- Set `profile_key` to the project/profile name, for example `project_workflow`.
+
+That resolves to:
+
+```text
+save_root = user://recommended_template/project_workflow/saves
+slot_index_file = user://recommended_template/project_workflow/slots.index
 ```
+
+Use direct code only when the project has its own bootstrap/runtime settings
+system and there is no scene node that naturally owns the profile selection.
 
 If editor-side DevSaveManager should also follow that demo:
 
@@ -320,7 +384,7 @@ Use `SaveFlowNodeSource` for:
 
 Do not split one object into separate "state source" and "built-ins source" nodes unless there is a very strong reason.
 
-## 2. System state: `SaveFlowDataSource`
+## 2. System state: `SaveFlowTypedDataSource` / `SaveFlowDataSource`
 
 Use this path when the state does not naturally live on one scene object.
 
@@ -337,18 +401,64 @@ Recommended scene shape:
 WorldState
 SaveGraphRoot
 |- WorldScope
-   |- WorldDataSource
+   |- WorldTypedDataSource
+```
+
+Recommended first path:
+
+```gdscript
+class_name WorldStateData
+extends SaveFlowTypedData
+
+@export var current_region := "forest"
+@export var unlocked_regions: PackedStringArray = []
+@export var quest_step := 0
+```
+
+Then add a `SaveFlowTypedDataSource` to the save graph. Prefer assigning the
+typed data resource directly when the scene owns that data.
+
+`SaveFlowTypedData` is the convenience base, not the only legal shape.
+`SaveFlowTypedDataSource` accepts any object that implements:
+
+```gdscript
+func to_saveflow_payload() -> Dictionary
+func apply_saveflow_payload(payload: Dictionary) -> void
+```
+
+Use `target` directly when a manager node implements that contract. Use
+`target + data_property` when a manager owns a runtime `RefCounted`, C# object,
+or other data object that implements the same contract.
+
+This keeps business code focused on fields:
+
+```gdscript
+world_state_data.current_region = "dungeon"
+world_state_data.quest_step += 1
+```
+
+instead of repeatedly managing dictionary keys:
+
+```gdscript
+payload["current_region"] = "dungeon"
+payload["quest_step"] = int(payload.get("quest_step", 0)) + 1
 ```
 
 Responsibilities:
 - the system object owns the runtime data
-- the custom data source translates runtime data to and from save data
+- `SaveFlowTypedDataSource` converts payload-provider objects to and from save data
+- a custom `SaveFlowDataSource` translates runtime data when typed fields are not enough
 - the data source plugs directly into the SaveFlow graph
 
 Use this path when:
 - data belongs to a manager or registry
 - data is naturally a table, queue, or model object
 - a node-centric source would be artificial
+
+Use a custom `SaveFlowDataSource` when:
+- the source must merge several registries
+- the runtime model cannot be represented as exported fields
+- gather/apply needs validation, filtering, or derived data rebuilds
 
 If you implement `describe_data_plan()` for editor preview, keep to the fixed
 top-level schema:
@@ -461,7 +571,10 @@ Rule 1:
 If the thing being saved is "this object", start with `SaveFlowNodeSource`.
 
 Rule 2:
-If the thing being saved is "this system/model/table", start with `SaveFlowDataSource`.
+If the thing being saved is "this typed system/model", start with `SaveFlowTypedDataSource`.
+
+Rule 2.1:
+If the thing being saved needs custom gather/apply translation, use `SaveFlowDataSource`.
 
 Rule 3:
 If the thing being saved is "this changing set of runtime entities", start with `SaveFlowEntityCollectionSource` and an entity factory.
@@ -485,7 +598,7 @@ Rule 6:
 Disabling `verify_scene_path_on_load` removes a scene-level safety check. It does not add staged restore, scene loading, or orchestration.
 
 Rule 7:
-Keep one `SaveFlowDataSource` focused on one system boundary. Split gameplay data, machine-local settings, session caches, and debug-only data instead of hiding them behind one large custom source.
+Keep one typed data source or custom data source focused on one system boundary. Split gameplay data, machine-local settings, session caches, and debug-only data instead of hiding them behind one large source.
 
 Rule 8:
 Use multiple simple prefab factories before you reach for routing inside one factory. When routing depends on pooling, spawn points, registries, or world state, move to a custom `SaveFlowEntityFactory`.
@@ -499,7 +612,8 @@ A user should not need to ask:
 
 The intended answers are:
 - object state uses `SaveFlowNodeSource`
-- system state uses a custom `SaveFlowDataSource`
+- typed system state uses `SaveFlowTypedDataSource`
+- custom system adapters use `SaveFlowDataSource`
 - runtime sets use entity collection + entity factory
 
 That is the core recommended workflow for SaveFlow Lite.

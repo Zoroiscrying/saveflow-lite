@@ -1,0 +1,228 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_project_workflow_main.gd" id="1_main"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/saveflow/template_saveflow_configurator.gd" id="2_configurator"]
+
+[node name="RecommendedProjectWorkflowMain" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="SaveFlowConfigurator" type="Node" parent="."]
+script = ExtResource("2_configurator")
+base_root = "user://recommended_template"
+profile_key = "project_workflow"
+
+[node name="WorldRoot" type="Node2D" parent="."]
+
+[node name="MainHub" type="Node2D" parent="WorldRoot"]
+
+[node name="HubFloor" type="Polygon2D" parent="WorldRoot/MainHub"]
+color = Color(0.18, 0.22, 0.25, 1)
+polygon = PackedVector2Array(110, 120, 1190, 120, 1190, 650, 110, 650)
+
+[node name="HubNorthWall" type="Polygon2D" parent="WorldRoot/MainHub"]
+color = Color(0.35, 0.45, 0.55, 1)
+polygon = PackedVector2Array(110, 120, 1190, 120, 1190, 150, 110, 150)
+
+[node name="HubSouthWall" type="Polygon2D" parent="WorldRoot/MainHub"]
+color = Color(0.35, 0.45, 0.55, 1)
+polygon = PackedVector2Array(110, 620, 1190, 620, 1190, 650, 110, 650)
+
+[node name="HubWestWall" type="Polygon2D" parent="WorldRoot/MainHub"]
+color = Color(0.35, 0.45, 0.55, 1)
+polygon = PackedVector2Array(110, 120, 140, 120, 140, 650, 110, 650)
+
+[node name="HubEastWall" type="Polygon2D" parent="WorldRoot/MainHub"]
+color = Color(0.35, 0.45, 0.55, 1)
+polygon = PackedVector2Array(1160, 120, 1190, 120, 1190, 650, 1160, 650)
+
+[node name="ForestPortalZone" type="Polygon2D" parent="WorldRoot/MainHub"]
+color = Color(0.2, 0.5, 0.34, 0.45)
+polygon = PackedVector2Array(230, 220, 500, 220, 500, 480, 230, 480)
+
+[node name="DungeonPortalZone" type="Polygon2D" parent="WorldRoot/MainHub"]
+color = Color(0.45, 0.28, 0.18, 0.45)
+polygon = PackedVector2Array(760, 220, 1030, 220, 1030, 480, 760, 480)
+
+[node name="ForestPortal" type="Polygon2D" parent="WorldRoot/MainHub"]
+position = Vector2(365, 350)
+color = Color(0.3, 0.95, 0.58, 1)
+polygon = PackedVector2Array(0, -30, 25, 0, 0, 30, -25, 0)
+
+[node name="DungeonPortal" type="Polygon2D" parent="WorldRoot/MainHub"]
+position = Vector2(895, 350)
+color = Color(0.95, 0.62, 0.3, 1)
+polygon = PackedVector2Array(0, -30, 25, 0, 0, 30, -25, 0)
+
+[node name="MainPlayer" type="Polygon2D" parent="WorldRoot/MainHub"]
+z_index = 50
+position = Vector2(640, 520)
+color = Color(0.55, 0.82, 1, 1)
+polygon = PackedVector2Array(0, -20, 16, 0, 0, 18, -16, 0)
+
+[node name="HubTitle" type="Label" parent="WorldRoot/MainHub"]
+offset_left = 560.0
+offset_top = 168.0
+offset_right = 740.0
+offset_bottom = 198.0
+text = "MainHub"
+horizontal_alignment = 1
+
+[node name="ForestLabel" type="Label" parent="WorldRoot/MainHub"]
+offset_left = 280.0
+offset_top = 245.0
+offset_right = 450.0
+offset_bottom = 300.0
+text = "Forest Room
+subscene data"
+horizontal_alignment = 1
+
+[node name="DungeonLabel" type="Label" parent="WorldRoot/MainHub"]
+offset_left = 810.0
+offset_top = 245.0
+offset_right = 980.0
+offset_bottom = 300.0
+text = "Dungeon Room
+subscene data"
+horizontal_alignment = 1
+
+[node name="SubsceneRoot" type="Node2D" parent="WorldRoot"]
+
+[node name="HUD" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopLeftPanel" type="PanelContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 330.0
+offset_bottom = 92.0
+
+[node name="TopLeftLabel" type="Label" parent="HUD/TopLeftPanel"]
+layout_mode = 2
+text = "Project Workflow Template"
+
+[node name="TopCenterPanel" type="PanelContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -210.0
+offset_top = 18.0
+offset_right = 210.0
+offset_bottom = 78.0
+grow_horizontal = 2
+
+[node name="TopCenterLabel" type="Label" parent="HUD/TopCenterPanel"]
+layout_mode = 2
+text = "MainHub"
+horizontal_alignment = 1
+
+[node name="TopRightPanel" type="PanelContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -360.0
+offset_top = 18.0
+offset_right = -18.0
+offset_bottom = 78.0
+grow_horizontal = 0
+
+[node name="TopRightLabel" type="Label" parent="HUD/TopRightPanel"]
+layout_mode = 2
+text = "main slot"
+horizontal_alignment = 1
+
+[node name="BottomHintPanel" type="PanelContainer" parent="HUD"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -420.0
+offset_top = -106.0
+offset_right = 420.0
+offset_bottom = -22.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="BottomHintLabel" type="Label" parent="HUD/BottomHintPanel"]
+layout_mode = 2
+text = "WASD move | Esc menu"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="MenuOverlay" type="ColorRect" parent="HUD"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.025, 0.03, 0.82)
+
+[node name="MenuPanel" type="PanelContainer" parent="HUD/MenuOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -170.0
+offset_right = 420.0
+offset_bottom = 170.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MenuContent" type="VBoxContainer" parent="HUD/MenuOverlay/MenuPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="MenuTitleLabel" type="Label" parent="HUD/MenuOverlay/MenuPanel/MenuContent"]
+layout_mode = 2
+text = "Main Scene Save Menu"
+horizontal_alignment = 1
+
+[node name="MenuStatusLabel" type="Label" parent="HUD/MenuOverlay/MenuPanel/MenuContent"]
+layout_mode = 2
+text = "Main scene data stores current location. Room data is saved from room nodes."
+autowrap_mode = 3
+
+[node name="MenuButtons" type="HBoxContainer" parent="HUD/MenuOverlay/MenuPanel/MenuContent"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="MainSaveButton" type="Button" parent="HUD/MenuOverlay/MenuPanel/MenuContent/MenuButtons"]
+layout_mode = 2
+text = "Save Main Data"
+
+[node name="MainLoadButton" type="Button" parent="HUD/MenuOverlay/MenuPanel/MenuContent/MenuButtons"]
+layout_mode = 2
+text = "Load Main Data"
+
+[node name="ReturnHubButton" type="Button" parent="HUD/MenuOverlay/MenuPanel/MenuContent/MenuButtons"]
+layout_mode = 2
+text = "Return Hub"
+
+[node name="CloseMenuButton" type="Button" parent="HUD/MenuOverlay/MenuPanel/MenuContent/MenuButtons"]
+layout_mode = 2
+text = "Close"

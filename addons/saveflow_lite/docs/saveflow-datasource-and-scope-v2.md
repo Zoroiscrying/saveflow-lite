@@ -17,14 +17,129 @@ At the same time, save domains need more than a tree shape.
 They also need basic save/load policy.
 
 This note introduces:
+- `SaveFlowTypedData`
+- `SaveFlowTypedDataSource`
 - `SaveFlowDataSource`
 - `SaveFlowScope v2` fields
+
+## SaveFlowTypedDataSource
+
+`SaveFlowTypedDataSource` is the low-boilerplate path for system-owned data
+that can be represented by one typed payload-provider object.
+
+The simplest business object is a typed resource:
+
+```gdscript
+class_name RoomSaveData
+extends SaveFlowTypedData
+
+@export var room_id := ""
+@export var door_open := false
+@export var collected_coins: PackedStringArray = []
+```
+
+Gameplay code edits normal fields:
+
+```gdscript
+room_data.door_open = true
+room_data.collected_coins.append("coin_01")
+```
+
+The source converts those fields to a SaveFlow payload during save and applies
+them back during load. The top-level save data is still Variant/Dictionary based,
+but project code does not need to manage string keys for every child value.
+
+After load, `SaveFlowTypedData` calls:
+
+```gdscript
+func on_saveflow_post_apply(payload: Dictionary) -> void
+```
+
+Override it when loaded fields require derived runtime refresh, such as
+rebuilding UI labels, refreshing collision, spawning visuals, or recalculating
+cached state. Keep ordinary field persistence in exported fields; use the hook
+only for post-load effects.
+
+`SaveFlowTypedData` is a convenience base, not a hard requirement. Any object can
+be saved by `SaveFlowTypedDataSource` if it implements:
+
+```gdscript
+func to_saveflow_payload() -> Dictionary
+func apply_saveflow_payload(payload: Dictionary) -> void
+```
+
+C# providers can use the same contract with PascalCase method names:
+
+```csharp
+public Dictionary ToSaveFlowPayload()
+	=> SaveFlowTypedPayload.ToPayload(this);
+
+public void ApplySaveFlowPayload(Dictionary payload)
+	=> SaveFlowTypedPayload.ApplyPayload(this, payload);
+```
+
+That reflection helper is a convenience path for small or low-frequency state.
+For performance-sensitive C# state, prefer the encoded payload contract:
+
+```csharp
+public Dictionary ToSaveFlowEncodedPayload()
+	=> SaveFlowEncodedPayload.CreateJsonPayload(
+		CaptureState(),
+		MySaveJsonContext.Default.RoomSaveState,
+		"my_game.room_state");
+
+public void ApplySaveFlowEncodedPayload(Dictionary payload)
+	=> SaveFlowEncodedPayload.ApplyJsonPayload(
+		payload,
+		MySaveJsonContext.Default.RoomSaveState,
+		ApplyState);
+```
+
+With this shape, the C# side can use `System.Text.Json` source generation or a
+project-owned encoder. SaveFlow stores the encoded result as one payload and
+does not inspect every C# field.
+
+For the common C# case where one DTO is the source of truth, inherit
+`SaveFlowJsonStateProvider<TState>`. It captures `State` during save, replaces
+`State` during load, and then calls `OnSaveFlowStateApplied(state)` for
+post-load refresh. Use explicit encoded provider methods only when state
+replacement is not enough.
+
+If the project wants binary payloads, use `SaveFlowBinaryStateProvider<TState>`
+or `SaveFlowBinaryResource<TData>`. These bases keep SaveFlow out of the binary
+format decision: the project implements `Serialize...(...) -> byte[]` and
+`Deserialize...(byte[])`, while SaveFlow stores the bytes under the same encoded
+payload contract. This is the intended hook for MessagePack, protobuf,
+MemoryPack, or custom `BinaryWriter` payloads.
+
+For authored C# data where convenience matters more than throughput, inherit
+`SaveFlowTypedResource` and mark fields or properties with `[Export]`. Use
+`[SaveFlowKey]` only when a stable payload key must differ from the member name,
+and `[SaveFlowIgnore]` for exported editor state that should not enter the save
+file.
+
+Supported shapes:
+- direct `Resource` assigned to `data`
+- target `Node` that implements the two methods
+- target property holding a `RefCounted`, C# object, or custom data object with the two methods
+- C# target that implements `ToSaveFlowEncodedPayload` / `ApplySaveFlowEncodedPayload`
+
+Use `SaveFlowTypedDataSource` when:
+- the state is one coherent model
+- exported fields or a typed object describe the data clearly
+- custom gather/apply code would only copy fields into a dictionary
+
+Do not use it when:
+- the source must merge several services
+- the payload needs custom validation or filtering
+- restore must rebuild derived runtime state in a non-field way
 
 ## SaveFlowDataSource
 
 `SaveFlowDataSource` is a specialized `SaveFlowSource` for non-node-field state.
 
-It is meant for state that is already modeled as data, not as a group of exported properties on one gameplay node.
+It is meant for state that needs project-owned gather/apply logic, not just
+field persistence.
 
 Examples:
 - quest manager progress maps
@@ -39,14 +154,19 @@ Users should understand it as:
 
 `SaveFlowNodeSource` is for "save this node object and its selected parts".
 
-`SaveFlowDataSource` is for "save this system-owned data model".
+`SaveFlowTypedDataSource` is for "save this typed system-owned data model or payload provider".
+
+`SaveFlowDataSource` is for "save this system-owned data model through custom
+translation logic".
 
 That means it is not a replacement for node sources.
 It is the sibling path for manager-owned or table-owned state.
 
 ### Contract
 
-Subclass `SaveFlowDataSource` and implement:
+If one typed object can provide the payload, prefer `SaveFlowTypedDataSource`.
+
+Subclass `SaveFlowDataSource` when custom translation is needed and implement:
 - `gather_data() -> Dictionary`
 - `apply_data(data: Dictionary) -> void`
 
@@ -61,19 +181,17 @@ This is still useful when the source itself should own the save logic.
 ```gdscript
 extends SaveFlowDataSource
 
-@export_node_path("Node") var target_path: NodePath
+@export var registry: Node
 
 func gather_data() -> Dictionary:
-    var manager := get_node_or_null(target_path)
-    if manager == null:
+    if registry == null or not registry.has_method("export_save_payload"):
         return {}
-    return Dictionary(manager.system_state).duplicate(true)
+    return registry.call("export_save_payload")
 
 func apply_data(data: Dictionary) -> void:
-    var manager := get_node_or_null(target_path)
-    if manager == null:
+    if registry == null or not registry.has_method("apply_save_payload"):
         return
-    manager.system_state = data.duplicate(true)
+    registry.call("apply_save_payload", data)
 ```
 
 Then wire it into a graph:
@@ -88,8 +206,8 @@ SaveGraphRoot
 
 Use `SaveFlowDataSource` when:
 - the source of truth is a manager or service
-- the data already exists as dictionaries, arrays, or tables
-- exported fields would be awkward or misleading
+- the data already exists as dictionaries, arrays, tables, or registries
+- typed exported fields would be awkward or misleading
 - the state may affect loaded and unloaded content alike
 
 Do not use it when a simple node source on a gameplay object is enough.

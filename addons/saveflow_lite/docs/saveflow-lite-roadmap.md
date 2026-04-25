@@ -34,6 +34,7 @@ It should get better by becoming:
 Continue refining:
 
 - `SaveFlowNodeSource`
+- `SaveFlowTypedDataSource`
 - `SaveFlowDataSource`
 - `SaveFlowEntityCollectionSource`
 - `SaveFlowScope`
@@ -320,13 +321,14 @@ This release should:
   - root README
   - Lite README
   - Quick Access
-  - recommended template case launcher
-  - case scene descriptions
+  - recommended project workflow template
+  - scene/component descriptions
 
 The three default paths should stay explicit:
 
 - one object -> `SaveFlowNodeSource`
-- one system -> `SaveFlowDataSource`
+- one typed system model -> `SaveFlowTypedDataSource`
+- one custom system adapter -> `SaveFlowDataSource`
 - one runtime set -> `SaveFlowEntityCollectionSource`
 
 Acceptance bar:

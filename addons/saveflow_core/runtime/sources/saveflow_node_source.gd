@@ -115,11 +115,18 @@ var participant_discovery_mode: int = ParticipantDiscoveryMode.RECURSIVE:
 
 var _current_context: Dictionary = {}
 var _has_explicit_target := false
+var _editor_tree_refresh_queued := false
 
 
 func _ready() -> void:
 	_hydrate_target_from_ref_path()
+	_connect_editor_tree_signals()
 	_refresh_editor_preview()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EXIT_TREE:
+		_disconnect_editor_tree_signals()
 
 
 func before_save(context: Dictionary = {}) -> void:
@@ -270,8 +277,22 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("SaveFlowNodeSource plan is invalid: %s" % reason)
 	for missing_path in PackedStringArray(plan.get("missing_paths", PackedStringArray())):
 		warnings.append("Included path could not be resolved: %s" % missing_path)
+	for suggestion in PackedStringArray(plan.get("missing_path_suggestions", PackedStringArray())):
+		warnings.append(suggestion)
 	for conflict_text in PackedStringArray(plan.get("ownership_conflicts", PackedStringArray())):
 		warnings.append("Included child crosses another save-owner boundary: %s" % conflict_text)
+	if bool(plan.get("target_is_source_helper", false)):
+		warnings.append("Target resolves to another SaveFlowSource helper. Move this source under a gameplay object or set target to a real gameplay node.")
+	var helper_child_paths: PackedStringArray = PackedStringArray(plan.get("helper_child_paths", PackedStringArray()))
+	if not helper_child_paths.is_empty():
+		warnings.append("SaveFlowSource helper nodes should not contain gameplay child nodes: %s." % ", ".join(helper_child_paths))
+		for suggestion in PackedStringArray(plan.get("helper_child_suggestions", PackedStringArray())):
+			warnings.append(suggestion)
+	var source_child_paths: PackedStringArray = PackedStringArray(plan.get("source_child_paths", PackedStringArray()))
+	if not source_child_paths.is_empty():
+		warnings.append("SaveFlowSource helper nodes should not contain child SaveFlowSource nodes: %s." % ", ".join(source_child_paths))
+		for suggestion in PackedStringArray(plan.get("source_child_suggestions", PackedStringArray())):
+			warnings.append(suggestion)
 	var missing_properties: PackedStringArray = PackedStringArray(plan.get("missing_properties", PackedStringArray()))
 	if not missing_properties.is_empty():
 		warnings.append("Missing target properties: %s" % ", ".join(missing_properties))
@@ -280,6 +301,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 
 func describe_node_plan() -> Dictionary:
 	var target_node := _resolve_target()
+	var helper_child_paths: PackedStringArray = _collect_helper_child_paths()
+	var source_child_paths: PackedStringArray = _collect_child_source_paths()
 	if target_node == null:
 		return {
 			"valid": false,
@@ -294,10 +317,19 @@ func describe_node_plan() -> Dictionary:
 			"included_paths": included_paths.duplicate(),
 			"excluded_paths": excluded_paths.duplicate(),
 			"resolved_participants": [],
+			"helper_child_paths": helper_child_paths,
+			"helper_child_suggestions": _build_helper_child_suggestions(helper_child_paths, null),
+			"source_child_paths": source_child_paths,
+			"source_child_suggestions": _build_source_child_suggestions(source_child_paths, null),
+			"target_is_source_helper": false,
 			"missing_properties": PackedStringArray(),
 			"missing_paths": included_paths.duplicate(),
+			"missing_path_suggestions": _build_missing_path_suggestions(included_paths.duplicate(), source_child_paths, null),
 		}
 
+	var helper_child_suggestions: PackedStringArray = _build_helper_child_suggestions(helper_child_paths, target_node)
+	var source_child_suggestions: PackedStringArray = _build_source_child_suggestions(source_child_paths, target_node)
+	var target_is_source_helper := target_node is SaveFlowSource
 	var exported_fields: PackedStringArray = _stored_script_properties_for(target_node)
 	var target_properties: PackedStringArray = _resolve_target_property_names(target_node)
 	var supported_ids: PackedStringArray = SaveFlowBuiltInSerializerRegistry.supported_ids_for_node(target_node)
@@ -331,12 +363,27 @@ func describe_node_plan() -> Dictionary:
 			}
 		)
 
+	var missing_path_suggestions: PackedStringArray = _build_missing_path_suggestions(missing_paths, source_child_paths, target_node)
+	var valid := missing_paths.is_empty() \
+		and missing_properties.is_empty() \
+		and ownership_conflicts.is_empty() \
+		and helper_child_paths.is_empty() \
+		and source_child_paths.is_empty() \
+		and not target_is_source_helper
 	return {
-		"valid": missing_paths.is_empty() and missing_properties.is_empty(),
-		"reason": _resolve_plan_reason(missing_properties, missing_paths),
+		"valid": valid,
+		"reason": _resolve_plan_reason(
+			missing_properties,
+			missing_paths,
+			ownership_conflicts,
+			source_child_paths,
+			helper_child_paths,
+			target_is_source_helper
+		),
 		"save_key": get_source_key(),
 		"target_name": target_node.name,
 		"target_path": _describe_target_path(target_node),
+		"target_is_source_helper": target_is_source_helper,
 		"exported_fields": exported_fields,
 		"target_properties": target_properties,
 		"supported_target_built_ins": supported_ids,
@@ -346,8 +393,13 @@ func describe_node_plan() -> Dictionary:
 		"participant_discovery_mode": participant_discovery_mode,
 		"resolved_participants": resolved_participants,
 		"ownership_conflicts": ownership_conflicts,
+		"helper_child_paths": helper_child_paths,
+		"helper_child_suggestions": helper_child_suggestions,
+		"source_child_paths": source_child_paths,
+		"source_child_suggestions": source_child_suggestions,
 		"missing_properties": missing_properties,
 		"missing_paths": missing_paths,
+		"missing_path_suggestions": missing_path_suggestions,
 	}
 
 
@@ -571,11 +623,22 @@ func _collect_participant_candidates(target_node: Node, current: Node, into: Arr
 			continue
 		if _is_excluded_participant(node_child):
 			continue
+		var relative_path: String = _relative_path_from_target(target_node, node_child)
+		var ownership_conflict := _describe_participant_ownership_conflict(target_node, relative_path)
+		var owner_source: SaveFlowSource = _find_participant_owner_source(target_node, node_child) if not ownership_conflict.is_empty() else null
+		var recommended_source_path := ""
+		var owner_source_name := ""
+		var owner_kind := ""
+		var owner_source_role := ""
+		if owner_source != null:
+			recommended_source_path = _relative_path_from_target(target_node, owner_source)
+			owner_source_name = owner_source.name
+			owner_kind = _describe_participant_kind(owner_source)
+			owner_source_role = _describe_owner_source_role(owner_source)
 		var kind: String = _describe_participant_kind(node_child)
 		var supported_built_ins: PackedStringArray = SaveFlowBuiltInSerializerRegistry.supported_ids_for_node(node_child)
-		var include_candidate := kind != "unknown" or not supported_built_ins.is_empty()
+		var include_candidate := kind != "unknown" or not supported_built_ins.is_empty() or not ownership_conflict.is_empty()
 		if include_candidate:
-			var relative_path: String = _relative_path_from_target(target_node, node_child)
 			var depth := 0 if relative_path.is_empty() or relative_path == "." else relative_path.count("/")
 			var supported_display_names: PackedStringArray = []
 			for serializer_id in supported_built_ins:
@@ -591,6 +654,11 @@ func _collect_participant_candidates(target_node: Node, current: Node, into: Arr
 					"supported_built_in_names": supported_display_names,
 					"included": included_paths.has(relative_path),
 					"excluded": excluded_paths.has(relative_path),
+					"ownership_conflict": ownership_conflict,
+					"owner_kind": owner_kind,
+					"owner_source_role": owner_source_role,
+					"owner_source_name": owner_source_name,
+					"recommended_source_path": recommended_source_path,
 				}
 			)
 		if participant_discovery_mode == ParticipantDiscoveryMode.RECURSIVE:
@@ -668,6 +736,14 @@ func _describe_participant_kind(participant: Node) -> String:
 	return "unknown"
 
 
+func _describe_owner_source_role(source: SaveFlowSource) -> String:
+	if source is SaveFlowEntityCollectionSource:
+		return "entity_collection"
+	if source is SaveFlowNodeSource:
+		return "node_source"
+	return "source"
+
+
 func _describe_participant_icon_name(participant: Node) -> String:
 	if participant == null:
 		return "Node"
@@ -686,21 +762,32 @@ func _describe_participant_ownership_conflict(target_node: Node, path_text: Stri
 	if resolved is SaveFlowEntityCollectionSource:
 		return "%s is an EntityCollectionSource. Runtime sets should be owned directly by that collection source." % path_text
 
-	var entity_collection_target := _find_entity_collection_boundary(target_node, resolved)
-	if entity_collection_target != null:
+	var entity_collection_source := _find_entity_collection_source_for_boundary(target_node, resolved)
+	if entity_collection_source != null:
+		var entity_collection_target: Node = entity_collection_source.call("_resolve_target") if entity_collection_source.has_method("_resolve_target") else null
 		var relative_collection_path := str(target_node.get_path_to(entity_collection_target))
-		return "%s enters runtime entity container `%s`, which is owned by an EntityCollectionSource." % [path_text, relative_collection_path]
+		var relative_source_path := _relative_path_from_target(target_node, entity_collection_source)
+		return "%s enters runtime entity container `%s`, which is owned by EntityCollectionSource `%s`. Include `%s` instead." % [path_text, relative_collection_path, entity_collection_source.name, relative_source_path]
 
 	if resolved is SaveFlowNodeSource:
 		return ""
-	var nested_target := _find_nested_node_source_boundary(target_node, resolved)
-	if nested_target != null:
+	var nested_source := _find_nested_node_source_for_boundary(target_node, resolved)
+	if nested_source != null:
+		var nested_target: Node = nested_source.call("_resolve_target") if nested_source.has_method("_resolve_target") else nested_source.get_parent()
 		var relative_target_path := str(target_node.get_path_to(nested_target))
-		return "%s enters object subtree `%s`, which already has its own NodeSource owner." % [path_text, relative_target_path]
+		var relative_source_path := _relative_path_from_target(target_node, nested_source)
+		return "%s enters object subtree `%s`, which already has its own NodeSource owner `%s`. Include `%s` instead." % [path_text, relative_target_path, nested_source.name, relative_source_path]
 	return ""
 
 
 func _find_entity_collection_boundary(target_node: Node, resolved: Node) -> Node:
+	var collection_source := _find_entity_collection_source_for_boundary(target_node, resolved)
+	if collection_source == null:
+		return null
+	return collection_source.call("_resolve_target") if collection_source.has_method("_resolve_target") else null
+
+
+func _find_entity_collection_source_for_boundary(target_node: Node, resolved: Node) -> SaveFlowEntityCollectionSource:
 	var collections: Array = []
 	_collect_entity_collection_sources(target_node, collections)
 	for collection_variant in collections:
@@ -711,11 +798,18 @@ func _find_entity_collection_boundary(target_node: Node, resolved: Node) -> Node
 		if not is_instance_valid(collection_target):
 			continue
 		if collection_target == resolved or collection_target.is_ancestor_of(resolved):
-			return collection_target
+			return collection
 	return null
 
 
 func _find_nested_node_source_boundary(target_node: Node, resolved: Node) -> Node:
+	var nested_source := _find_nested_node_source_for_boundary(target_node, resolved)
+	if nested_source == null:
+		return null
+	return nested_source.call("_resolve_target") if nested_source.has_method("_resolve_target") else nested_source.get_parent()
+
+
+func _find_nested_node_source_for_boundary(target_node: Node, resolved: Node) -> SaveFlowNodeSource:
 	var nested_sources: Array = []
 	_collect_node_sources(target_node, nested_sources)
 	for source_variant in nested_sources:
@@ -728,7 +822,19 @@ func _find_nested_node_source_boundary(target_node: Node, resolved: Node) -> Nod
 		if nested_target == target_node:
 			continue
 		if nested_target == resolved or nested_target.is_ancestor_of(resolved):
-			return nested_target
+			return nested_source
+	return null
+
+
+func _find_participant_owner_source(target_node: Node, resolved: Node) -> SaveFlowSource:
+	if target_node == null or resolved == null:
+		return null
+	var entity_collection_source := _find_entity_collection_source_for_boundary(target_node, resolved)
+	if entity_collection_source != null:
+		return entity_collection_source
+	var nested_source := _find_nested_node_source_for_boundary(target_node, resolved)
+	if nested_source != null:
+		return nested_source
 	return null
 
 
@@ -750,6 +856,102 @@ func _collect_node_sources(current: Node, into: Array) -> void:
 		if child is SaveFlowNodeSource:
 			into.append(child)
 		_collect_node_sources(child, into)
+
+
+func _collect_helper_child_paths() -> PackedStringArray:
+	var paths := PackedStringArray()
+	for child_variant in get_children():
+		var child := child_variant as Node
+		if child == null or child is SaveFlowSource:
+			continue
+		paths.append(String(child.name))
+	return paths
+
+
+func _collect_child_source_paths() -> PackedStringArray:
+	var paths := PackedStringArray()
+	_collect_child_source_paths_recursive(self, "", paths)
+	return paths
+
+
+func _collect_child_source_paths_recursive(current: Node, prefix: String, into: PackedStringArray) -> void:
+	for child_variant in current.get_children():
+		var child := child_variant as Node
+		if child == null:
+			continue
+		var child_path := String(child.name) if prefix.is_empty() else "%s/%s" % [prefix, child.name]
+		if child is SaveFlowSource:
+			into.append(child_path)
+		_collect_child_source_paths_recursive(child, child_path, into)
+
+
+func _build_helper_child_suggestions(helper_child_paths: PackedStringArray, target_node: Node) -> PackedStringArray:
+	var suggestions: PackedStringArray = []
+	var target_label := "the target gameplay object"
+	if is_instance_valid(target_node) and not String(target_node.name).is_empty():
+		target_label = "`%s`" % target_node.name
+	for helper_child_path in helper_child_paths:
+		var path_text := String(helper_child_path)
+		if path_text.is_empty():
+			continue
+		suggestions.append(
+			"Child node `%s` is inside this Source helper. Move `%s` under %s; Source helpers should only configure save logic, not contain gameplay nodes." %
+			[path_text, path_text, target_label]
+		)
+	return suggestions
+
+
+func _build_source_child_suggestions(source_child_paths: PackedStringArray, target_node: Node) -> PackedStringArray:
+	var suggestions: PackedStringArray = []
+	var target_label := "the target gameplay object"
+	if is_instance_valid(target_node) and not String(target_node.name).is_empty():
+		target_label = "`%s`" % target_node.name
+	for source_child_path in source_child_paths:
+		var path_text := String(source_child_path)
+		if path_text.is_empty():
+			continue
+		var segments := path_text.split("/", false)
+		if segments.size() <= 1:
+			suggestions.append(
+				"Nested source `%s` is inside this Source helper. Move it under the real gameplay object it saves, or delete it if this Source already owns that object." %
+				path_text
+			)
+			continue
+		var top_gameplay_node := String(segments[0])
+		var top_node := get_node_or_null(NodePath(top_gameplay_node))
+		if top_node is SaveFlowSource:
+			suggestions.append(
+				"Nested source `%s` is inside Source helper `%s`. Move each Source under the real gameplay object it saves, or delete duplicate Sources that try to save the same object." %
+				[path_text, top_gameplay_node]
+			)
+			continue
+		suggestions.append(
+			"Nested source `%s` is inside this Source helper. Move gameplay subtree `%s` under %s, keep the nested Source inside that subtree, then include `%s` from this Source only if the parent object should compose it." %
+			[path_text, top_gameplay_node, target_label, path_text]
+		)
+	return suggestions
+
+
+func _build_missing_path_suggestions(missing_paths: PackedStringArray, source_child_paths: PackedStringArray, target_node: Node) -> PackedStringArray:
+	var suggestions: PackedStringArray = []
+	var target_label := "the target gameplay object"
+	if is_instance_valid(target_node) and not String(target_node.name).is_empty():
+		target_label = "`%s`" % target_node.name
+	for missing_path in missing_paths:
+		var path_text := String(missing_path)
+		if path_text.is_empty():
+			continue
+		if source_child_paths.has(path_text) or get_node_or_null(NodePath(path_text)) != null:
+			suggestions.append(
+				"Included child `%s` exists under this Source helper, but included children are resolved from %s. Move the gameplay subtree under %s, or remove this included path." %
+				[path_text, target_label, target_label]
+			)
+			continue
+		suggestions.append(
+			"Included child `%s` does not exist under %s. Re-select it from Included Children, or remove the stale included path." %
+			[path_text, target_label]
+		)
+	return suggestions
 
 
 func _warn_missing_target() -> void:
@@ -777,7 +979,22 @@ func _warn_ownership_conflict(message: String) -> void:
 	push_warning("SaveFlowNodeSource '%s' skipped an included child because it crosses another save-owner boundary: %s" % [name, message])
 
 
-func _resolve_plan_reason(missing_properties: PackedStringArray, missing_paths: PackedStringArray) -> String:
+func _resolve_plan_reason(
+	missing_properties: PackedStringArray,
+	missing_paths: PackedStringArray,
+	ownership_conflicts: PackedStringArray = PackedStringArray(),
+	source_child_paths: PackedStringArray = PackedStringArray(),
+	helper_child_paths: PackedStringArray = PackedStringArray(),
+	target_is_source_helper := false
+) -> String:
+	if target_is_source_helper:
+		return "TARGET_IS_SAVEFLOW_SOURCE_HELPER"
+	if not source_child_paths.is_empty():
+		return "SOURCE_HELPER_HAS_CHILD_SOURCES"
+	if not helper_child_paths.is_empty():
+		return "SOURCE_HELPER_HAS_CHILD_NODES"
+	if not ownership_conflicts.is_empty():
+		return "OWNERSHIP_CONFLICTS"
 	if missing_properties.is_empty() and missing_paths.is_empty():
 		return ""
 	if not missing_properties.is_empty() and not missing_paths.is_empty():
@@ -793,6 +1010,72 @@ func _describe_target_path(target_node: Node) -> String:
 	if target_node.is_inside_tree():
 		return str(target_node.get_path())
 	return target_node.name
+
+
+func _connect_editor_tree_signals() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	_connect_editor_tree_signal(tree, "node_added", _on_editor_tree_node_added)
+	_connect_editor_tree_signal(tree, "node_removed", _on_editor_tree_node_removed)
+	_connect_editor_tree_signal(tree, "node_renamed", _on_editor_tree_node_renamed)
+
+
+func _disconnect_editor_tree_signals() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	_disconnect_editor_tree_signal(tree, "node_added", _on_editor_tree_node_added)
+	_disconnect_editor_tree_signal(tree, "node_removed", _on_editor_tree_node_removed)
+	_disconnect_editor_tree_signal(tree, "node_renamed", _on_editor_tree_node_renamed)
+
+
+func _connect_editor_tree_signal(tree: SceneTree, signal_name: StringName, handler: Callable) -> void:
+	if not tree.has_signal(signal_name):
+		return
+	if tree.is_connected(signal_name, handler):
+		return
+	tree.connect(signal_name, handler)
+
+
+func _disconnect_editor_tree_signal(tree: SceneTree, signal_name: StringName, handler: Callable) -> void:
+	if not tree.has_signal(signal_name):
+		return
+	if not tree.is_connected(signal_name, handler):
+		return
+	tree.disconnect(signal_name, handler)
+
+
+func _on_editor_tree_node_added(_node: Node) -> void:
+	_queue_editor_tree_refresh()
+
+
+func _on_editor_tree_node_removed(_node: Node) -> void:
+	_queue_editor_tree_refresh()
+
+
+func _on_editor_tree_node_renamed(_node: Node) -> void:
+	_queue_editor_tree_refresh()
+
+
+func _queue_editor_tree_refresh() -> void:
+	if not Engine.is_editor_hint():
+		return
+	if _editor_tree_refresh_queued:
+		return
+	_editor_tree_refresh_queued = true
+	call_deferred("_flush_editor_tree_refresh")
+
+
+func _flush_editor_tree_refresh() -> void:
+	_editor_tree_refresh_queued = false
+	if not Engine.is_editor_hint() or not is_inside_tree():
+		return
+	_refresh_editor_preview()
 
 
 func _refresh_editor_preview() -> void:

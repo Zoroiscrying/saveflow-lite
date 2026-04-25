@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cm7thyx30uvuv" path="res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.gd" id="1_script"]
 [ext_resource type="Script" uid="uid://d34qt674wgoxo" path="res://demo/saveflow_lite/plugin_sandbox/sandbox_player.gd" id="2_script"]
 [ext_resource type="Script" uid="uid://dxygvx0s3jblx" path="res://demo/saveflow_lite/plugin_sandbox/sandbox_settings.gd" id="3_script"]
-[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="4_node_source"]
+[ext_resource type="Script" uid="uid://ccaq441lera4w" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="4_node_source"]
 
 [node name="PluginSandbox" type="Control" unique_id=1825626374]
 layout_mode = 3
@@ -104,6 +104,18 @@ script = ExtResource("2_script")
 [node name="PlayerSource" type="Node" parent="StateRoot/PlayerState" unique_id=308022664]
 script = ExtResource("4_node_source")
 save_key = "player"
+additional_properties = PackedStringArray()
+ignored_properties = PackedStringArray()
+included_target_builtin_ids = PackedStringArray()
+included_paths = PackedStringArray()
+excluded_paths = PackedStringArray()
+metadata/_saveflow_node_source_preview_expanded = true
+metadata/_saveflow_node_source_details_expanded = false
+metadata/_saveflow_node_source_advanced_expanded = false
+metadata/_saveflow_node_source_built_ins_expanded = false
+metadata/_saveflow_node_source_participants_expanded = true
+metadata/_saveflow_node_source_paths_expanded = false
+metadata/_saveflow_node_source_diagnostics_expanded = false
 
 [node name="SettingsState" type="Node" parent="StateRoot" unique_id=53701952]
 script = ExtResource("3_script")
@@ -111,3 +123,8 @@ script = ExtResource("3_script")
 [node name="SettingsSource" type="Node" parent="StateRoot/SettingsState" unique_id=1656279295]
 script = ExtResource("4_node_source")
 save_key = "settings"
+additional_properties = PackedStringArray()
+ignored_properties = PackedStringArray()
+included_target_builtin_ids = PackedStringArray()
+included_paths = PackedStringArray()
+excluded_paths = PackedStringArray()

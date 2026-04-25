@@ -7,14 +7,16 @@ This document is a fast visual explanation of the current SaveFlow Lite model.
 ```mermaid
 flowchart LR
     A["Gameplay Object"] --> B["SaveFlowNodeSource"]
-    C["System / Model / Table"] --> D["SaveFlowDataSource"]
-F["Runtime Entity Set"] --> G["SaveFlowEntityCollectionSource"]
-G --> H["SaveFlowEntityFactory"]
+    C["Typed System / Payload Provider"] --> D["SaveFlowTypedDataSource"]
+    E["Custom Table / Registry"] --> F["SaveFlowDataSource"]
+    G["Runtime Entity Set"] --> H["SaveFlowEntityCollectionSource"]
+    H --> I["SaveFlowEntityFactory"]
 ```
 
 Interpretation:
 - if the thing is "this object", use `SaveFlowNodeSource`
-- if the thing is "this system model", use `SaveFlowDataSource`
+- if the thing is "this typed system model or payload provider", use `SaveFlowTypedDataSource`
+- if the thing needs custom table/registry translation, use `SaveFlowDataSource`
 - if the thing is "this changing entity set", use `SaveFlowEntityCollectionSource + SaveFlowEntityFactory`
 
 ## 2. Node-centric object save
@@ -36,13 +38,16 @@ Interpretation:
 
 ```mermaid
 flowchart TD
-    A["World State Model"] --> B["Custom SaveFlowDataSource"]
-    B --> C["Save Graph / Scene Save"]
+    A["World State Typed Data"] --> B["SaveFlowTypedDataSource"]
+    C["Registry / Service"] --> D["Custom SaveFlowDataSource"]
+    B --> E["Save Graph / Scene Save"]
+    D --> E
 ```
 
 Interpretation:
 - the gameplay system owns the runtime state
-- the custom data source translates runtime state to save data
+- typed data source converts exported fields to save data
+- custom data source translates runtime state when field persistence is not enough
 - the data source plugs directly into SaveFlow
 
 ## 4. Entity collection save
@@ -84,7 +89,7 @@ Interpretation:
 sequenceDiagram
     participant User as User Code
     participant SF as SaveFlow
-    participant NS as NodeSource / DataSource / EntityCollectionSource
+    participant NS as NodeSource / TypedDataSource / DataSource / EntityCollectionSource
     participant FB as EntityFactory
     participant Slot as Slot File
 

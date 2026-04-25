@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.9
+
+Updated in this release:
+- Added typed-data save workflows for Godot and C# so project data can be saved through explicit data objects/providers instead of repeated string-key dictionary glue
+- Added C# encoded payload support, including JSON and binary payload examples, default apply behavior, and post-apply hooks
+- Reworked the recommended template into a scene-authored project workflow with main/room save data, authored subscenes, visual interaction zones, manual/load/delete slots, autosave/checkpoint flows, and runtime coin/entity collection examples
+- Improved `SaveFlowNodeSource` authoring diagnostics for nested Source helpers, child Source composition, missing included children, and ownership boundaries such as `EntityCollectionSource`
+- Refreshed NodeSource inspector guidance so stale or misplaced included children produce actionable warnings and can be cleaned up from the preview
+- Added release-facing regression coverage for typed data providers, C# payload providers, recommended project workflow scenes, and NodeSource authoring mistakes
+- Updated Lite docs and onboarding language around source selection, common authoring mistakes, C# quickstart, typed data, and recommended integration workflow
+
 ## 0.1.8
 
 Updated in this release:

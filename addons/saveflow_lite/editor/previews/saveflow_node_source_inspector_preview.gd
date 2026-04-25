@@ -40,6 +40,7 @@ var _participants_box: VBoxContainer
 var _participant_candidates_box: VBoxContainer
 var _missing_title: Label
 var _missing_value: RichTextLabel
+var _remove_missing_button: Button
 var _discovery_mode_option: OptionButton
 var _details_toggle: Button
 var _details_box: VBoxContainer
@@ -206,9 +207,20 @@ func _build_ui() -> void:
 	_participant_candidates_box.add_theme_constant_override("separation", 4)
 	_participants_box.add_child(_participant_candidates_box)
 
+	var missing_header := HBoxContainer.new()
+	missing_header.add_theme_constant_override("separation", 8)
+	_participants_box.add_child(missing_header)
+
 	_missing_title = Label.new()
 	_missing_title.text = "Missing Children"
-	_participants_box.add_child(_missing_title)
+	_missing_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	missing_header.add_child(_missing_title)
+
+	_remove_missing_button = Button.new()
+	_remove_missing_button.text = "Remove Missing"
+	_remove_missing_button.tooltip_text = "Remove stale included child paths that no longer resolve from the target node."
+	_remove_missing_button.pressed.connect(_on_remove_missing_paths_pressed)
+	missing_header.add_child(_remove_missing_button)
 
 	_missing_value = RichTextLabel.new()
 	_missing_value.fit_content = true
@@ -313,18 +325,19 @@ func _refresh() -> void:
 	_rebuild_built_in_advanced_controls(target_options)
 	_participants_toggle.text = _foldout_text("Included Children", _participants_expanded)
 	_participants_box.visible = _participants_expanded
-	_rebuild_participant_controls(participant_candidates)
+	_rebuild_participant_controls(participant_candidates, plan)
 
-	_missing_value.text = _format_list(missing_paths)
+	_missing_value.text = _format_missing_paths(plan)
 	_missing_value.modulate = _warning_color()
 	_missing_title.visible = not missing_paths.is_empty()
+	_remove_missing_button.visible = not missing_paths.is_empty()
 	_missing_value.visible = not missing_paths.is_empty()
 
 	_details_toggle.text = _foldout_text("Contract", _details_expanded)
 	_details_box.visible = _details_expanded
 	_details_restore_contract_value.text = _describe_restore_contract(plan)
 	_details_design_hint_value.text = _describe_design_hint(plan)
-	_details_design_hint_value.modulate = _warning_color() if not PackedStringArray(plan.get("ownership_conflicts", PackedStringArray())).is_empty() else Color(1, 1, 1, 1)
+	_details_design_hint_value.modulate = _warning_color() if _has_authoring_design_warning(plan) else Color(1, 1, 1, 1)
 	_paths_toggle.text = _foldout_text("Paths", _paths_expanded)
 	_paths_box.visible = _paths_expanded
 	_target_path_value.text = String(plan.get("target_path", ""))
@@ -350,7 +363,13 @@ func _read_plan() -> Dictionary:
 			"excluded_paths": PackedStringArray(),
 			"participant_discovery_mode": 1,
 			"resolved_participants": [],
+			"helper_child_paths": PackedStringArray(),
+			"helper_child_suggestions": PackedStringArray(),
+			"source_child_paths": PackedStringArray(),
+			"source_child_suggestions": PackedStringArray(),
+			"target_is_source_helper": false,
 			"missing_paths": PackedStringArray(),
+			"missing_path_suggestions": PackedStringArray(),
 		}
 	if not _node_source.has_method("describe_node_plan"):
 		return {
@@ -365,7 +384,13 @@ func _read_plan() -> Dictionary:
 			"excluded_paths": PackedStringArray(),
 			"participant_discovery_mode": 1,
 			"resolved_participants": [],
+			"helper_child_paths": PackedStringArray(),
+			"helper_child_suggestions": PackedStringArray(),
+			"source_child_paths": PackedStringArray(),
+			"source_child_suggestions": PackedStringArray(),
+			"target_is_source_helper": false,
 			"missing_paths": PackedStringArray(),
+			"missing_path_suggestions": PackedStringArray(),
 		}
 	return _node_source.describe_node_plan()
 
@@ -479,7 +504,7 @@ func _rebuild_built_in_advanced_controls(options: Array) -> void:
 			box.add_child(field_checkbox)
 
 
-func _rebuild_participant_controls(candidates: Array) -> void:
+func _rebuild_participant_controls(candidates: Array, plan: Dictionary) -> void:
 	_clear_children(_participant_candidates_box)
 	if candidates.is_empty():
 		var empty_label := Label.new()
@@ -491,9 +516,20 @@ func _rebuild_participant_controls(candidates: Array) -> void:
 	for candidate_variant in candidates:
 		var candidate: Dictionary = candidate_variant
 		var path_text: String = String(candidate.get("path", ""))
+		var ownership_conflict := String(candidate.get("ownership_conflict", ""))
+		var recommended_source_path := String(candidate.get("recommended_source_path", ""))
+		var has_ownership_conflict := not ownership_conflict.is_empty()
+		var recommended_source_selected := _is_recommended_source_selected(recommended_source_path)
+		var recommended_source_nested_under_helper := recommended_source_selected and _is_source_child_path(plan, recommended_source_path)
+		var warning_still_active := has_ownership_conflict and (not recommended_source_selected or recommended_source_nested_under_helper)
+
+		var item_box := VBoxContainer.new()
+		item_box.add_theme_constant_override("separation", 2)
+		_participant_candidates_box.add_child(item_box)
+
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		_participant_candidates_box.add_child(row)
+		item_box.add_child(row)
 
 		var indent := Control.new()
 		indent.custom_minimum_size.x = float(int(candidate.get("depth", 0)) * 14)
@@ -504,12 +540,26 @@ func _rebuild_participant_controls(candidates: Array) -> void:
 		include_checkbox.text = _format_candidate_label(candidate)
 		include_checkbox.icon = _resolve_candidate_icon(candidate)
 		include_checkbox.button_pressed = bool(candidate.get("included", false))
-		include_checkbox.disabled = bool(candidate.get("excluded", false))
+		include_checkbox.disabled = bool(candidate.get("excluded", false)) or has_ownership_conflict
+		include_checkbox.tooltip_text = ownership_conflict
+		if warning_still_active:
+			include_checkbox.modulate = _warning_color()
 		include_checkbox.toggled.connect(
 			func(pressed: bool) -> void:
 				_on_participant_toggled(path_text, pressed)
 		)
 		row.add_child(include_checkbox)
+
+		if has_ownership_conflict and not recommended_source_path.is_empty():
+			var use_source_button := Button.new()
+			use_source_button.text = "Using Source" if recommended_source_selected else "Use Source"
+			use_source_button.tooltip_text = "Include %s instead of %s." % [recommended_source_path, path_text]
+			use_source_button.disabled = bool(candidate.get("excluded", false)) or bool(candidate.get("included", false)) or recommended_source_selected
+			use_source_button.pressed.connect(
+				func() -> void:
+					_on_use_recommended_participant_source_pressed(path_text, recommended_source_path)
+			)
+			row.add_child(use_source_button)
 
 		var exclude_checkbox := CheckBox.new()
 		exclude_checkbox.text = "Exclude"
@@ -519,6 +569,26 @@ func _rebuild_participant_controls(candidates: Array) -> void:
 				_on_participant_excluded_toggled(path_text, pressed)
 		)
 		row.add_child(exclude_checkbox)
+
+		if has_ownership_conflict:
+			var hint_row := HBoxContainer.new()
+			hint_row.add_theme_constant_override("separation", 8)
+			item_box.add_child(hint_row)
+
+			var hint_indent := Control.new()
+			hint_indent.custom_minimum_size.x = float(int(candidate.get("depth", 0)) * 14 + 24)
+			hint_row.add_child(hint_indent)
+
+			var hint_label := Label.new()
+			hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			hint_label.modulate = _warning_color() if warning_still_active else _ok_color()
+			hint_label.text = _format_candidate_ownership_hint(
+				candidate,
+				recommended_source_selected,
+				recommended_source_nested_under_helper
+			)
+			hint_row.add_child(hint_label)
 
 
 func _clear_children(node: Node) -> void:
@@ -532,6 +602,23 @@ func _format_list(values: Variant) -> String:
 	if items.is_empty():
 		return "<none>"
 	return ", ".join(items)
+
+
+func _format_missing_paths(plan: Dictionary) -> String:
+	var missing_paths := PackedStringArray(plan.get("missing_paths", PackedStringArray()))
+	if missing_paths.is_empty():
+		return "<none>"
+	var suggestions := PackedStringArray(plan.get("missing_path_suggestions", PackedStringArray()))
+	if suggestions.is_empty():
+		return _format_list(missing_paths)
+	var lines: PackedStringArray = []
+	for index in range(missing_paths.size()):
+		var path_text := String(missing_paths[index])
+		if index < suggestions.size():
+			lines.append("%s - %s" % [path_text, String(suggestions[index])])
+		else:
+			lines.append(path_text)
+	return "\n".join(lines)
 
 
 func _format_field_summary(values: PackedStringArray) -> String:
@@ -563,12 +650,32 @@ func _format_display_name_list(options: Array) -> String:
 
 
 func _describe_restore_contract(plan: Dictionary) -> String:
+	if bool(plan.get("target_is_source_helper", false)):
+		return "Restore target resolves to another SaveFlowSource helper. Move this source under a gameplay node or set an explicit gameplay target."
+	if not PackedStringArray(plan.get("helper_child_paths", PackedStringArray())).is_empty():
+		return "Restore contract is blocked because this Source helper contains gameplay child nodes. Move those nodes under the target gameplay object."
+	if not PackedStringArray(plan.get("source_child_paths", PackedStringArray())).is_empty():
+		return "Restore contract is blocked because this Source helper contains nested Source helpers. Source helpers describe save logic; they should not become gameplay containers."
 	if not bool(plan.get("valid", false)):
 		return "Restore cannot apply until the target node resolves."
 	return "Apply saved object state onto an already-resolved target node. SaveFlowNodeSource does not load scenes, create the target, or orchestrate restore order; the owning object must already exist."
 
 
 func _describe_ownership_summary(plan: Dictionary) -> String:
+	var helper_child_count := PackedStringArray(plan.get("helper_child_paths", PackedStringArray())).size()
+	var source_child_count := PackedStringArray(plan.get("source_child_paths", PackedStringArray())).size()
+	if bool(plan.get("target_is_source_helper", false)):
+		return "Target is another SaveFlow helper, not a gameplay object."
+	if helper_child_count > 0:
+		var helper_suggestions: PackedStringArray = PackedStringArray(plan.get("helper_child_suggestions", PackedStringArray()))
+		if not helper_suggestions.is_empty():
+			return String(helper_suggestions[0])
+		return "Source helper contains %d gameplay child node%s to move." % [helper_child_count, "" if helper_child_count == 1 else "s"]
+	if source_child_count > 0:
+		var suggestions: PackedStringArray = PackedStringArray(plan.get("source_child_suggestions", PackedStringArray()))
+		if not suggestions.is_empty():
+			return String(suggestions[0])
+		return "Source helper contains %d nested save source%s to move." % [source_child_count, "" if source_child_count == 1 else "s"]
 	var conflict_count := PackedStringArray(plan.get("ownership_conflicts", PackedStringArray())).size()
 	if conflict_count > 0:
 		return "One object owner, with %d ownership conflict%s to fix." % [conflict_count, "" if conflict_count == 1 else "s"]
@@ -586,15 +693,101 @@ func _describe_children_summary(plan: Dictionary) -> String:
 
 
 func _describe_design_hint(plan: Dictionary) -> String:
+	if bool(plan.get("target_is_source_helper", false)):
+		return "A NodeSource should save a gameplay object, not another SaveFlowSource helper. Move this source under the real object or set target explicitly."
+	var helper_child_paths: PackedStringArray = PackedStringArray(plan.get("helper_child_paths", PackedStringArray()))
+	if not helper_child_paths.is_empty():
+		var helper_suggestions: PackedStringArray = PackedStringArray(plan.get("helper_child_suggestions", PackedStringArray()))
+		if not helper_suggestions.is_empty():
+			return "\n".join(helper_suggestions)
+		return "Do not place gameplay nodes under a Source helper. Move them under the target gameplay object."
+	var source_child_paths: PackedStringArray = PackedStringArray(plan.get("source_child_paths", PackedStringArray()))
+	if not source_child_paths.is_empty():
+		var suggestions: PackedStringArray = PackedStringArray(plan.get("source_child_suggestions", PackedStringArray()))
+		if not suggestions.is_empty():
+			return "\n".join(suggestions)
+		return "Do not place Source nodes under another Source helper. Move nested sources under gameplay objects/scopes, then include their source path if composition is needed."
 	var conflicts: PackedStringArray = PackedStringArray(plan.get("ownership_conflicts", PackedStringArray()))
 	if not conflicts.is_empty():
 		return "One included child crosses another save-owner boundary. Compose explicit child sources if needed, but do not directly own a runtime set or a subtree that already has its own NodeSource."
 	return "Use NodeSource for one authored or prefab-owned object. Move managers, tables, caches, or changing runtime sets into DataSource or EntityCollectionSource."
 
 
+func _has_authoring_design_warning(plan: Dictionary) -> bool:
+	return bool(plan.get("target_is_source_helper", false)) \
+		or not PackedStringArray(plan.get("helper_child_paths", PackedStringArray())).is_empty() \
+		or not PackedStringArray(plan.get("source_child_paths", PackedStringArray())).is_empty() \
+		or not PackedStringArray(plan.get("ownership_conflicts", PackedStringArray())).is_empty()
+
+
 func _format_candidate_label(candidate: Dictionary) -> String:
 	var name: String = String(candidate.get("name", ""))
+	var owner_source_name := String(candidate.get("owner_source_name", ""))
+	if not owner_source_name.is_empty():
+		return "%s (owned by %s)" % [name, owner_source_name]
 	return name
+
+
+func _format_candidate_ownership_hint(
+	candidate: Dictionary,
+	recommended_source_selected := false,
+	recommended_source_nested_under_helper := false
+) -> String:
+	var path_text := String(candidate.get("path", ""))
+	var recommended_source_path := String(candidate.get("recommended_source_path", ""))
+	var owner_source_role := String(candidate.get("owner_source_role", ""))
+	if recommended_source_path.is_empty():
+		return String(candidate.get("ownership_conflict", ""))
+	if recommended_source_selected:
+		if recommended_source_nested_under_helper:
+			var gameplay_subtree := _parent_path_for(recommended_source_path)
+			if gameplay_subtree.is_empty():
+				gameplay_subtree = path_text
+			return "Included `%s`, but `%s` is still inside this Source helper. Move `%s` under the target gameplay object, then keep `%s` included." % [
+				recommended_source_path,
+				gameplay_subtree,
+				gameplay_subtree,
+				recommended_source_path,
+			]
+		return "Resolved: `%s` is included. Keep `%s` unchecked so this Source composes the child owner without saving the subtree twice." % [
+			recommended_source_path,
+			path_text,
+		]
+	if owner_source_role == "entity_collection":
+		return "Do not include `%s` as a subtree. Include `%s` to compose the runtime entity collection owner." % [path_text, recommended_source_path]
+	if owner_source_role == "node_source":
+		return "Do not include `%s` as a subtree. Include `%s` to compose that object's own SaveFlow source." % [path_text, recommended_source_path]
+	return "Do not include `%s` as a subtree. Include `%s` to compose the existing save owner." % [path_text, recommended_source_path]
+
+
+func _is_recommended_source_selected(recommended_source_path: String) -> bool:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return false
+	if recommended_source_path.strip_edges().is_empty():
+		return false
+	return _node_source.included_paths.has(recommended_source_path)
+
+
+func _is_source_child_path(plan: Dictionary, path_text: String) -> bool:
+	if path_text.strip_edges().is_empty():
+		return false
+	for source_child_path in PackedStringArray(plan.get("source_child_paths", PackedStringArray())):
+		var source_child_text := String(source_child_path)
+		if source_child_text == path_text:
+			return true
+		if source_child_text.ends_with("/%s" % path_text):
+			return true
+		if path_text.ends_with("/%s" % source_child_text):
+			return true
+	return false
+
+
+func _parent_path_for(path_text: String) -> String:
+	var segments := path_text.split("/", false)
+	if segments.size() <= 1:
+		return ""
+	segments.remove_at(segments.size() - 1)
+	return "/".join(segments)
 
 
 func _resolve_candidate_icon(candidate: Dictionary) -> Texture2D:
@@ -725,6 +918,39 @@ func _on_participant_toggled(path_text: String, pressed: bool) -> void:
 		var index := next_paths.find(path_text)
 		if index >= 0:
 			next_paths.remove_at(index)
+	_node_source.included_paths = next_paths
+	_mark_source_dirty()
+	_refresh()
+
+
+func _on_use_recommended_participant_source_pressed(blocked_path: String, recommended_source_path: String) -> void:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return
+	if recommended_source_path.strip_edges().is_empty():
+		return
+	var next_paths: PackedStringArray = _node_source.included_paths.duplicate()
+	var blocked_index := next_paths.find(blocked_path)
+	if blocked_index >= 0:
+		next_paths.remove_at(blocked_index)
+	if not next_paths.has(recommended_source_path):
+		next_paths.append(recommended_source_path)
+	_node_source.included_paths = next_paths
+	_mark_source_dirty()
+	_refresh()
+
+
+func _on_remove_missing_paths_pressed() -> void:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return
+	var plan: Dictionary = _read_plan()
+	var missing_paths := PackedStringArray(plan.get("missing_paths", PackedStringArray()))
+	if missing_paths.is_empty():
+		return
+	var next_paths: PackedStringArray = PackedStringArray()
+	for path_text in _node_source.included_paths:
+		if missing_paths.has(path_text):
+			continue
+		next_paths.append(path_text)
 	_node_source.included_paths = next_paths
 	_mark_source_dirty()
 	_refresh()

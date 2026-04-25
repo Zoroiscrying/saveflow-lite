@@ -12,6 +12,7 @@
 *.csproj
 *.sln
 !/PluginDevelopment.csproj
+!/PluginDevelopment.sln
 
 # Export / build artifacts
 /build/
@@ -29,6 +30,7 @@
 
 # IDE
 .idea/
+*.DotSettings.user
 .claude/
 CLAUDE.md
 

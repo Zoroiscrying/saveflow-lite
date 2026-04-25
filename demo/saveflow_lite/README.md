@@ -3,7 +3,7 @@
 Open `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn` to try the current SaveFlow Lite sandbox.
 Open `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.tscn` to pressure SaveFlow with a more realistic mid-size save environment.
 Open `res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn` to run a room-switching Zelda-like sandbox with room physics, animation state, room tables, and runtime entity restore.
-Open `res://demo/saveflow_lite/recommended_template/scenes/recommended_template_sandbox.tscn` to see the smallest recommended integration template that combines node, system, and entity collection saves in one scene.
+Open `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn` to see the recommended integration template: one hub scene, authored subscenes, typed room data, node data, and runtime entity collections in one playable workflow.
 
 The Zelda-like sample is further split into:
 - `zelda_like/scenes`

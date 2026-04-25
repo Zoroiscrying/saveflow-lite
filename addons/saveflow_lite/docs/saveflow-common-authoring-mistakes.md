@@ -13,7 +13,7 @@ The goal is simple:
 
 Ask:
 - is this subtree owned by one `SaveFlowNodeSource`?
-- one `SaveFlowDataSource`?
+- one `SaveFlowTypedDataSource` or custom `SaveFlowDataSource`?
 - or one `SaveFlowEntityCollectionSource`?
 
 Do not let the same subtree be owned twice.
@@ -34,7 +34,77 @@ If a child already has its own `SaveFlowNodeSource`:
 
 Use composition, not duplicate ownership.
 
-### 4. `SaveFlowDataSource` should stay focused on one system boundary
+Concrete prefab example:
+
+```text
+Room
+|- RoomSource
+|- Door
+|  |- DoorSource
+```
+
+If `RoomSource` needs the door state, include `Door/DoorSource`, not `Door`.
+Including `Door` means the room tries to own the door subtree directly, while
+`DoorSource` already says the door owns its own save logic.
+
+Also avoid putting sources under sources:
+
+```text
+Player
+|- PlayerSource
+   |- ExtraSource     # wrong
+```
+
+`PlayerSource` is a SaveFlow helper, not a gameplay object. Move `ExtraSource`
+under the gameplay object it saves, or put it under a `SaveFlowScope` when it is
+a separate save graph entry.
+
+The same rule applies if there is an ordinary `Node` between them:
+
+```text
+Player
+|- PlayerSource
+   |- Weapon
+      |- WeaponSource     # wrong: Weapon is inside a source helper
+```
+
+Fix it by moving the gameplay subtree back under the gameplay object:
+
+```text
+Player
+|- PlayerSource
+|- Weapon
+   |- WeaponSource
+```
+
+If `PlayerSource` should compose the weapon payload, include `Weapon/WeaponSource`.
+If the weapon should be collected as its own save entry by a scope or scene save,
+leave it as a separate source and do not include it from `PlayerSource`.
+
+If the extra source was only meant to save more state from `Player` itself, delete
+the extra source and configure `PlayerSource` directly with exported fields,
+built-ins, or additional properties.
+
+Also avoid plain gameplay children under a source:
+
+```text
+Player
+|- PlayerSource
+   |- Sprite2D     # wrong: source helper is not the Player's content root
+```
+
+Move the gameplay child back under the target object:
+
+```text
+Player
+|- PlayerSource
+|- Sprite2D
+```
+
+`PlayerSource` can still save `Sprite2D` by including it as a child participant,
+because included child paths are resolved from `Player`, not from `PlayerSource`.
+
+### 4. System data sources should stay focused on one system boundary
 
 Good:
 - one quest log
@@ -48,6 +118,10 @@ Bad:
 - debug-only values
 
 all mixed into one large data source.
+
+Start with `SaveFlowTypedDataSource` when one typed object can provide the
+payload cleanly. Use custom `SaveFlowDataSource` only when the project needs
+broader gather/apply translation logic.
 
 ### 5. `verify_scene_path_on_load` is a safety guard, not orchestration
 

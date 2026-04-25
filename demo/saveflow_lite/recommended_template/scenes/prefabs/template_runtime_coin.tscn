@@ -1,0 +1,31 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_runtime_coin.gd" id="1_coin"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/entities/saveflow_identity.gd" id="2_identity"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/core/saveflow_scope.gd" id="3_scope"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="4_source"]
+
+[node name="TemplateRuntimeCoin" type="Node2D"]
+script = ExtResource("1_coin")
+
+[node name="Shadow" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-7, 5, 7, 5, 0, 11)
+color = Color(0, 0, 0, 0.18)
+
+[node name="Body" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(0, -10, 8, 0, 0, 10, -8, 0)
+color = Color(0.964706, 0.878431, 0.368627, 1)
+
+[node name="Identity" type="Node" parent="."]
+script = ExtResource("2_identity")
+persistent_id = "runtime_coin"
+type_key = "runtime_coin"
+
+[node name="EntityScope" type="Node" parent="."]
+script = ExtResource("3_scope")
+scope_key = "entity"
+
+[node name="StateSource" type="Node" parent="EntityScope"]
+script = ExtResource("4_source")
+save_key = "state"
+_target_ref_path = NodePath("../../")

@@ -1,28 +1,17 @@
 @tool
 extends Window
 
-const DEFAULT_POPUP_SIZE := Vector2i(600, 800)
-const MIN_POPUP_SIZE := Vector2i(600, 800)
+const DEFAULT_POPUP_SIZE := Vector2i(600, 560)
+const MIN_POPUP_SIZE := Vector2i(520, 480)
 const POPUP_MARGIN := Vector2i(96, 96)
 const WINDOW_BACKGROUND := Color("0f1420")
 const SURFACE_BACKGROUND := Color("161e2d")
 const SURFACE_BACKGROUND_SOFT := Color("1c2536")
 const SURFACE_BORDER := Color("31415f")
 
-const CASE_LAUNCHER_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/recommended_template_sandbox.tscn"
-const OVERVIEW_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/recommended_template_overview.tscn"
-const NODE_SOURCE_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_node_source_case.tscn"
-const DATA_SOURCE_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_data_source_case.tscn"
-const ENTITY_COLLECTION_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_entity_collection_case.tscn"
-const CSHARP_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_csharp_case.tscn"
-const SLOT_SUMMARY_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_slot_summary_case.tscn"
-const AUTOSAVE_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_autosave_case.tscn"
-const IN_GAME_SAVE_PANEL_CASE_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/cases/recommended_in_game_save_panel_case.tscn"
+const PROJECT_WORKFLOW_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn"
 
 const SaveFlowIcon := preload("res://addons/saveflow_lite/icons/saveflow_icon.svg")
-const NodeSourceIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_node_source_icon.svg")
-const DataSourceIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_data_source_icon.svg")
-const EntityCollectionIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_entity_collection_icon.svg")
 const EntityFactoryIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_entity_factory_icon.svg")
 const ScopeIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_scope_icon.svg")
 
@@ -102,61 +91,13 @@ func _build_ui() -> void:
 
 	content.add_child(_build_intro_panel())
 	content.add_child(_build_section(
-		"Start With One Ownership Model",
+		"Start Here",
 		[
 			{
 				"icon": SaveFlowIcon,
-				"title": "Open Case Launcher",
-				"description": "Open the launcher scene, then branch into the one object, one system, or one runtime-set path.",
-				"action": func() -> void: _emit_scene(CASE_LAUNCHER_SCENE),
-			},
-			{
-				"icon": NodeSourceIcon,
-				"title": "Open One Object Case",
-				"description": "Use SaveFlowNodeSource for one authored or prefab-owned object.",
-				"action": func() -> void: _emit_scene(NODE_SOURCE_CASE_SCENE),
-			},
-			{
-				"icon": DataSourceIcon,
-				"title": "Open One System Case",
-				"description": "Use SaveFlowDataSource for one system, model, table, or queue.",
-				"action": func() -> void: _emit_scene(DATA_SOURCE_CASE_SCENE),
-			},
-			{
-				"icon": EntityCollectionIcon,
-				"title": "Open One Runtime Set Case",
-				"description": "Use EntityCollectionSource + PrefabEntityFactory for one changing runtime set.",
-				"action": func() -> void: _emit_scene(ENTITY_COLLECTION_CASE_SCENE),
-			},
-			{
-				"icon": SaveFlowIcon,
-				"title": "Open C# Wrapper Case",
-				"description": "One minimal C# scene using SaveFlowClient SaveData/LoadData calls.",
-				"action": func() -> void: _emit_scene(CSHARP_CASE_SCENE),
-			},
-			{
-				"icon": SaveFlowIcon,
-				"title": "Open Slot Summary Case",
-				"description": "A minimal continue/load menu flow driven by list_slot_summaries() and read_slot_summary().",
-				"action": func() -> void: _emit_scene(SLOT_SUMMARY_CASE_SCENE),
-			},
-			{
-				"icon": SaveFlowIcon,
-				"title": "Open Autosave Case",
-				"description": "A gameplay-event demo for autosave, checkpoint, manual save, and save gating.",
-				"action": func() -> void: _emit_scene(AUTOSAVE_CASE_SCENE),
-			},
-			{
-				"icon": SaveFlowIcon,
-				"title": "Open In-Game Save Panel Case",
-				"description": "A fuller save/load menu flow with Continue, Load, Save, Delete, and confirmation dialogs.",
-				"action": func() -> void: _emit_scene(IN_GAME_SAVE_PANEL_CASE_SCENE),
-			},
-			{
-				"icon": ScopeIcon,
-				"title": "Open Combined Overview",
-				"description": "Use the all-in-one overview only after the three ownership paths already make sense.",
-				"action": func() -> void: _emit_scene(OVERVIEW_SCENE),
+				"title": "Open Recommended Template",
+				"description": "Open the main project workflow: one hub scene, authored subscenes, scene data, node data, and runtime entity collection data in one playable flow.",
+				"action": func() -> void: _emit_scene(PROJECT_WORKFLOW_SCENE),
 			},
 		]
 	))
@@ -230,7 +171,7 @@ func _build_header() -> Control:
 	text_box.add_child(title_label)
 
 	var subtitle_label := Label.new()
-	subtitle_label.text = "Start with one object, one system, or one runtime set. Use the overview only after the smallest matching case feels clear."
+	subtitle_label.text = "Start with the recommended project workflow. It keeps the save concepts inside one normal Godot scene flow instead of splitting them into many standalone cases."
 	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_box.add_child(subtitle_label)
 
@@ -249,7 +190,7 @@ func _build_intro_panel() -> Control:
 	panel.add_child(padding)
 
 	var label := Label.new()
-	label.text = "Rule of thumb: start with one object, one system, or one runtime set. Open the combined overview only after the single-path cases feel obvious."
+	label.text = "Rule of thumb: inspect the project workflow scene tree first. Most template state is saved by ordinary nodes and SaveFlow components, not by extra case managers."
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	padding.add_child(label)
 	return panel
