@@ -12,19 +12,28 @@ static func inspect_scene(scene_root: Node = null) -> Dictionary:
 	var sources: Array = []
 	var scopes: Array = []
 	var factories: Array = []
+	var pipeline_signals: Array = []
 
 	if root == null:
-		return _build_report(null, issues, sources, scopes, factories)
+		return _build_report(null, issues, sources, scopes, factories, pipeline_signals)
 
-	_collect_scene_nodes(root, sources, scopes, factories)
+	_collect_scene_nodes(root, sources, scopes, factories, pipeline_signals)
 	_append_source_key_issues(root, sources, issues)
 	_append_source_plan_issues(root, sources, issues)
 	_append_scope_plan_issues(root, scopes, issues)
 	_append_factory_plan_issues(root, factories, issues)
-	return _build_report(root, issues, sources, scopes, factories)
+	_append_pipeline_signal_issues(root, pipeline_signals, issues)
+	return _build_report(root, issues, sources, scopes, factories, pipeline_signals)
 
 
-static func _build_report(root: Node, issues: Array[Dictionary], sources: Array, scopes: Array, factories: Array) -> Dictionary:
+static func _build_report(
+	root: Node,
+	issues: Array[Dictionary],
+	sources: Array,
+	scopes: Array,
+	factories: Array,
+	pipeline_signals: Array
+) -> Dictionary:
 	var error_count := 0
 	var warning_count := 0
 	for issue in issues:
@@ -37,18 +46,21 @@ static func _build_report(root: Node, issues: Array[Dictionary], sources: Array,
 	var summary := ""
 	if root == null:
 		summary = "Open a scene to run SaveFlow scene validation."
-	elif sources.is_empty() and scopes.is_empty() and factories.is_empty():
+	elif sources.is_empty() and scopes.is_empty() and factories.is_empty() and pipeline_signals.is_empty():
 		summary = "`%s` has no SaveFlow components." % root.name
 	elif error_count == 0 and warning_count == 0:
-		summary = "`%s` has %d source(s), %d scope(s), and %d entity factory node(s), with no validator issues." % [
+		summary = "`%s` has %d source(s), %d scope(s), %d entity factory node(s), and %d pipeline signal node(s), with no validator issues." % [
 			root.name,
 			sources.size(),
 			scopes.size(),
 			factories.size(),
+			pipeline_signals.size(),
 		]
 	else:
 		summary = "`%s` has %d error(s) and %d warning(s)." % [root.name, error_count, warning_count]
 
+	var source_breakdown := _build_source_breakdown(sources)
+	var next_action := _resolve_next_action(root, issues, sources, scopes, factories, pipeline_signals)
 	return {
 		"has_scene": root != null,
 		"scene_name": String(root.name) if root != null else "",
@@ -56,11 +68,14 @@ static func _build_report(root: Node, issues: Array[Dictionary], sources: Array,
 		"source_count": sources.size(),
 		"scope_count": scopes.size(),
 		"factory_count": factories.size(),
-		"component_count": sources.size() + scopes.size() + factories.size(),
+		"pipeline_signal_count": pipeline_signals.size(),
+		"component_count": sources.size() + scopes.size() + factories.size() + pipeline_signals.size(),
+		"source_breakdown": source_breakdown,
 		"healthy": error_count == 0,
 		"error_count": error_count,
 		"warning_count": warning_count,
 		"summary": summary,
+		"next_action": next_action,
 		"issues": issues,
 	}
 
@@ -78,7 +93,7 @@ static func _resolve_scene_root(scene_root: Node = null) -> Node:
 	return null
 
 
-static func _collect_scene_nodes(current: Node, sources: Array, scopes: Array, factories: Array) -> void:
+static func _collect_scene_nodes(current: Node, sources: Array, scopes: Array, factories: Array, pipeline_signals: Array) -> void:
 	if current == null:
 		return
 	if _is_validator_source(current):
@@ -87,10 +102,12 @@ static func _collect_scene_nodes(current: Node, sources: Array, scopes: Array, f
 		scopes.append(current)
 	if current.has_method("describe_entity_factory_plan"):
 		factories.append(current)
+	if _is_validator_pipeline_signal(current):
+		pipeline_signals.append(current)
 	for child_variant in current.get_children():
 		var child := child_variant as Node
 		if child != null:
-			_collect_scene_nodes(child, sources, scopes, factories)
+			_collect_scene_nodes(child, sources, scopes, factories, pipeline_signals)
 
 
 static func _is_validator_source(node: Node) -> bool:
@@ -99,6 +116,81 @@ static func _is_validator_source(node: Node) -> bool:
 
 static func _is_validator_scope(node: Node) -> bool:
 	return node is SaveFlowScope and (node as SaveFlowScope).is_scope_enabled()
+
+
+static func _is_validator_pipeline_signal(node: Node) -> bool:
+	return node is SaveFlowPipelineSignals and bool(node.get("enabled"))
+
+
+static func _build_source_breakdown(sources: Array) -> Dictionary:
+	var breakdown := {
+		"node_source_count": 0,
+		"typed_data_source_count": 0,
+		"data_source_count": 0,
+		"entity_collection_source_count": 0,
+		"other_source_count": 0,
+	}
+	for source_variant in sources:
+		var source := source_variant as Node
+		if source is SaveFlowNodeSource:
+			breakdown["node_source_count"] = int(breakdown["node_source_count"]) + 1
+		elif source is SaveFlowTypedDataSource:
+			breakdown["typed_data_source_count"] = int(breakdown["typed_data_source_count"]) + 1
+		elif source is SaveFlowDataSource:
+			breakdown["data_source_count"] = int(breakdown["data_source_count"]) + 1
+		elif source is SaveFlowEntityCollectionSource:
+			breakdown["entity_collection_source_count"] = int(breakdown["entity_collection_source_count"]) + 1
+		else:
+			breakdown["other_source_count"] = int(breakdown["other_source_count"]) + 1
+	return breakdown
+
+
+static func _resolve_next_action(
+	root: Node,
+	issues: Array[Dictionary],
+	sources: Array,
+	scopes: Array,
+	factories: Array,
+	pipeline_signals: Array
+) -> String:
+	if root == null:
+		return "Open a scene to validate its SaveFlow graph."
+
+	var first_error := _first_issue_with_state(issues, STATE_ERROR)
+	if not first_error.is_empty():
+		return "Fix `%s` at `%s`, then re-run the scene validator." % [
+			String(first_error.get("title", "the first error")),
+			String(first_error.get("node_path", "<unknown>")),
+		]
+
+	var first_warning := _first_issue_with_state(issues, STATE_WARNING)
+	if not first_warning.is_empty():
+		return "Review `%s` at `%s` before relying on this scene for save/load." % [
+			String(first_warning.get("title", "the first warning")),
+			String(first_warning.get("node_path", "<unknown>")),
+		]
+
+	if sources.is_empty() and scopes.is_empty() and factories.is_empty() and pipeline_signals.is_empty():
+		return "Add one Source for the first save-owned object or system, then validate again."
+
+	if sources.is_empty() and not scopes.is_empty():
+		return "Add child Sources under the Scope that owns this scene's save domain."
+
+	if sources.is_empty() and not factories.is_empty():
+		return "Add an EntityCollectionSource that uses the configured EntityFactory and owns the runtime container."
+
+	if sources.is_empty() and not pipeline_signals.is_empty():
+		return "PipelineSignals only react to save/load events. Add a Source or Scope owner for them to observe."
+
+	return "Scene preflight is clean. Run the scene and test save/load against the expected slot workflow."
+
+
+static func _first_issue_with_state(issues: Array[Dictionary], state: String) -> Dictionary:
+	for issue_variant in issues:
+		var issue := Dictionary(issue_variant)
+		if String(issue.get("state", "")) == state:
+			return issue
+	return {}
 
 
 static func _append_source_key_issues(root: Node, sources: Array, issues: Array[Dictionary]) -> void:
@@ -235,6 +327,27 @@ static func _append_factory_plan_issues(root: Node, factories: Array, issues: Ar
 			root,
 			"Implement the required entity factory methods or use a concrete prefab factory."
 		)
+
+
+static func _append_pipeline_signal_issues(root: Node, pipeline_signals: Array, issues: Array[Dictionary]) -> void:
+	for signal_variant in pipeline_signals:
+		var signal_node := signal_variant as Node
+		if signal_node == null:
+			continue
+		var path := _describe_node_path(root, signal_node)
+		for warning in _read_configuration_warnings(signal_node):
+			var warning_text := String(warning)
+			_add_issue(
+				issues,
+				STATE_WARNING,
+				"pipeline_signal",
+				"PIPELINE_SIGNAL_WARNING",
+				"Pipeline signal warning",
+				"`%s`: %s" % [path, warning_text],
+				signal_node,
+				root,
+				"Place SaveFlowPipelineSignals under the Source/Scope it reacts to, set a valid target, or switch to All Pipeline Events when it is intentionally global."
+			)
 
 
 static func _add_issue(

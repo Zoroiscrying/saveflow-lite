@@ -253,29 +253,34 @@ static func _append_scene_preflight_checks(checks: Array[Dictionary], scene_root
 	var source_count := int(report.get("source_count", 0))
 	var scope_count := int(report.get("scope_count", 0))
 	var factory_count := int(report.get("factory_count", 0))
-	if source_count == 0 and scope_count == 0 and factory_count == 0:
+	var pipeline_signal_count := int(report.get("pipeline_signal_count", 0))
+	if source_count == 0 and scope_count == 0 and factory_count == 0 and pipeline_signal_count == 0:
 		_add_warning(
 			checks,
 			"Current scene preflight",
 			"`%s` has no SaveFlow components yet. Add a Source or Scope when this scene is meant to participate in save/load." %
-			String(report.get("scene_name", "Current Scene"))
+			String(report.get("scene_name", "Current Scene")) + _format_next_action_suffix(report)
 		)
 		return
 
 	_add_ok(
 		checks,
 		"Current scene preflight",
-		"`%s` contains %d source(s), %d scope(s), and %d entity factory node(s)." % [
+		"`%s` contains %d source(s), %d scope(s), %d entity factory node(s), and %d pipeline signal node(s). %s%s" % [
 			String(report.get("scene_name", "Current Scene")),
 			source_count,
 			scope_count,
 			factory_count,
+			pipeline_signal_count,
+			_format_scene_component_breakdown(report),
+			_format_next_action_suffix(report),
 		]
 	)
 	_append_scene_source_key_checks(checks, report, source_count)
 	_append_scene_source_plan_checks(checks, report, source_count)
 	_append_scene_scope_plan_checks(checks, report, scope_count)
 	_append_scene_factory_plan_checks(checks, report, factory_count)
+	_append_scene_pipeline_signal_checks(checks, report, pipeline_signal_count)
 
 
 static func _append_scene_source_key_checks(checks: Array[Dictionary], report: Dictionary, source_count: int) -> void:
@@ -367,6 +372,53 @@ static func _append_scene_factory_plan_checks(checks: Array[Dictionary], report:
 		"Current scene entity factories",
 		"All %d entity factory plan(s) are currently valid." % factory_count
 	)
+
+
+static func _append_scene_pipeline_signal_checks(checks: Array[Dictionary], report: Dictionary, pipeline_signal_count: int) -> void:
+	if pipeline_signal_count == 0:
+		return
+	var signal_warnings := _filter_scene_issues(report, "pipeline_signal", "warning")
+	if signal_warnings.is_empty():
+		_add_ok(
+			checks,
+			"Current scene pipeline signals",
+			"All %d pipeline signal node(s) target a valid SaveFlow owner or intentionally listen globally." % pipeline_signal_count
+		)
+	else:
+		_add_warning(
+			checks,
+			"Current scene pipeline signals",
+			_format_scene_issue_details(signal_warnings)
+		)
+
+
+static func _format_scene_component_breakdown(report: Dictionary) -> String:
+	var breakdown := Dictionary(report.get("source_breakdown", {}))
+	var parts := PackedStringArray()
+	_append_count_part(parts, int(breakdown.get("node_source_count", 0)), "NodeSource")
+	_append_count_part(parts, int(breakdown.get("typed_data_source_count", 0)), "TypedDataSource")
+	_append_count_part(parts, int(breakdown.get("data_source_count", 0)), "DataSource")
+	_append_count_part(parts, int(breakdown.get("entity_collection_source_count", 0)), "EntityCollection")
+	_append_count_part(parts, int(breakdown.get("other_source_count", 0)), "OtherSource")
+	_append_count_part(parts, int(report.get("scope_count", 0)), "Scope")
+	_append_count_part(parts, int(report.get("factory_count", 0)), "EntityFactory")
+	_append_count_part(parts, int(report.get("pipeline_signal_count", 0)), "PipelineSignals")
+	if parts.is_empty():
+		return "No active component map."
+	return "Component map: %s." % ", ".join(parts)
+
+
+static func _format_next_action_suffix(report: Dictionary) -> String:
+	var next_action := String(report.get("next_action", "")).strip_edges()
+	if next_action.is_empty():
+		return ""
+	return "\nNext: %s" % next_action
+
+
+static func _append_count_part(parts: PackedStringArray, count: int, label: String) -> void:
+	if count <= 0:
+		return
+	parts.append("%d %s" % [count, label])
 
 
 static func _filter_scene_issues(report: Dictionary, category: String, state: String = "") -> Array[Dictionary]:

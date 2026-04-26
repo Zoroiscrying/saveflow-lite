@@ -35,3 +35,4 @@ Editor debugging flow:
 - `Compatibility` tells you whether the slot satisfies the current schema/data-version policy
 - `Restore Contract` tells you whether the expected scene is already active
 - `Slot Safety` tells you whether the primary file is healthy and whether backup recovery is available
+- the `SaveFlow` validator badge in the 2D/3D editor menu preflights the current scene for duplicate source keys, invalid plans, and misplaced pipeline signal bridges

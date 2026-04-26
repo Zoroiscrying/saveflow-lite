@@ -69,6 +69,11 @@ Read its badges in this order:
 If you need more than the headline state, expand `Slot Details` to inspect the
 slot path, primary file state, backup state, schema, versions, and saved scene path.
 
+The 2D/3D editor menu also shows a small `SaveFlow` validator badge. Use it to
+preflight the current scene for obvious authoring mistakes such as duplicate
+source keys, invalid Source/Scope/Factory plans, and misplaced pipeline signal
+bridges before running the game.
+
 ## Start Here
 
 - Start with one object:

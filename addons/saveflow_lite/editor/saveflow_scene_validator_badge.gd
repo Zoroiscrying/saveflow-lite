@@ -13,6 +13,8 @@ var _button: Button
 var _popup: PopupPanel
 var _issue_list: VBoxContainer
 var _summary_label: Label
+var _breakdown_label: Label
+var _next_action_label: Label
 var _refresh_timer := 0.0
 var _last_report: Dictionary = {}
 
@@ -76,10 +78,18 @@ func _build_ui() -> void:
 	_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(_summary_label)
 
+	_breakdown_label = Label.new()
+	_breakdown_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(_breakdown_label)
+
+	_next_action_label = Label.new()
+	_next_action_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(_next_action_label)
+
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(POPUP_SIZE.x - 28, POPUP_SIZE.y - 78)
+	scroll.custom_minimum_size = Vector2(POPUP_SIZE.x - 28, POPUP_SIZE.y - 130)
 	root.add_child(scroll)
 
 	_issue_list = VBoxContainer.new()
@@ -174,6 +184,12 @@ func _rebuild_popup_content() -> void:
 
 	_summary_label.text = String(_last_report.get("summary", "Open a scene to run SaveFlow scene validation."))
 	_summary_label.modulate = _summary_color()
+	if _breakdown_label != null:
+		_breakdown_label.text = _build_breakdown_text(_last_report)
+		_breakdown_label.modulate = get_theme_color("font_placeholder_color", "Editor")
+	if _next_action_label != null:
+		_next_action_label.text = "Next: %s" % String(_last_report.get("next_action", "Open a scene to run SaveFlow scene validation."))
+		_next_action_label.modulate = _summary_color()
 
 	var issues: Array = Array(_last_report.get("issues", []))
 	if issues.is_empty():
@@ -267,6 +283,30 @@ func _empty_issue_text() -> String:
 	if int(_last_report.get("component_count", 0)) == 0:
 		return "This scene does not contain SaveFlow components. Nothing needs validation here yet."
 	return "No SaveFlow scene issues found."
+
+
+func _build_breakdown_text(report: Dictionary) -> String:
+	if not bool(report.get("has_scene", false)):
+		return "Component map: no scene loaded."
+	var breakdown := Dictionary(report.get("source_breakdown", {}))
+	var parts := PackedStringArray()
+	_append_count_part(parts, int(breakdown.get("node_source_count", 0)), "NodeSource")
+	_append_count_part(parts, int(breakdown.get("typed_data_source_count", 0)), "TypedDataSource")
+	_append_count_part(parts, int(breakdown.get("data_source_count", 0)), "DataSource")
+	_append_count_part(parts, int(breakdown.get("entity_collection_source_count", 0)), "EntityCollection")
+	_append_count_part(parts, int(breakdown.get("other_source_count", 0)), "OtherSource")
+	_append_count_part(parts, int(report.get("scope_count", 0)), "Scope")
+	_append_count_part(parts, int(report.get("factory_count", 0)), "EntityFactory")
+	_append_count_part(parts, int(report.get("pipeline_signal_count", 0)), "PipelineSignals")
+	if parts.is_empty():
+		return "Component map: no SaveFlow components."
+	return "Component map: %s." % ", ".join(parts)
+
+
+func _append_count_part(parts: PackedStringArray, count: int, label: String) -> void:
+	if count <= 0:
+		return
+	parts.append("%d %s" % [count, label])
 
 
 func _summary_color() -> Color:
