@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.11
+## 0.2.0
 
 Updated in this release:
 - Refactored the `SaveFlow` runtime singleton into focused internal services for storage, slot lifecycle, slot metadata, graph execution, pipeline lifecycle, DevSaveManager access, and entity restore
@@ -8,7 +8,7 @@ Updated in this release:
 - Preserved slot compatibility, slot summary, backup fallback, scope graph, node graph, pipeline signal, typed-data, and entity restore behavior through the runtime regression suite
 - Fixed broken script resource references in the complex sandbox demo scene
 - Cleaned the complex sandbox so its save graph uses one explicit `SaveGraphRoot` without duplicate Source children on the same targets
-- Updated release metadata for the next Lite reliability release
+- Updated release metadata for the SaveFlow Lite 0.2.0 reliability release
 
 ## 0.1.10
 

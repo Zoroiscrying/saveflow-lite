@@ -272,7 +272,7 @@ Lite behavior:
 - common built-in coverage already includes the first focused batch of
   high-value object/runtime nodes
 
-As of `0.1.11`, the release line is shifting from adding concepts to hardening
+As of `0.2.0`, the release line is shifting from adding concepts to hardening
 the runtime and release surface:
 
 - the `SaveFlow` singleton has been reduced to a facade over focused runtime
