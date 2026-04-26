@@ -224,7 +224,7 @@ save_key = "wolf_alpha"
 _target_ref_path = NodePath("../../../../SpawnedEnemies/WolfAlpha")
 
 [node name="SlimeBetaSource" type="Node" parent="StateRoot/SaveGraphRoot/WorldScope/EnemyScope"]
-script = ExtResource("8_component")
+script = ExtResource("8_node_source")
 save_key = "slime_beta"
 _target_ref_path = NodePath("../../../../SpawnedEnemies/SlimeBeta")
 
@@ -233,6 +233,6 @@ script = ExtResource("9_scope")
 scope_key = "settings"
 
 [node name="SettingsStateSource" type="Node" parent="StateRoot/SaveGraphRoot/SettingsScope"]
-script = ExtResource("8_component")
+script = ExtResource("8_node_source")
 save_key = "preferences"
 _target_ref_path = NodePath("../../../SettingsState")
