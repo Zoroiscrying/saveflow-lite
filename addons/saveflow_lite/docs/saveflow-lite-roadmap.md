@@ -254,7 +254,7 @@ Recommended focus:
 
 ## Current Roadmap Checkpoint
 
-As of `0.1.9`, several roadmap lines have moved from "planned" into baseline
+As of `0.1.10`, several roadmap lines have moved from "planned" into baseline
 Lite behavior:
 
 - project-level settings and compatibility policy are visible from `SaveFlow Settings`
@@ -262,6 +262,8 @@ Lite behavior:
   patterns are documented and demonstrated in the recommended template
 - `SaveFlowTypedDataSource` gives Godot and C# users a lower-boilerplate path
   for typed system/model data
+- `SaveFlowPipelineControl` and `SaveFlowPipelineSignals` let scenes react to
+  local save/load lifecycle stages without subclassing every Source
 - C# has baseline runtime entry wrappers and typed-data helpers
 - `SaveFlowNodeSource` has stronger authoring diagnostics for missing included
   children, nested Source helpers, and ownership boundaries

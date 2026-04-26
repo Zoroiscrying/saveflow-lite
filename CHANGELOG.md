@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.10
+
+Updated in this release:
+- Added local pipeline lifecycle control through `SaveFlowPipelineControl`, `SaveFlowPipelineEvent`, `SaveFlowPipelineContext`, and scene-authored `SaveFlowPipelineSignals`
+- Added a lightweight pipeline notification demo showing source-level `Data Saved` messages and final slot-level save/load notifications
+- Added typed `SaveFlowSlotMetadata` and `SaveFlowEntityDescriptor` helpers across Godot and C# so common save metadata and entity routing data no longer require repeated string-key dictionary glue
+- Improved C# typed-data support with JSON/binary encoded payload helpers and default apply/post-apply behavior
+- Updated runtime entity collection/factory flows to use the typed descriptor helpers while keeping dictionary wire compatibility
+- Added official icons for pipeline signals, typed data/source, prefab factory, identity, and slot metadata components
+- Updated recommended-template docs, source maps, and regression tests around typed metadata, pipeline signals, entity descriptors, and the new notification demo
+
 ## 0.1.9
 
 Updated in this release:
