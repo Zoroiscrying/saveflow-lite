@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.11
+
+Updated in this release:
+- Refactored the `SaveFlow` runtime singleton into focused internal services for storage, slot lifecycle, slot metadata, graph execution, pipeline lifecycle, DevSaveManager access, and entity restore
+- Kept the public `SaveFlow` API stable while reducing the runtime facade and making future reliability work easier to isolate
+- Preserved slot compatibility, slot summary, backup fallback, scope graph, node graph, pipeline signal, typed-data, and entity restore behavior through the runtime regression suite
+- Updated release metadata for the next Lite reliability release
+
 ## 0.1.10
 
 Updated in this release:

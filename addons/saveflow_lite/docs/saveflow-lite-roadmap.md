@@ -272,6 +272,17 @@ Lite behavior:
 - common built-in coverage already includes the first focused batch of
   high-value object/runtime nodes
 
+As of `0.1.11`, the release line is shifting from adding concepts to hardening
+the runtime and release surface:
+
+- the `SaveFlow` singleton has been reduced to a facade over focused runtime
+  services for storage, slot lifecycle, metadata, graph execution, pipeline
+  lifecycle, DevSaveManager access, and entity restore
+- the public runtime API remains stable while internal responsibilities are
+  easier to test and maintain
+- the next release checkpoint is primarily reliability, packaging, and
+  regression confidence, not another feature pillar
+
 That does **not** mean these areas are complete forever.
 It means the next Lite work should avoid adding new concepts unless they remove
 a concrete adoption or reliability problem.

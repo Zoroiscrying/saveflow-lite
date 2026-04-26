@@ -50,7 +50,7 @@ func apply_data(payload: Dictionary) -> void:
 	var provider := _resolve_payload_provider()
 	if provider == null:
 		return
-	var apply_method := _resolve_apply_method(provider, payload)
+	var apply_method := _resolve_apply_method(provider)
 	if apply_method.is_empty():
 		return
 	provider.call(apply_method, payload.duplicate(true))
@@ -203,7 +203,7 @@ func _resolve_gather_method(provider: Object) -> String:
 	return _resolve_method(provider, _GATHER_METHODS)
 
 
-func _resolve_apply_method(provider: Object, _payload: Dictionary) -> String:
+func _resolve_apply_method(provider: Object) -> String:
 	var encoded_method := _resolve_method(provider, _ENCODED_APPLY_METHODS)
 	if not encoded_method.is_empty():
 		return encoded_method

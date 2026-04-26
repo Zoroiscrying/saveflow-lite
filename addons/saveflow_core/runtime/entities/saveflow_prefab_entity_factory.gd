@@ -290,10 +290,6 @@ func _validate_property(property: Dictionary) -> void:
 		property["usage"] = PROPERTY_USAGE_DEFAULT if auto_create_container else PROPERTY_USAGE_NO_EDITOR
 
 
-func _get_configuration_warnings() -> PackedStringArray:
-	return super._get_configuration_warnings()
-
-
 func _effective_type_key() -> String:
 	if not type_key.is_empty():
 		return type_key

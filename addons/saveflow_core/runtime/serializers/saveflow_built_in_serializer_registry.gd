@@ -6,11 +6,12 @@ const _SERIALIZER_NAVIGATION_AGENT_3D := preload(
 	"res://addons/saveflow_core/runtime/serializers/saveflow_serializer_navigation_agent_3d.gd"
 )
 
+static var _serializer_cache: Array = []
+static var _display_name_cache: Dictionary = {}
+
+
 static func all_serializers() -> Array:
-	var serializers: Array = []
-	for serializer_type in _serializer_types():
-		serializers.append(serializer_type.new())
-	return serializers
+	return _serializer_instances().duplicate()
 
 
 static func _serializer_types() -> Array:
@@ -53,7 +54,7 @@ static func _serializer_types() -> Array:
 
 static func supported_ids_for_node(node: Node) -> PackedStringArray:
 	var ids: PackedStringArray = []
-	for serializer_variant in all_serializers():
+	for serializer_variant in _serializer_instances():
 		var serializer: SaveFlowBuiltInSerializer = serializer_variant
 		if serializer.supports_node(node):
 			ids.append(serializer.get_serializer_id())
@@ -62,7 +63,7 @@ static func supported_ids_for_node(node: Node) -> PackedStringArray:
 
 static func supported_descriptors_for_node(node: Node) -> Array:
 	var descriptors: Array = []
-	for serializer_variant in all_serializers():
+	for serializer_variant in _serializer_instances():
 		var serializer: SaveFlowBuiltInSerializer = serializer_variant
 		if not serializer.supports_node(node):
 			continue
@@ -76,16 +77,12 @@ static func supported_descriptors_for_node(node: Node) -> Array:
 
 
 static func display_name_for_id(serializer_id: String) -> String:
-	for serializer_variant in all_serializers():
-		var serializer: SaveFlowBuiltInSerializer = serializer_variant
-		if serializer.get_serializer_id() == serializer_id:
-			return serializer.get_display_name()
-	return serializer_id
+	return String(_display_names_by_id().get(serializer_id, serializer_id))
 
 
 static func resolve_serializers_for_node(node: Node, requested_ids: PackedStringArray = PackedStringArray()) -> Array:
 	var serializers: Array = []
-	for serializer_variant in all_serializers():
+	for serializer_variant in _serializer_instances():
 		var serializer: SaveFlowBuiltInSerializer = serializer_variant
 		if not serializer.supports_node(node):
 			continue
@@ -110,7 +107,7 @@ static func gather_for_node(
 
 
 static func apply_to_node(node: Node, payload: Dictionary, field_filters: Dictionary = {}) -> void:
-	for serializer_variant in all_serializers():
+	for serializer_variant in _serializer_instances():
 		var serializer: SaveFlowBuiltInSerializer = serializer_variant
 		var serializer_id: String = serializer.get_serializer_id()
 		if not serializer.supports_node(node):
@@ -152,7 +149,7 @@ static func recommended_field_ids_for_node(node: Node, serializer_id: String) ->
 
 
 static func _resolve_serializer_for_node(node: Node, serializer_id: String) -> SaveFlowBuiltInSerializer:
-	for serializer_variant in all_serializers():
+	for serializer_variant in _serializer_instances():
 		var serializer: SaveFlowBuiltInSerializer = serializer_variant
 		if not serializer.supports_node(node):
 			continue
@@ -160,6 +157,21 @@ static func _resolve_serializer_for_node(node: Node, serializer_id: String) -> S
 			continue
 		return serializer
 	return null
+
+
+static func _serializer_instances() -> Array:
+	if _serializer_cache.is_empty():
+		for serializer_type in _serializer_types():
+			_serializer_cache.append(serializer_type.new())
+	return _serializer_cache
+
+
+static func _display_names_by_id() -> Dictionary:
+	if _display_name_cache.is_empty():
+		for serializer_variant in _serializer_instances():
+			var serializer: SaveFlowBuiltInSerializer = serializer_variant
+			_display_name_cache[serializer.get_serializer_id()] = serializer.get_display_name()
+	return _display_name_cache
 
 
 static func _filter_payload(payload: Variant, allowed_fields: Variant) -> Variant:

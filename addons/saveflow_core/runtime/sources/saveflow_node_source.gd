@@ -796,13 +796,6 @@ func _describe_participant_ownership_conflict(target_node: Node, path_text: Stri
 	return ""
 
 
-func _find_entity_collection_boundary(target_node: Node, resolved: Node) -> Node:
-	var collection_source := _find_entity_collection_source_for_boundary(target_node, resolved)
-	if collection_source == null:
-		return null
-	return collection_source.call("_resolve_target") if collection_source.has_method("_resolve_target") else null
-
-
 func _find_entity_collection_source_for_boundary(target_node: Node, resolved: Node) -> SaveFlowEntityCollectionSource:
 	var collections: Array = []
 	_collect_entity_collection_sources(target_node, collections)
@@ -816,13 +809,6 @@ func _find_entity_collection_source_for_boundary(target_node: Node, resolved: No
 		if collection_target == resolved or collection_target.is_ancestor_of(resolved):
 			return collection
 	return null
-
-
-func _find_nested_node_source_boundary(target_node: Node, resolved: Node) -> Node:
-	var nested_source := _find_nested_node_source_for_boundary(target_node, resolved)
-	if nested_source == null:
-		return null
-	return nested_source.call("_resolve_target") if nested_source.has_method("_resolve_target") else nested_source.get_parent()
 
 
 func _find_nested_node_source_for_boundary(target_node: Node, resolved: Node) -> SaveFlowNodeSource:
