@@ -165,8 +165,11 @@ It is the sibling path for manager-owned or table-owned state.
 ### Contract
 
 If one typed object can provide the payload, prefer `SaveFlowTypedDataSource`.
+This is the default path for new gameplay data because exported fields give the
+project a visible, typed shape and avoid repeated dictionary key management.
 
-Subclass `SaveFlowDataSource` when custom translation is needed and implement:
+Subclass `SaveFlowDataSource` only when custom translation is needed or the
+source of truth already exists as a registry/table payload. Implement:
 - `gather_data() -> Dictionary`
 - `apply_data(data: Dictionary) -> void`
 

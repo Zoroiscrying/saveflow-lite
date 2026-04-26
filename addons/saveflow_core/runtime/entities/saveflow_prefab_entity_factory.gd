@@ -1,6 +1,7 @@
 ## SaveFlowPrefabEntityFactory is the lowest-boilerplate runtime factory path.
 ## Use it when one entity `type_key` maps directly to one prefab scene and
 ## the default identity lookup + local save-graph restore behavior is enough.
+@icon("res://addons/saveflow_lite/icons/components/saveflow_prefab_entity_factory_icon.svg")
 @tool
 class_name SaveFlowPrefabEntityFactory
 extends SaveFlowEntityFactory
@@ -81,7 +82,10 @@ func spawn_entity_from_save(descriptor: Dictionary, context: Dictionary = {}) ->
 	if entity_scene == null:
 		return null
 
-	var requested_type_key: String = String(descriptor.get("type_key", _effective_type_key())).strip_edges()
+	var entity_descriptor := resolve_entity_descriptor(descriptor)
+	var requested_type_key := entity_descriptor.type_key
+	if requested_type_key.is_empty():
+		requested_type_key = _effective_type_key()
 	if not can_handle_type(requested_type_key):
 		return null
 
@@ -90,8 +94,7 @@ func spawn_entity_from_save(descriptor: Dictionary, context: Dictionary = {}) ->
 		return null
 	resolved_container.add_child(entity)
 
-	var persistent_id: String = String(descriptor.get("persistent_id", ""))
-	_ensure_identity(entity, persistent_id, requested_type_key)
+	_ensure_identity(entity, entity_descriptor.persistent_id, requested_type_key)
 	_index_entity(entity)
 	return entity
 

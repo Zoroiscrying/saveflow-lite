@@ -6,9 +6,11 @@ const COIN_RADIUS := 28.0
 const DEMO_SFX_SCRIPT := preload("res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_demo_sfx.gd")
 const RuntimeCoinScene := preload("res://demo/saveflow_lite/recommended_template/scenes/prefabs/template_runtime_coin.tscn")
 const TemplateRoomSaveDataScript := preload("res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_room_save_data.gd")
+const TemplateProjectSlotMetadataScript := preload("res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_project_slot_metadata.gd")
 
 @export var room_id := "forest"
 @export var display_name := "Forest Room"
+@export var slot_index := 1
 @export var room_bounds := Rect2(120, 130, 1040, 540)
 @export var spawn_position := Vector2(315, 500)
 @export var room_data: TemplateRoomSaveData = TemplateRoomSaveDataScript.new()
@@ -104,17 +106,10 @@ func save_room() -> SaveResult:
 	var result: SaveResult = SaveFlow.save_scene(
 		_slot_id(),
 		_save_graph,
-		{
-			"display_name": "%s Subscene Data" % display_name,
-			"room_scene_path": scene_file_path,
-			"room_id": room_id,
-		},
-		"saveflow",
-		"manual",
-		"Chapter 1",
-		display_name
+		_build_room_slot_metadata(),
+		"saveflow"
 	)
-	_last_status = "Saved %s subscene data." % display_name if result.ok else _format_result("Save", result)
+	_last_status = "Saved Room Slot #%d (%s)." % [slot_index, _slot_id()] if result.ok else _format_result("Save", result)
 	_play("play_save" if result.ok else "play_mutate")
 	_notify_ui()
 	return result
@@ -124,7 +119,7 @@ func load_room() -> SaveResult:
 	var result: SaveResult = SaveFlow.load_scene(_slot_id(), _save_graph, true)
 	if result.ok:
 		_apply_state_to_nodes()
-		_last_status = "Loaded %s subscene data." % display_name
+		_last_status = "Loaded Room Slot #%d (%s)." % [slot_index, _slot_id()]
 	else:
 		_last_status = _format_result("Load", result)
 	_play("play_load" if result.ok else "play_mutate")
@@ -159,16 +154,18 @@ func reset_room() -> void:
 
 func get_ui_context() -> Dictionary:
 	var runtime_count := _runtime_coins_root.get_child_count()
-	var animation_name := String(_animation_player.current_animation)
 	return {
 		"mode": "subscene",
 		"title": display_name,
 		"area": "%s subscene" % display_name,
+		"slot_index": slot_index,
 		"slot": _slot_id(),
-		"stats": "TypedData coins=%d | EntityCollection runtime=%d | NodeSource anim=%s | door %s" % [
+		"slot_display_name": "%s Subscene Data" % display_name,
+		"save_type": "manual",
+		"stats": "Room slot #%d | coins=%d | runtime=%d | door %s" % [
+			slot_index,
 			room_data.collected_coins.size(),
 			runtime_count,
-			animation_name if not animation_name.is_empty() else "idle",
 			"open" if room_data.door_open else "closed",
 		],
 		"hint": _current_interaction_hint(),
@@ -254,9 +251,9 @@ func _current_interaction() -> String:
 func _current_interaction_hint() -> String:
 	match _current_interaction():
 		"save":
-			return "Enter: save this room slot"
+			return "Enter: save Room Slot #%d" % slot_index
 		"load":
-			return "Enter: load this room slot"
+			return "Enter: load Room Slot #%d" % slot_index
 		"mutate":
 			return "Enter: spawn coin and open door"
 		"exit":
@@ -371,6 +368,20 @@ func _insert_track_keys(animation: Animation, path: NodePath, values: Array) -> 
 
 func _slot_id() -> String:
 	return "project_workflow_room_%s" % room_id
+
+
+func _build_room_slot_metadata() -> SaveFlowSlotMetadata:
+	var meta: TemplateProjectSlotMetadata = TemplateProjectSlotMetadataScript.new()
+	meta.display_name = "%s Subscene Data" % display_name
+	meta.save_type = "manual"
+	meta.chapter_name = "Chapter 1"
+	meta.location_name = display_name
+	meta.room_scene_path = scene_file_path
+	meta.room_id = room_id
+	meta.slot_index = slot_index
+	meta.slot_role = "room_subscene"
+	meta.storage_key = _slot_id()
+	return meta
 
 
 func _format_result(label: String, result: SaveResult) -> String:

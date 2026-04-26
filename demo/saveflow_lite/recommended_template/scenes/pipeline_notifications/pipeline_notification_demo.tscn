@@ -1,0 +1,233 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/pipeline_notifications/template_pipeline_notification_demo.gd" id="1_demo"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/saveflow/template_saveflow_configurator.gd" id="2_configurator"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/core/saveflow_scope.gd" id="3_scope"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_typed_data_source.gd" id="4_source"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/types/saveflow_pipeline_signals.gd" id="5_signals"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/pipeline_notifications/template_pipeline_demo_data.gd" id="6_data"]
+
+[sub_resource type="Resource" id="Resource_profile_data"]
+script = ExtResource("6_data")
+resource_local_to_scene = true
+display_name = "Profile"
+summary = "Player profile ready"
+counter = 1
+enabled_flag = true
+tags = PackedStringArray("profile", "player")
+
+[sub_resource type="Resource" id="Resource_inventory_data"]
+script = ExtResource("6_data")
+resource_local_to_scene = true
+display_name = "Inventory"
+summary = "Inventory has starter items"
+counter = 3
+enabled_flag = true
+tags = PackedStringArray("inventory", "items")
+
+[sub_resource type="Resource" id="Resource_quest_data"]
+script = ExtResource("6_data")
+resource_local_to_scene = true
+display_name = "Quest"
+summary = "Quest log is tracking the first objective"
+counter = 2
+enabled_flag = false
+tags = PackedStringArray("quest", "objective")
+
+[node name="PipelineNotificationDemo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_demo")
+
+[node name="SaveFlowConfigurator" type="Node" parent="."]
+script = ExtResource("2_configurator")
+base_root = "user://recommended_template"
+profile_key = "pipeline_notifications"
+project_title = "SaveFlow Pipeline Notification Demo"
+verify_scene_path_on_load = false
+
+[node name="SaveGraph" type="Node" parent="."]
+script = ExtResource("3_scope")
+scope_key = "pipeline_notifications"
+
+[node name="PipelineSignals" type="Node" parent="SaveGraph"]
+script = ExtResource("5_signals")
+listen_mode = 1
+
+[node name="ProfileSource" type="Node" parent="SaveGraph"]
+script = ExtResource("4_source")
+source_key = "profile_data"
+data = SubResource("Resource_profile_data")
+
+[node name="PipelineSignals" type="Node" parent="SaveGraph/ProfileSource"]
+script = ExtResource("5_signals")
+
+[node name="InventorySource" type="Node" parent="SaveGraph"]
+script = ExtResource("4_source")
+source_key = "inventory_data"
+data = SubResource("Resource_inventory_data")
+
+[node name="PipelineSignals" type="Node" parent="SaveGraph/InventorySource"]
+script = ExtResource("5_signals")
+
+[node name="QuestSource" type="Node" parent="SaveGraph"]
+script = ExtResource("4_source")
+source_key = "quest_data"
+data = SubResource("Resource_quest_data")
+
+[node name="PipelineSignals" type="Node" parent="SaveGraph/QuestSource"]
+script = ExtResource("5_signals")
+
+[node name="Screen" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="Screen"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.055, 0.065, 0.078, 1)
+
+[node name="MainLayout" type="HBoxContainer" parent="Screen"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 28.0
+offset_right = -28.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 18
+
+[node name="LeftColumn" type="VBoxContainer" parent="Screen/MainLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="TitlePanel" type="PanelContainer" parent="Screen/MainLayout/LeftColumn"]
+layout_mode = 2
+
+[node name="TitleMargin" type="MarginContainer" parent="Screen/MainLayout/LeftColumn/TitlePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="TitleLabel" type="Label" parent="Screen/MainLayout/LeftColumn/TitlePanel/TitleMargin"]
+layout_mode = 2
+text = "Pipeline Signals Notification Demo
+SaveGraph uses child SaveFlowPipelineSignals nodes, connected in this scene."
+autowrap_mode = 3
+
+[node name="StatusPanel" type="PanelContainer" parent="Screen/MainLayout/LeftColumn"]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="Screen/MainLayout/LeftColumn/StatusPanel"]
+layout_mode = 2
+text = "Press Save. Each child Source emits a side notification, then the root graph emits Data Saved!"
+autowrap_mode = 3
+
+[node name="ButtonRow" type="HBoxContainer" parent="Screen/MainLayout/LeftColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SaveButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
+layout_mode = 2
+text = "Save"
+
+[node name="LoadButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
+layout_mode = 2
+text = "Load"
+
+[node name="MutateButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
+layout_mode = 2
+text = "Mutate Data"
+
+[node name="ClearButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
+layout_mode = 2
+text = "Clear Messages"
+
+[node name="DataCards" type="VBoxContainer" parent="Screen/MainLayout/LeftColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="ProfileCard" type="PanelContainer" parent="Screen/MainLayout/LeftColumn/DataCards"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ProfileLabel" type="Label" parent="Screen/MainLayout/LeftColumn/DataCards/ProfileCard"]
+layout_mode = 2
+text = "Profile"
+autowrap_mode = 3
+
+[node name="InventoryCard" type="PanelContainer" parent="Screen/MainLayout/LeftColumn/DataCards"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="InventoryLabel" type="Label" parent="Screen/MainLayout/LeftColumn/DataCards/InventoryCard"]
+layout_mode = 2
+text = "Inventory"
+autowrap_mode = 3
+
+[node name="QuestCard" type="PanelContainer" parent="Screen/MainLayout/LeftColumn/DataCards"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="QuestLabel" type="Label" parent="Screen/MainLayout/LeftColumn/DataCards/QuestCard"]
+layout_mode = 2
+text = "Quest"
+autowrap_mode = 3
+
+[node name="RightColumn" type="VBoxContainer" parent="Screen/MainLayout"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 12
+
+[node name="MessageTitle" type="Label" parent="Screen/MainLayout/RightColumn"]
+layout_mode = 2
+text = "Side Notifications"
+horizontal_alignment = 1
+
+[node name="MessagePanel" type="PanelContainer" parent="Screen/MainLayout/RightColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MessageMargin" type="MarginContainer" parent="Screen/MainLayout/RightColumn/MessagePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="MessageStack" type="VBoxContainer" parent="Screen/MainLayout/RightColumn/MessagePanel/MessageMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[connection signal="after_write" from="SaveGraph/PipelineSignals" to="." method="_on_graph_saved"]
+[connection signal="pipeline_error" from="SaveGraph/PipelineSignals" to="." method="_on_pipeline_error"]
+[connection signal="after_gather_source" from="SaveGraph/ProfileSource/PipelineSignals" to="." method="_on_source_saved"]
+[connection signal="after_apply_source" from="SaveGraph/ProfileSource/PipelineSignals" to="." method="_on_source_loaded"]
+[connection signal="after_gather_source" from="SaveGraph/InventorySource/PipelineSignals" to="." method="_on_source_saved"]
+[connection signal="after_apply_source" from="SaveGraph/InventorySource/PipelineSignals" to="." method="_on_source_loaded"]
+[connection signal="after_gather_source" from="SaveGraph/QuestSource/PipelineSignals" to="." method="_on_source_saved"]
+[connection signal="after_apply_source" from="SaveGraph/QuestSource/PipelineSignals" to="." method="_on_source_loaded"]
+[connection signal="pressed" from="Screen/MainLayout/LeftColumn/ButtonRow/SaveButton" to="." method="save_demo"]
+[connection signal="pressed" from="Screen/MainLayout/LeftColumn/ButtonRow/LoadButton" to="." method="load_demo"]
+[connection signal="pressed" from="Screen/MainLayout/LeftColumn/ButtonRow/MutateButton" to="." method="mutate_demo_data"]
+[connection signal="pressed" from="Screen/MainLayout/LeftColumn/ButtonRow/ClearButton" to="." method="clear_notifications"]

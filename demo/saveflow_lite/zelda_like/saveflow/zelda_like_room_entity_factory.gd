@@ -36,8 +36,9 @@ func find_existing_entity(persistent_id: String, _context: Dictionary = {}) -> N
 
 
 func spawn_entity_from_save(descriptor: Dictionary, _context: Dictionary = {}) -> Node:
-	var persistent_id: String = String(descriptor.get("persistent_id", ""))
-	var type_key: String = String(descriptor.get("type_key", "enemy"))
+	var entity_descriptor := resolve_entity_descriptor(descriptor)
+	var persistent_id := entity_descriptor.persistent_id
+	var type_key := entity_descriptor.type_key if not entity_descriptor.type_key.is_empty() else "enemy"
 	var entity := create_entity_shell(persistent_id, type_key)
 	var resolved_target_container := _resolve_target_container()
 	if is_instance_valid(resolved_target_container):

@@ -1,12 +1,14 @@
 # SaveFlow Recommended Template
 
-This folder intentionally contains one project-style workflow, not a set of
-separate reference cases.
+This folder intentionally keeps one main project-style workflow, plus one small
+pipeline-signals scene. It does not bring back the old set of disconnected
+reference cases.
 
 Open:
 - `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn`
 
-What it demonstrates:
+What the project workflow demonstrates:
 - main-scene data decides whether the player is in the hub, forest room, or dungeon room
 - each authored subscene owns its own room save slot
 - `SaveFlowTypedDataSource` saves room data from `TemplateRoomSaveData` exported fields
@@ -14,13 +16,23 @@ What it demonstrates:
 - `SaveFlowEntityCollectionSource + SaveFlowPrefabEntityFactory` saves runtime coins
 - ordinary scene nodes carry most of the visible gameplay state
 
+What the pipeline notification demo demonstrates:
+- `SaveFlowPipelineSignals` nodes live under the scope and under each source
+- each source emits its own "Profile/Inventory/Quest Data Saved" notification
+- the scope-level bridge emits the final "Data Saved!" notification
+- scene-authored signal connections can react to save/load lifecycle stages without subclassing every source
+
 Folder layout:
 - `scenes/project_workflow`
   Runnable hub and room scenes.
+- `scenes/pipeline_notifications`
+  Runnable pipeline notification scene.
 - `scenes/prefabs`
   Small runtime prefab used by the room entity collection.
 - `gameplay/project_workflow`
   The minimal scripts that make the playable workflow run.
+- `gameplay/pipeline_notifications`
+  Small typed data and notification controller used by the pipeline demo.
 - `saveflow`
   Small SaveFlow integration helpers shared by the workflow.
 

@@ -13,11 +13,14 @@ const SettingsPanelScript := preload("res://addons/saveflow_lite/editor/saveflow
 const DevSaveManagerPanelScript := preload("res://addons/saveflow_lite/editor/saveflow_save_manager_panel.gd")
 const QuickAccessPanelScript := preload("res://addons/saveflow_lite/editor/saveflow_quick_access_panel.gd")
 const SetupHealthScript := preload("res://addons/saveflow_lite/editor/saveflow_setup_health.gd")
+const SceneValidatorBadgeScript := preload("res://addons/saveflow_lite/editor/saveflow_scene_validator_badge.gd")
 
 var _inspector_plugin: EditorInspectorPlugin
 var _settings_panel: Control
 var _save_manager_panel: Control
 var _quick_access_panel: Window
+var _scene_validator_badge_2d: Control
+var _scene_validator_badge_3d: Control
 var _missing_project_settings_script_reported := false
 
 
@@ -31,6 +34,7 @@ func _enter_tree() -> void:
 	_ensure_settings_panel()
 	_ensure_save_manager_panel()
 	_ensure_quick_access_panel()
+	_ensure_scene_validator_badges()
 	add_tool_menu_item("SaveFlow Quick Access", Callable(self, "_show_quick_access_panel"))
 	_apply_project_settings_to_runtime()
 	_report_setup_health()
@@ -40,6 +44,7 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
 	remove_tool_menu_item("SaveFlow Quick Access")
+	_remove_scene_validator_badges_if_present()
 	_remove_quick_access_panel_if_present()
 	_remove_save_manager_panel_if_present()
 	_remove_settings_panel_if_present()
@@ -120,6 +125,17 @@ func _ensure_quick_access_panel() -> void:
 	get_editor_interface().get_base_control().add_child(_quick_access_panel)
 
 
+func _ensure_scene_validator_badges() -> void:
+	if _scene_validator_badge_2d == null:
+		_scene_validator_badge_2d = SceneValidatorBadgeScript.new()
+		_scene_validator_badge_2d.name = "SaveFlow Scene Validator"
+		add_control_to_container(CONTAINER_CANVAS_EDITOR_MENU, _scene_validator_badge_2d)
+	if _scene_validator_badge_3d == null:
+		_scene_validator_badge_3d = SceneValidatorBadgeScript.new()
+		_scene_validator_badge_3d.name = "SaveFlow Scene Validator"
+		add_control_to_container(CONTAINER_SPATIAL_EDITOR_MENU, _scene_validator_badge_3d)
+
+
 func _apply_project_settings_to_runtime() -> void:
 	var project_settings_script := _get_project_settings_script()
 	if project_settings_script == null:
@@ -174,6 +190,17 @@ func _remove_quick_access_panel_if_present() -> void:
 		return
 	_quick_access_panel.queue_free()
 	_quick_access_panel = null
+
+
+func _remove_scene_validator_badges_if_present() -> void:
+	if _scene_validator_badge_2d != null:
+		remove_control_from_container(CONTAINER_CANVAS_EDITOR_MENU, _scene_validator_badge_2d)
+		_scene_validator_badge_2d.queue_free()
+		_scene_validator_badge_2d = null
+	if _scene_validator_badge_3d != null:
+		remove_control_from_container(CONTAINER_SPATIAL_EDITOR_MENU, _scene_validator_badge_3d)
+		_scene_validator_badge_3d.queue_free()
+		_scene_validator_badge_3d = null
 
 
 func _show_quick_access_panel() -> void:

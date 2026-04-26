@@ -176,6 +176,8 @@ func gather_save_data() -> Variant:
 		if participant == null:
 			_warn_missing_participant(str(participant_path))
 			continue
+		if _is_pipeline_helper_node(participant):
+			continue
 		payload["participants"][_participant_key_for(target_node, participant)] = _gather_participant_payload(participant)
 
 	return payload
@@ -221,6 +223,8 @@ func apply_save_data(data: Variant, _context: Dictionary = {}) -> SaveResult:
 		if participant == null:
 			_warn_missing_participant(str(participant_path))
 			continue
+		if _is_pipeline_helper_node(participant):
+			continue
 		var participant_key: String = _participant_key_for(target_node, participant)
 		if not participant_payloads.has(participant_key):
 			continue
@@ -247,6 +251,8 @@ func describe_source() -> Dictionary:
 		var participant := _resolve_included_node(participant_path)
 		if participant == null:
 			missing_paths.append(str(participant_path))
+			continue
+		if _is_pipeline_helper_node(participant):
 			continue
 		participant_entries.append(
 			{
@@ -296,6 +302,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 	var missing_properties: PackedStringArray = PackedStringArray(plan.get("missing_properties", PackedStringArray()))
 	if not missing_properties.is_empty():
 		warnings.append("Missing target properties: %s" % ", ".join(missing_properties))
+	for warning in get_saveflow_authoring_warnings():
+		warnings.append(warning)
 	return warnings
 
 
@@ -353,6 +361,8 @@ func describe_node_plan() -> Dictionary:
 		var participant := _resolve_included_node(path_text)
 		if participant == null:
 			missing_paths.append(path_text)
+			continue
+		if _is_pipeline_helper_node(participant):
 			continue
 		resolved_participants.append(
 			{
@@ -582,6 +592,8 @@ func _resolve_included_node(path_text: String) -> Node:
 		_warn_ownership_conflict(ownership_conflict)
 		return null
 	var resolved := target_node.get_node_or_null(NodePath(path_text))
+	if _is_pipeline_helper_node(resolved):
+		return resolved
 	if _is_excluded_participant(resolved):
 		return null
 	return resolved
@@ -670,6 +682,8 @@ func _is_excluded_participant(candidate: Node) -> bool:
 		return false
 	if candidate == self:
 		return true
+	if _is_pipeline_helper_node(candidate):
+		return true
 	return is_ancestor_of(candidate)
 
 
@@ -729,6 +743,8 @@ func _relative_path_from_target(target_node: Node, participant: Node) -> String:
 
 
 func _describe_participant_kind(participant: Node) -> String:
+	if _is_pipeline_helper_node(participant):
+		return "pipeline_helper"
 	if participant is SaveFlowSource:
 		return "source"
 	if not SaveFlowBuiltInSerializerRegistry.supported_ids_for_node(participant).is_empty():
@@ -853,6 +869,8 @@ func _collect_node_sources(current: Node, into: Array) -> void:
 		var child := child_variant as Node
 		if child == null:
 			continue
+		if _is_pipeline_helper_node(child):
+			continue
 		if child is SaveFlowNodeSource:
 			into.append(child)
 		_collect_node_sources(child, into)
@@ -862,7 +880,7 @@ func _collect_helper_child_paths() -> PackedStringArray:
 	var paths := PackedStringArray()
 	for child_variant in get_children():
 		var child := child_variant as Node
-		if child == null or child is SaveFlowSource:
+		if child == null or child is SaveFlowSource or _is_pipeline_helper_node(child):
 			continue
 		paths.append(String(child.name))
 	return paths
@@ -879,10 +897,16 @@ func _collect_child_source_paths_recursive(current: Node, prefix: String, into: 
 		var child := child_variant as Node
 		if child == null:
 			continue
+		if _is_pipeline_helper_node(child):
+			continue
 		var child_path := String(child.name) if prefix.is_empty() else "%s/%s" % [prefix, child.name]
 		if child is SaveFlowSource:
 			into.append(child_path)
 		_collect_child_source_paths_recursive(child, child_path, into)
+
+
+func _is_pipeline_helper_node(node: Node) -> bool:
+	return node is SaveFlowPipelineSignals
 
 
 func _build_helper_child_suggestions(helper_child_paths: PackedStringArray, target_node: Node) -> PackedStringArray:

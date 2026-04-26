@@ -8,6 +8,8 @@ The baseline C# wrapper is shipped in `saveflow_core`:
 
 - `res://addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs`
 - `res://addons/saveflow_core/runtime/dotnet/SaveFlowCallResult.cs`
+- `res://addons/saveflow_core/runtime/dotnet/SaveFlowSlotMetadata.cs`
+- `res://addons/saveflow_core/runtime/dotnet/SaveFlowEntityDescriptor.cs`
 
 ## Basic Usage
 
@@ -67,6 +69,7 @@ public partial class SaveFlowCSharpExample : Node
 - `SaveFlowClient.SaveData(...)`
 - `SaveFlowClient.LoadData(...)`
 - `SaveFlowClient.BuildSlotMetadata(...)`
+- `SaveFlowClient.BuildSlotMetadataPatch(...)`
 - `SaveFlowClient.ReadSlotSummary(...)`
 - `SaveFlowClient.ListSlotSummaries(...)`
 - `SaveFlowClient.SaveNodes(...)`
@@ -78,6 +81,106 @@ public partial class SaveFlowCSharpExample : Node
 - `SaveFlowClient.InspectSlotCompatibility(...)`
 - `SaveFlowClient.SaveDevNamedEntry(...)`
 - `SaveFlowClient.LoadDevNamedEntry(...)`
+
+## Typed Slot Metadata
+
+SaveFlow stores slot metadata as dictionaries on disk, but new C# gameplay code
+should use `SaveFlowSlotMetadata` and extend it for project-specific save-list
+fields.
+
+```csharp
+using Godot;
+using Godot.Collections;
+using SaveFlow.DotNet;
+
+public sealed class MySlotMetadata : SaveFlowSlotMetadata
+{
+	[Export] public int SlotIndex { get; set; }
+	[Export] public string StorageKey { get; set; } = "";
+	[Export] public string SlotRole { get; set; } = "";
+}
+```
+
+Grouped metadata can also live in a typed helper object. Prefer
+`SaveFlowTypedResource` for small editable metadata groups, or an encoded payload
+provider when the group should use project-owned JSON/binary serialization:
+
+```csharp
+using Godot;
+using SaveFlow.DotNet;
+
+public partial class MySlotRowData : SaveFlowTypedResource
+{
+	[Export] public int SlotIndex { get; set; }
+	[Export] public string StorageKey { get; set; } = "";
+}
+
+public sealed class MyGroupedSlotMetadata : SaveFlowSlotMetadata
+{
+	[Export] public MySlotRowData RowData { get; set; } = new();
+}
+```
+
+```csharp
+using Godot;
+using Godot.Collections;
+using SaveFlow.DotNet;
+
+public partial class SaveMenuExample : Node
+{
+	public void SaveSlot()
+	{
+		var payload = new Dictionary
+		{
+			["coins"] = 14,
+			["location"] = "forest_gate",
+		};
+
+		var meta = new MySlotMetadata
+		{
+			DisplayName = "Forest Gate",
+			SaveType = "autosave",
+			ChapterName = "Chapter 2",
+			LocationName = "Forest Gate",
+			PlaytimeSeconds = 1320,
+			Difficulty = "normal",
+			SlotIndex = 1,
+			StorageKey = "slot_1",
+			SlotRole = "room_subscene",
+		};
+
+		var saveResult = SaveFlowClient.SaveData("slot_1", payload, meta);
+	}
+}
+```
+
+`BuildSlotMetadata(...)` returns the typed default metadata object. Use
+`BuildSlotMetadataPatch(...)` only when a low-level integration explicitly needs
+a `Godot.Collections.Dictionary`.
+
+SaveFlow emits an authoring warning when metadata contains runtime objects, raw
+Godot objects, or too many custom fields. Keep metadata focused on save-list UI;
+move full gameplay state into the payload, a SaveFlow source, or an encoded C#
+payload provider.
+
+## Runtime Entity Descriptor Helper
+
+Runtime entity descriptors are stored as dictionaries because they cross the
+GDScript save graph boundary. C# integrations should still read them through
+`SaveFlowEntityDescriptor` instead of handwritten keys:
+
+```csharp
+using Godot;
+using Godot.Collections;
+using SaveFlow.DotNet;
+
+public static Node SpawnEnemy(Dictionary descriptor)
+{
+	var entityDescriptor = SaveFlowEntityDescriptor.FromDictionary(descriptor);
+	var enemy = new Node { Name = entityDescriptor.PersistentId };
+	return enemy;
+}
+```
 
 ## C# Typed Data Without Manual Dictionary Keys
 
@@ -316,7 +419,7 @@ autosave.
 
 - The wrapper is intentionally thin: it forwards to the `SaveFlow` autoload.
 - Return values are normalized to `SaveFlowCallResult`.
-- Prefer the explicit metadata overloads for common save rows; keep `BuildSlotMetadata(...)` for advanced or reusable metadata assembly.
+- Prefer `SaveFlowSlotMetadata` and subclasses for save-list fields; use `BuildSlotMetadataPatch(...)` only for compatibility call sites that still expect dictionaries.
 - Compatibility inspection is available in C# too, so schema/data-version checks do not become a GDScript-only workflow.
 - Slot-summary reads are available in C# too, so save-list UI does not need to load the full gameplay payload first.
 - `SaveFlowEncodedPayload` is the preferred C# path when performance matters; it uses user-owned serialization such as source-generated `System.Text.Json` or binary encoders.

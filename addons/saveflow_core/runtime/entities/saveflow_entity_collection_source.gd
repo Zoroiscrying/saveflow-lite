@@ -6,6 +6,12 @@
 class_name SaveFlowEntityCollectionSource
 extends SaveFlowSource
 
+const SaveFlowEntityDescriptorScript := preload("res://addons/saveflow_core/runtime/entities/saveflow_entity_descriptor.gd")
+const _ENTITY_DESCRIPTOR_EXTRA_METHODS := [
+	"get_saveflow_entity_descriptor_extra",
+	"get_saveflow_entity_extra",
+]
+
 enum RestorePolicy {
 	APPLY_EXISTING,
 	CREATE_MISSING,
@@ -116,13 +122,13 @@ func gather_save_data() -> Variant:
 			continue
 
 		var payload: Dictionary = _collect_entity_payload(entity)
-		descriptors.append(
-			{
-				"persistent_id": identity.get_persistent_id(),
-				"type_key": identity.get_type_key(),
-				"payload": payload,
-			}
+		var descriptor: SaveFlowEntityDescriptor = SaveFlowEntityDescriptorScript.from_values(
+			identity.get_persistent_id(),
+			identity.get_type_key(),
+			payload,
+			_collect_entity_descriptor_extra(entity, identity)
 		)
+		descriptors.append(descriptor.to_dictionary())
 
 	_last_report = {
 		"descriptor_count": descriptors.size(),
@@ -225,6 +231,7 @@ func discover_entity_candidates() -> Array:
 			continue
 		var identity := _find_identity(entity)
 		var entity_scope := _resolve_entity_scope(entity)
+		var descriptor_extra := _collect_entity_descriptor_extra(entity, identity)
 		entities.append(
 			{
 				"name": entity.name,
@@ -232,6 +239,7 @@ func discover_entity_candidates() -> Array:
 				"has_identity": identity != null,
 				"persistent_id": identity.get_persistent_id() if identity != null else "",
 				"type_key": identity.get_type_key() if identity != null else "",
+				"descriptor_extra_keys": PackedStringArray(_dictionary_key_names(descriptor_extra)),
 				"has_local_scope": entity_scope != null,
 			}
 		)
@@ -247,6 +255,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("Runtime entity is missing SaveFlowIdentity: %s" % path_text)
 	for conflict_text in PackedStringArray(plan.get("double_collection_conflicts", PackedStringArray())):
 		warnings.append("Runtime set may be double-collected by parent object save logic: %s" % conflict_text)
+	for warning in get_saveflow_authoring_warnings():
+		warnings.append(warning)
 	return warnings
 
 
@@ -330,7 +340,9 @@ func _collect_entity_payload(entity: Node) -> Dictionary:
 	if entity_scope != null:
 		## A local entity scope takes priority for composite runtime entities.
 		## This lets a prefab own its own internal save graph.
-		var scope_result: SaveResult = SaveFlow.gather_scope(entity_scope, _current_context)
+		var pipeline_control := SaveFlowPipelineControl.new()
+		pipeline_control.context.values = _current_context
+		var scope_result: SaveResult = SaveFlow.gather_scope(entity_scope, pipeline_control)
 		if scope_result.ok:
 			return {
 				"mode": "scope_graph",
@@ -347,6 +359,36 @@ func _collect_entity_payload(entity: Node) -> Dictionary:
 		source.before_save(_current_context)
 		payload[source.get_source_key()] = source.gather_save_data()
 	return payload
+
+
+func _collect_entity_descriptor_extra(entity: Node, identity: Node) -> Dictionary:
+	var extra: Dictionary = {}
+	_merge_entity_descriptor_extra(extra, identity)
+	_merge_entity_descriptor_extra(extra, entity)
+	return extra
+
+
+func _merge_entity_descriptor_extra(target: Dictionary, provider: Node) -> void:
+	if provider == null:
+		return
+	for method_name in _ENTITY_DESCRIPTOR_EXTRA_METHODS:
+		if not provider.has_method(method_name):
+			continue
+		var value: Variant = provider.call(method_name)
+		if not (value is Dictionary):
+			continue
+		var extra: Dictionary = Dictionary(value)
+		for key in extra.keys():
+			target[key] = extra[key]
+		return
+
+
+func _dictionary_key_names(data: Dictionary) -> Array:
+	var names: Array = []
+	for key in data.keys():
+		names.append(String(key))
+	names.sort()
+	return names
 
 
 func _resolve_entity_scope(entity: Node) -> SaveFlowScope:

@@ -83,6 +83,8 @@ slot path, primary file state, backup state, schema, versions, and saved scene p
   [saveflow-recommended-integration.md](addons/saveflow_lite/docs/saveflow-recommended-integration.md)
 - Recommended template:
   `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn`
+- Pipeline signals demo:
+  `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn`
 - Common authoring mistakes:
   [saveflow-common-authoring-mistakes.md](addons/saveflow_lite/docs/saveflow-common-authoring-mistakes.md)
 - Commercial-project guide:
@@ -154,10 +156,11 @@ SaveFlow Lite focuses on:
 ## Current Lite Features
 
 - `SaveFlow.save_data()` and `SaveFlow.load_data()` for direct payload saves
-- `SaveFlow.read_slot_summary()` and `SaveFlow.list_slot_summaries()` for lightweight save-list UI reads
+- `SaveFlow.read_slot_summary()`, `SaveFlow.read_slot_metadata()`, and `SaveFlow.list_slot_summaries()` for lightweight save-list UI reads
 - `SaveFlow.save_scene()` and `SaveFlow.load_scene()` for scene/node workflows
 - `SaveFlow.save_scope()` and `SaveFlow.load_scope()` for hierarchical save graphs
 - `SaveFlow.inspect_scope()` for graph diagnostics
+- `SaveFlowPipelineControl`, `SaveFlowPipelineSignals`, callback/signal events, and `pipeline_trace` metadata for local save/load lifecycle control
 - `SaveFlow.save_nodes()` and `SaveFlow.load_nodes()` for custom saveable-node workflows
 - `SaveFlowNodeSource` for target-node built-ins and selected child participants
 - `SaveFlowTypedData` and `SaveFlowTypedDataSource` for typed manager/model-style state
@@ -165,7 +168,7 @@ SaveFlow Lite focuses on:
 - `SaveFlowEntityCollectionSource` and `SaveFlow.restore_entities()` as the runtime-entity seam
 - `SaveFlowPrefabEntityFactory` as the default low-boilerplate runtime factory
 - slot operations: save, load, delete, copy, rename, list
-- slot metadata helpers
+- typed slot metadata helpers through `SaveFlowSlotMetadata`
 - safe-write pipeline with temp file replacement
 - optional last-known-good slot backup beside each slot file
 - compatibility inspection and baseline load blocking for schema/data-version mismatches
@@ -239,17 +242,59 @@ Each summary keeps the common save-list fields at the top level:
 and exposes `compatibility_report` plus `custom_metadata` for project-specific
 UI needs.
 
-To keep save-list metadata consistent, start from:
+Keep the three slot identity concepts separate:
+
+- `slot_index`: integer UI/session identity for sorting and active-slot state
+- `slot_id`: stable SaveFlow storage key such as `slot_1`
+- `display_name`: player-facing metadata such as `Forest Gate`
+
+To keep save-list metadata consistent, start from typed slot metadata. Extend
+`SaveFlowSlotMetadata` when your project needs more save-list fields:
 
 ```gdscript
-var meta := SaveFlow.build_slot_metadata(
-	"Forest Gate",
-	"autosave",
-	"Chapter 2",
-	"Forest Gate",
-	1320
-)
+# my_slot_metadata.gd
+class_name MySlotMetadata
+extends SaveFlowSlotMetadata
+
+@export var slot_index := 0
+@export var storage_key := ""
+
+# Save call
+func save_game(game_data: Dictionary) -> void:
+	var meta := MySlotMetadata.new()
+	meta.display_name = "Forest Gate"
+	meta.save_type = "autosave"
+	meta.chapter_name = "Chapter 2"
+	meta.location_name = "Forest Gate"
+	meta.playtime_seconds = 1320
+	meta.slot_index = 1
+	meta.storage_key = "slot_1"
+
+	SaveFlow.save_data("slot_1", game_data, meta)
 ```
+
+If several save-list fields belong together, group them in a nested
+`SaveFlowTypedData` object instead of hand-writing a dictionary:
+
+```gdscript
+class_name MySlotRowData
+extends SaveFlowTypedData
+
+@export var slot_index := 0
+@export var storage_key := ""
+@export var tags: PackedStringArray = PackedStringArray()
+
+class_name MyGroupedSlotMetadata
+extends SaveFlowSlotMetadata
+
+@export var row_data := MySlotRowData.new()
+```
+
+SaveFlow still writes metadata as a dictionary on disk, but gameplay code should
+prefer typed fields and inherited metadata classes over string-key dictionaries.
+If metadata contains runtime objects, raw Resources, or too many custom fields,
+SaveFlow emits an authoring warning. Keep metadata focused on save-list summary
+UI; move real gameplay state into the save payload or SaveFlow sources.
 
 ### Option 2: Save a scene through SaveFlowNodeSource
 
@@ -424,6 +469,26 @@ The recommended seam is now:
 
 That keeps the save graph explicit in the scene while still letting the project own runtime spawning.
 
+Custom factories receive the saved descriptor as the stable wire-format
+dictionary, but factory code should immediately convert it to
+`SaveFlowEntityDescriptor` so it does not depend on handwritten string keys:
+
+```gdscript
+extends SaveFlowEntityFactory
+
+func can_handle_type(type_key: String) -> bool:
+    return type_key == "enemy"
+
+func spawn_entity_from_save(descriptor: Dictionary, _context: Dictionary = {}) -> Node:
+    var entity_descriptor := resolve_entity_descriptor(descriptor)
+    var enemy := EnemyScene.instantiate()
+    enemy.name = entity_descriptor.persistent_id
+    return enemy
+
+func apply_saved_data(node: Node, payload: Variant, _context: Dictionary = {}) -> void:
+    node.apply_runtime_payload(payload)
+```
+
 `SaveFlowEntityCollectionSource` now exposes three restore policies:
 - `Apply Existing`
   Only update entities the factory can already find.
@@ -435,6 +500,51 @@ That keeps the save graph explicit in the scene while still letting the project 
 `failure_policy` controls failure behavior:
 - `Report Only`: SaveFlow restores what it can and reports the failures in the result
 - `Fail On Missing Or Invalid`: the load fails if any entity is missing or cannot be restored
+
+Entity descriptors have a fixed core shape: `persistent_id`, `type_key`, and
+`payload`. Use `SaveFlowIdentity.descriptor_extra` only for small spawn/routing
+data the factory needs before payload application, such as a spawn point or pool
+id. Normal gameplay state still belongs in the entity payload.
+
+```gdscript
+$Enemy/Identity.descriptor_extra = {
+	"spawn_point": "north_gate",
+	"pool_id": "forest_enemies",
+}
+```
+
+For local lifecycle control, pass a `SaveFlowPipelineControl` to scope save/load.
+The control owns callbacks; its `context.values` dictionary is still passed to
+existing scope/source hooks.
+
+```gdscript
+var control := SaveFlowPipelineControl.new()
+control.context.values["restore_reason"] = "continue_latest"
+
+control.before_load = func(event: SaveFlowPipelineEvent) -> void:
+	print("Load slot: ", event.slot_id)
+
+control.before_apply_source = func(event: SaveFlowPipelineEvent) -> void:
+	if event.key == "inventory" and not _inventory_ready():
+		event.cancel("Inventory is not ready.")
+
+control.after_load = func(_event: SaveFlowPipelineEvent) -> void:
+	_refresh_hud()
+
+var result := SaveFlow.load_scope("slot_1", $SaveGraphRoot, true, control)
+if result.ok:
+	print(result.meta["pipeline_trace"])
+```
+
+This trace reports local scope/source stages such as `scope.before_load`,
+`source.apply`, and `scope.after_load`, plus callback stages such as
+`before_apply_source`. It is not a scene/resource scheduler.
+
+If the reaction belongs in a scene rather than the caller script, add a
+`SaveFlowPipelineSignals` node under a `SaveFlowScope` or `SaveFlowSource` and
+connect its signals in Godot's Node > Signals panel. The signal bridge is a
+pipeline helper, so it is not written into the save payload and is ignored by
+NodeSource child-participant collection.
 
 ### Option 4: Save non-node system state through typed data
 
@@ -486,8 +596,8 @@ That means a target `Node`, a target property holding `RefCounted` data, or a
 custom `Resource` can be used without extending `SaveFlowTypedData`. Use this
 when gameplay code creates or swaps the data at runtime.
 
-Use a custom `SaveFlowDataSource` when the source itself needs bespoke
-translation logic:
+Use a custom `SaveFlowDataSource` only when the source itself needs bespoke
+translation logic or your project already owns a dictionary/table payload:
 
 ```gdscript
 extends SaveFlowDataSource
@@ -594,6 +704,8 @@ Current runtime coverage includes:
 C# now has a shipped baseline wrapper layer in:
 - `addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs`
 - `addons/saveflow_core/runtime/dotnet/SaveFlowCallResult.cs`
+- `addons/saveflow_core/runtime/dotnet/SaveFlowSlotMetadata.cs`
+- `addons/saveflow_core/runtime/dotnet/SaveFlowEntityDescriptor.cs`
 
 Current entrypoints include:
 - `SaveFlowClient.SaveData(...)`

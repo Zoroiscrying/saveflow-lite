@@ -104,6 +104,7 @@ Typical save-list fields:
 Baseline runtime entry points for this workflow:
 
 - `SaveFlow.read_slot_summary(slot_id)`
+- `SaveFlow.read_slot_metadata(slot_id, my_metadata)` when a save-list row should hydrate a typed metadata object
 - `SaveFlow.list_slot_summaries()`
 
 These reads are meant for:
@@ -143,6 +144,27 @@ Important boundary:
 - SaveFlow does not maintain "the player's current slot"
 - SaveFlow writes exactly the `slot_id` passed to `save_data()`, `save_scene()`, or `save_scope()`
 - the game should keep its own active-slot/session state, then pass a stable storage key to SaveFlow
+
+Slot identity names should stay separate:
+
+- `slot_index` is an integer owned by your game UI/session. Use it for sorting,
+  selected-slot state, controller navigation, and "Manual Slot 2" style
+  decisions.
+- `slot_id` is the stable storage key passed to SaveFlow. Derive it from the
+  index or another stable project rule. Do not localize it and do not use it as
+  the player-facing label.
+- `display_name` is player-facing metadata. It can say `Forest Gate`,
+  `Checkpoint`, or `Manual Slot 2`, and it can change without renaming the saved
+  file.
+
+The recommended template shows this as save cards:
+
+- Main slot card: `slot_index = 0`, `slot_id = "project_workflow_main"`, display
+  name `Project Workflow Main Data`
+- Forest room card: `slot_index = 1`, `slot_id = "project_workflow_room_forest"`,
+  display name `Forest Room Subscene Data`
+- Dungeon room card: `slot_index = 2`, `slot_id = "project_workflow_room_dungeon"`,
+  display name `Dungeon Room Subscene Data`
 
 Use an integer slot index for gameplay identity, selection, and sorting. Derive
 the SaveFlow storage key from that index, then store string labels such as
@@ -204,8 +226,9 @@ Recommended rule:
 Recommended helpers:
 
 - `SaveFlow.save_data(..., display_name, save_type, chapter_name, location_name, playtime_seconds, difficulty, thumbnail_path, extra_meta)` for the common explicit path
-- `SaveFlow.build_slot_metadata(...)`
-- `SaveFlow.build_slot_metadata_patch({...})` when you intentionally want override-by-key behavior
+- `SaveFlow.build_slot_metadata(...)` for typed default slot fields
+- a project metadata class that extends `SaveFlowSlotMetadata` for fields such as `slot_index`, `storage_key`, or `slot_role`
+- `SaveFlow.build_slot_metadata_patch(...)` only when you intentionally need low-level dictionary output
 
 Use it to start from the Lite baseline fields, then override the parts your game
 actually wants to show in save rows.
@@ -217,28 +240,61 @@ Keep summary data such as:
 - chapter/location
 - playtime
 - progression summary
+- `slot_index` or other UI ordering data when the save-list UI needs it
 
 Typical example:
 
 ```gdscript
-var active_slot_index := 1
-var slot_id := "slot_%d" % active_slot_index
+class_name MySlotMetadata
+extends SaveFlowSlotMetadata
 
-SaveFlow.save_data(
-    slot_id,
-    payload,
-    "Forest Gate",
-    "autosave",
-    "Chapter 2",
-    "Forest Gate",
-    1320,
-    "normal",
-    "",
-    {"slot_index": active_slot_index}
-)
+@export var slot_index := 0
+@export var storage_key := ""
+
+func autosave_slot(payload: Dictionary, active_slot_index: int) -> void:
+	var slot_id := "slot_%d" % active_slot_index
+	var meta := MySlotMetadata.new()
+	meta.display_name = "Forest Gate"
+	meta.save_type = "autosave"
+	meta.chapter_name = "Chapter 2"
+	meta.location_name = "Forest Gate"
+	meta.playtime_seconds = 1320
+	meta.difficulty = "normal"
+	meta.slot_index = active_slot_index
+	meta.storage_key = slot_id
+
+	SaveFlow.save_data(slot_id, payload, meta)
 ```
 
-out of the gameplay payload when the data mainly exists to render save rows.
+When metadata needs a grouped project-specific object, make that object extend
+`SaveFlowTypedData` and export it from the metadata class:
+
+```gdscript
+class_name MySlotRowData
+extends SaveFlowTypedData
+
+@export var slot_index := 0
+@export var storage_key := ""
+@export var tags: PackedStringArray = PackedStringArray()
+
+class_name MyGroupedSlotMetadata
+extends SaveFlowSlotMetadata
+
+@export var row_data := MySlotRowData.new()
+```
+
+The slot file still stores metadata as a dictionary for compatibility. The typed
+metadata object is the authoring surface, so gameplay code does not need to
+repeat string keys such as `display_name`, `save_type`, `location_name`, or
+`slot_index` at every save call.
+
+SaveFlow emits an authoring warning when metadata contains runtime objects, raw
+Resources, or too many custom fields. Treat that as a design smell: metadata is
+for save-list summary UI, while gameplay state belongs in the payload or SaveFlow
+sources.
+
+Keep save-row fields in metadata, not in the gameplay payload, when the data
+mainly exists to render continue/load menus.
 
 Likewise, keep machine-local settings, temporary debug values, and rebuildable
 caches outside the slot unless they really belong to player progression.
@@ -524,6 +580,40 @@ Minimum custom entity factory contract:
 - optional: `find_existing_entity(persistent_id)` when authored or pooled entities should be reused
 - optional: `prepare_restore(...)` when restore needs container cleanup or cache reset before entities are reapplied
 
+The descriptor parameter is still a dictionary at the restore boundary because
+that is the on-disk payload shape. Do not read it with ad-hoc string keys in
+project code. Convert it first:
+
+```gdscript
+func spawn_entity_from_save(descriptor: Dictionary, _context: Dictionary = {}) -> Node:
+    var entity_descriptor := resolve_entity_descriptor(descriptor)
+    var entity := EnemyScene.instantiate()
+    entity.name = entity_descriptor.persistent_id
+    return entity
+```
+
+`SaveFlowEntityDescriptor` exposes:
+- `persistent_id`
+- `type_key`
+- `payload`
+- `extra` for project-specific descriptor fields
+
+Author descriptor extra on `SaveFlowIdentity` when the factory needs a small
+piece of spawn/routing data before the payload can be applied:
+
+```gdscript
+$Enemy/Identity.descriptor_extra = {
+    "spawn_point": "north_gate",
+    "pool_id": "forest_enemies",
+}
+```
+
+You can also implement `get_saveflow_entity_extra()` or
+`get_saveflow_entity_descriptor_extra()` on the entity node when the extra data
+must be computed at gather time. Keep this data small. Entity health, position,
+inventory, animation, and other gameplay state should stay in the payload owned
+by the entity's local source or scope.
+
 Restore policy:
 - `Apply Existing`
   Only apply saved payload to entities the factory can already find. Missing entities are reported and are not spawned.
@@ -588,6 +678,10 @@ Pick restore policy before you write custom factory code. Most mistakes in runti
 Rule 3.2:
 Treat one runtime entity set as having one owner. If an `EntityCollectionSource` owns a runtime container, do not also sweep that same container from a parent `NodeSource` or broad `save_scene()` traversal.
 
+Rule 3.3:
+Use descriptor extra only for factory routing before payload application. If the
+data can be applied after the entity exists, it belongs in the payload instead.
+
 Rule 4:
 Put save logic as close to prefab ownership as possible.
 
@@ -602,6 +696,106 @@ Keep one typed data source or custom data source focused on one system boundary.
 
 Rule 8:
 Use multiple simple prefab factories before you reach for routing inside one factory. When routing depends on pooling, spawn points, registries, or world state, move to a custom `SaveFlowEntityFactory`.
+
+## Local Pipeline Control
+
+Lite has deterministic local lifecycle hooks, not a full scene/resource
+orchestrator. Use pipeline control when gameplay code needs to observe, cancel,
+or react to the local save/load phases.
+
+Pipeline callbacks:
+- `before_save(event)`
+- `after_gather(event)`
+- `before_write(event)`
+- `after_write(event)`
+- `before_load(event)`
+- `after_read(event)`
+- `before_apply(event)`
+- `before_save_scope(event)`
+- `after_save_scope(event)`
+- `before_load_scope(event)`
+- `after_load_scope(event)`
+- `before_gather_source(event)`
+- `after_gather_source(event)`
+- `before_apply_source(event)`
+- `after_apply_source(event)`
+- `after_load(event)`
+- `on_error(event)`
+
+Each callback receives a `SaveFlowPipelineEvent` with fields such as `stage`,
+`slot_id`, `key`, `scope`, `source`, `payload`, `result`, and `context`.
+Call `event.cancel("reason")` to stop the operation with `PIPELINE_CANCELLED`.
+
+Example:
+
+```gdscript
+var control := SaveFlowPipelineControl.new()
+control.context.values["restore_reason"] = "manual_load"
+
+control.before_load = func(event: SaveFlowPipelineEvent) -> void:
+    print("Loading slot: ", event.slot_id)
+
+control.before_apply_source = func(event: SaveFlowPipelineEvent) -> void:
+    if event.key == "inventory" and not inventory_ready:
+        event.cancel("Inventory source is not ready.")
+
+control.after_load = func(_event: SaveFlowPipelineEvent) -> void:
+    refresh_hud_after_restore()
+
+control.on_error = func(event: SaveFlowPipelineEvent) -> void:
+    push_warning(event.result.error_message)
+
+var result := SaveFlow.load_scope("slot_1", $SaveGraphRoot, true, control)
+```
+
+Use `SaveFlowPipelineSignals` when the reaction belongs to a scene-authored
+node instead of the caller script:
+
+```text
+SaveGraphRoot
+|- PlayerScope
+|  |- PlayerSource
+|     |- SaveFlowPipelineSignals
+```
+
+Then connect signals such as `before_apply_source(event)`,
+`after_gather_source(event)`, or `pipeline_error(event)` from Godot's Node >
+Signals panel to any script method you want. Set `Listen Mode` to `Owner Only`
+for the parent scope/source, `Owner And Descendants` to observe nested graph
+events, or `All Pipeline Events` for diagnostics.
+
+Runnable example:
+`res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn`
+uses one scope-level bridge for the final `Data Saved!` message and one bridge
+under each typed data source for `Profile/Inventory/Quest Data Saved` sidebar
+messages.
+
+`SaveFlowPipelineSignals` is a pipeline helper, not gameplay state. It is not
+serialized, and `SaveFlowNodeSource` ignores it when discovering child
+participants or reporting "helper has child nodes" warnings.
+
+`SaveFlowPipelineContext` is the support object inside the control. Do not pass
+it to SaveFlow directly. Use `control.context.values` for temporary shared
+values and `control.context.trace` or `result.meta["pipeline_trace"]` for
+diagnostics.
+
+Scope hooks:
+- `before_save(context)`
+- `before_load(payload, context)`
+- `after_load(payload, context)`
+
+Source hooks:
+- `before_save(context)`
+- `before_load(payload, context)`
+- `after_load(payload, context)`
+
+Ordering is controlled by `phase` inside one scope: lower phases run first.
+
+The trace records stages such as `scope.before_load`, `source.apply`, and
+`scope.after_load`, plus callback stages when you use `SaveFlowPipelineControl`.
+Use it to debug Lite graph restore order. Do not use it as a resource loading
+coordinator or cross-scene staged restore plan; those belong to Pro-level
+orchestration.
 
 ## What SaveFlow Should Feel Like
 

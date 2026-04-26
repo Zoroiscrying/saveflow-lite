@@ -254,140 +254,121 @@ Recommended focus:
 
 ## Current Roadmap Checkpoint
 
-The recent Lite work has already pushed several roadmap items from "planned"
-into "baseline product behavior".
+As of `0.1.9`, several roadmap lines have moved from "planned" into baseline
+Lite behavior:
 
-These lines are no longer the highest-priority unknowns:
+- project-level settings and compatibility policy are visible from `SaveFlow Settings`
+- slot summary, business metadata, autosave, checkpoint, and active-slot
+  patterns are documented and demonstrated in the recommended template
+- `SaveFlowTypedDataSource` gives Godot and C# users a lower-boilerplate path
+  for typed system/model data
+- C# has baseline runtime entry wrappers and typed-data helpers
+- `SaveFlowNodeSource` has stronger authoring diagnostics for missing included
+  children, nested Source helpers, and ownership boundaries
+- the recommended template is now a scene-authored project workflow instead of
+  a set of disconnected UI-only cases
+- common built-in coverage already includes the first focused batch of
+  high-value object/runtime nodes
 
-- `Inspector and Diagnostics`
-- `Unified Save Settings Panel`
-- `Business-Facing Save Workflow`
-- `Baseline C# Parity` foundation
+That does **not** mean these areas are complete forever.
+It means the next Lite work should avoid adding new concepts unless they remove
+a concrete adoption or reliability problem.
 
-That does **not** mean those areas are finished forever.
-It means the next Lite release should avoid re-opening them as the main theme
-unless a concrete regression or authoring pain point appears.
+The largest remaining Lite gap is now:
 
-The next release should focus on the parts of the roadmap that still have the
-largest gap between "works" and "feels finished":
-
-- `Common Built-In Support`
-- `Documentation and Template Quality`
+- users can configure SaveFlow correctly, but they still need faster feedback
+  when the current project or scene is subtly unsafe
 
 ## Next Release Working Plan
 
 The next Lite release should be framed as:
 
-- **Built-ins + onboarding polish**
+- **Preflight + reliability polish**
 
-The goal is not to add new SaveFlow concepts.
-The goal is to make the most common Lite workflows feel easier to adopt,
-easier to trust, and easier to copy into a real project.
+The goal is not to add Pro-style orchestration.
+The goal is to make the existing Lite workflow harder to misconfigure and safer
+to release.
 
 ### Must Have
 
-#### 1. One focused built-in expansion pass
+#### 1. Setup Health / Preflight v2
 
 Target problem:
 
-- `SaveFlowNodeSource` is already usable, but users still hit avoidable
-  handwritten save logic for common Godot runtime nodes and meaningful local
-  object state
+- setup health currently checks installation and C# basics
+- source previews catch local mistakes, but users still need one place to see
+  whether the current scene has obvious SaveFlow authoring problems
 
-This release should:
+This release should extend `SaveFlow Settings > Setup Health` with current-scene
+preflight checks for:
 
-- add a small, intentional batch of high-value built-ins
-- prefer common gameplay/runtime nodes over UI widget state
-- prefer built-ins that remove real handwritten save/apply code
-- avoid "feature flood" node coverage
+- source count and scope count
+- empty or duplicate source keys
+- invalid `SaveFlowNodeSource`, `SaveFlowTypedDataSource`, `SaveFlowDataSource`,
+  `SaveFlowEntityCollectionSource`, and entity-factory plans
+- common ownership mistakes that already appear in source plans
 
 Acceptance bar:
 
-- users can cover more real object-owned state without writing a custom source
-- the newly added built-ins are easy to explain in one sentence each
-- the preview stays understandable after the new coverage lands
+- a user can open the scene and immediately see whether the SaveFlow graph is
+  obviously safe to test
+- invalid scene authoring shows up in one project-level place, not only after
+  selecting the exact broken node
+- this remains diagnostics only; it must not auto-rewrite the user's save graph
 
-#### 2. README / Quick Access / template alignment
+#### 2. Release tooling hardening
 
 Target problem:
 
-- Lite now has several good entry points, but the wording and emphasis still
-  differ between README, Quick Access, and the recommended template scenes
+- release automation should be boring
+- a missing GitHub Release or remote branch race should not require manual
+  intervention after assets are already generated
 
 This release should:
 
-- make the first three recommended Lite paths visually and verbally consistent
-- keep the same component names and same use-case wording across:
-  - root README
-  - Lite README
-  - Quick Access
-  - recommended project workflow template
-  - scene/component descriptions
-
-The three default paths should stay explicit:
-
-- one object -> `SaveFlowNodeSource`
-- one typed system model -> `SaveFlowTypedDataSource`
-- one custom system adapter -> `SaveFlowDataSource`
-- one runtime set -> `SaveFlowEntityCollectionSource`
+- make `gh release view` failure fall through to release creation
+- fetch/rebase the public sync worktree before syncing and before pushing
+- keep release asset validation unchanged
 
 Acceptance bar:
 
-- a new user can open the plugin and see the same mental model in every entry
-  path
-- the recommended template feels like a direct extension of the docs, not a
-  parallel explanation
+- running `publish_saveflow_lite.ps1 -PushChanges -CreateRelease` can create a
+  new release when it does not already exist
+- if the public repo moved forward before push, the script rebases or fails
+  clearly before publishing the tag
 
-#### 3. Short "common authoring mistakes" checklist
+#### 3. Focused built-in follow-up
 
 Target problem:
 
-- Lite now has clearer ownership boundaries, but users still need a short,
-  practical rule set they can check quickly
+- built-ins should continue to reduce handwritten object-state code
+- coverage should not drift into arbitrary UI persistence or obscure node state
 
-This release should:
+This release may add a small follow-up batch only if each node passes this bar:
 
-- document the most important Lite authoring rules in one short checklist
-- keep the list practical and workflow-oriented
+- common in gameplay scenes
+- has obvious restore value
+- can be explained in one sentence
+- has a focused runtime test
 
-The checklist should reinforce:
+Candidate areas:
 
-- one subtree, one save owner
-- runtime sets belong to `EntityCollectionSource`
-- child nodes with their own `NodeSource` are not directly owned twice
-- disabling scene-path verification removes a safety guard, not the need for
-  restore order
+- collision shape enabled/disabled state
+- collision layer/mask for authored interactables
+- other common runtime toggles that users currently store by hand
 
-Acceptance bar:
+#### 4. Slot UI polish without new architecture
 
-- the checklist is short enough to read in under a minute
-- it complements previews and warnings instead of duplicating full docs
+Target problem:
 
-### Nice To Have
+- the slot-summary APIs and demo exist, but the recommended save-list workflow
+  can still be easier to copy into real projects
 
-These are worth doing if they stay small and do not derail the main release
-theme.
+This release may tighten:
 
-#### 1. One more pass of template simplification
-
-- reduce unnecessary lines in case scripts
-- make business-facing save-flow examples easier to copy into a game project
-- tighten UI/status text in the recommended cases
-
-#### 2. One more pass of preview wording consistency
-
-- use the same short terms across previews where possible
-- avoid subtle wording drift between:
-  - `Restore Contract`
-  - `Compatibility`
-  - `Slot Safety`
-  - `Entity Container`
-  - `Routing`
-
-#### 3. Extra smoke checks for newly added built-ins
-
-- if a new built-in has non-trivial behavior, add a small runtime test
-- keep smoke coverage focused on real workflows, not exhaustive permutations
+- recommended slot metadata names
+- in-game save-card examples
+- docs explaining active slot index vs storage key vs display name
 
 ### Not In This Release
 
@@ -402,17 +383,17 @@ Keep these out of scope:
 - staged multi-scene restore orchestration
 - multithreaded seamless save pipelines
 - heavy editor automation or wizard-style setup systems
-- a large new panel just to explain features already covered by Quick Access or
-  existing previews
+- a large new panel just to explain features already covered by Quick Access,
+  Setup Health, or existing previews
 
 ### Release Readiness Check
 
 Before shipping this next Lite release, verify:
 
-1. the recommended template still demonstrates the same three core save
-   ownership models clearly
-2. the new built-ins reduce handwritten code in common object workflows
-3. the README and Quick Access still agree on the first-use path
+1. `Setup Health` reports both setup and current-scene authoring issues clearly
+2. release automation can create or update a GitHub release without manual
+   fallback
+3. the recommended template still demonstrates the same core ownership models
 4. smoke tests still pass for:
    - recommended cases
    - editor entry points

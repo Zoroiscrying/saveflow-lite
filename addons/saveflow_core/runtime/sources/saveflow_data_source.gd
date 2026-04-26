@@ -56,6 +56,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 	var summary := String(plan.get("summary", "")).strip_edges()
 	if summary.is_empty():
 		warnings.append("SaveFlowDataSource preview summary is empty.")
+	for warning in get_saveflow_authoring_warnings():
+		warnings.append(warning)
 	return warnings
 
 

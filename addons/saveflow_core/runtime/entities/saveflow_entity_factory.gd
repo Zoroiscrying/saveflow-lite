@@ -7,6 +7,8 @@
 class_name SaveFlowEntityFactory
 extends Node
 
+const SaveFlowEntityDescriptorScript := preload("res://addons/saveflow_core/runtime/entities/saveflow_entity_descriptor.gd")
+
 
 func _ready() -> void:
 	_refresh_editor_warnings()
@@ -24,7 +26,8 @@ func find_existing_entity(_persistent_id: String, _context: Dictionary = {}) -> 
 
 
 ## Required. Create or materialize an entity shell for one descriptor. SaveFlow
-## applies payload state after this returns.
+## applies payload state after this returns. Use `resolve_entity_descriptor()`
+## inside custom factories instead of reading string keys from the dictionary.
 @abstract
 func spawn_entity_from_save(descriptor: Dictionary, context: Dictionary = {}) -> Node
 
@@ -50,6 +53,13 @@ func get_supported_entity_types() -> PackedStringArray:
 ## This is used for preview and authoring clarity, not for restore dispatch.
 func get_target_container() -> Node:
 	return null
+
+
+## Converts the wire-format descriptor into a typed helper for factory code.
+## The public restore contract stays dictionary-based for compatibility, but
+## project factories should use this helper to avoid hand-managed string keys.
+func resolve_entity_descriptor(descriptor: Variant) -> SaveFlowEntityDescriptor:
+	return SaveFlowEntityDescriptorScript.from_variant(descriptor)
 
 
 ## Returns the fixed schema consumed by the entity-factory inspector preview.

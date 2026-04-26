@@ -1,7 +1,7 @@
 ## SaveFlowTypedDataSource saves one typed payload-provider object.
 ## The on-disk payload remains a Variant/Dictionary, but gameplay code edits
 ## typed fields or model state instead of string-key dictionaries.
-@icon("res://addons/saveflow_lite/icons/components/saveflow_data_source_icon.svg")
+@icon("res://addons/saveflow_lite/icons/components/saveflow_typed_data_source_icon.svg")
 @tool
 class_name SaveFlowTypedDataSource
 extends SaveFlowDataSource

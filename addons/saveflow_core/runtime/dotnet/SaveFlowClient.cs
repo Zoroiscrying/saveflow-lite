@@ -63,29 +63,13 @@ public static class SaveFlowClient
 			fileExtensionBinary,
 			logLevel);
 
-	public static Dictionary BuildSlotMetadata(Dictionary? overrides = null)
-	{
-		var meta = new Dictionary
-		{
-			["display_name"] = "",
-			["save_type"] = "manual",
-			["chapter_name"] = "",
-			["location_name"] = "",
-			["playtime_seconds"] = 0,
-			["difficulty"] = "",
-			["thumbnail_path"] = "",
-		};
+	public static SaveFlowSlotMetadata BuildSlotMetadata(Dictionary? overrides = null)
+		=> SaveFlowSlotMetadata.FromDictionary(overrides);
 
-		if (overrides is null)
-			return meta;
+	public static Dictionary BuildSlotMetadataPatch(Dictionary? overrides = null)
+		=> BuildSlotMetadata(overrides).ToPatchDictionary();
 
-		foreach (Variant key in overrides.Keys)
-			meta[key] = overrides[key];
-
-		return meta;
-	}
-
-	public static Dictionary BuildSlotMetadata(
+	public static SaveFlowSlotMetadata BuildSlotMetadata(
 		string displayName = "",
 		string saveType = "manual",
 		string chapterName = "",
@@ -94,29 +78,40 @@ public static class SaveFlowClient
 		string difficulty = "",
 		string thumbnailPath = "",
 		Dictionary? extra = null)
-	{
-		var meta = new Dictionary
-		{
-			["display_name"] = displayName,
-			["save_type"] = saveType,
-			["chapter_name"] = chapterName,
-			["location_name"] = locationName,
-			["playtime_seconds"] = playtimeSeconds,
-			["difficulty"] = difficulty,
-			["thumbnail_path"] = thumbnailPath,
-		};
+		=> SaveFlowSlotMetadata.FromValues(
+			displayName,
+			saveType,
+			chapterName,
+			locationName,
+			playtimeSeconds,
+			difficulty,
+			thumbnailPath,
+			extra);
 
-		if (extra is null)
-			return meta;
-
-		foreach (Variant key in extra.Keys)
-			meta[key] = extra[key];
-
-		return meta;
-	}
+	public static Dictionary BuildSlotMetadataPatch(
+		string displayName = "",
+		string saveType = "manual",
+		string chapterName = "",
+		string locationName = "",
+		int playtimeSeconds = 0,
+		string difficulty = "",
+		string thumbnailPath = "",
+		Dictionary? extra = null)
+		=> BuildSlotMetadata(
+			displayName,
+			saveType,
+			chapterName,
+			locationName,
+			playtimeSeconds,
+			difficulty,
+			thumbnailPath,
+			extra).ToPatchDictionary();
 
 	public static SaveFlowCallResult SaveData(string slotId, Variant data, Dictionary? meta = null)
 		=> CallRuntime("save_data", slotId, data, meta ?? new Dictionary());
+
+	public static SaveFlowCallResult SaveData(string slotId, Variant data, SaveFlowSlotMetadata meta)
+		=> CallRuntime("save_data", slotId, data, meta.ToPatchDictionary());
 
 	public static SaveFlowCallResult SaveData(
 		string slotId,
@@ -157,6 +152,9 @@ public static class SaveFlowClient
 	public static SaveFlowCallResult SaveNodes(string slotId, Node root, Dictionary? meta = null, string groupName = "saveflow")
 		=> CallRuntime("save_scene", slotId, root, meta ?? new Dictionary(), groupName);
 
+	public static SaveFlowCallResult SaveNodes(string slotId, Node root, SaveFlowSlotMetadata meta, string groupName = "saveflow")
+		=> CallRuntime("save_scene", slotId, root, meta.ToPatchDictionary(), groupName);
+
 	public static SaveFlowCallResult SaveNodes(
 		string slotId,
 		Node root,
@@ -186,14 +184,19 @@ public static class SaveFlowClient
 	public static SaveFlowCallResult LoadNodes(string slotId, Node root, bool strict = false, string groupName = "saveflow")
 		=> CallRuntime("load_scene", slotId, root, strict, groupName);
 
-	public static SaveFlowCallResult SaveScope(string slotId, Node scopeRoot, Dictionary? meta = null, Dictionary? context = null)
-		=> CallRuntime("save_scope", slotId, scopeRoot, meta ?? new Dictionary(), context ?? new Dictionary());
+	public static SaveFlowCallResult SaveScope(string slotId, Node scopeRoot, Dictionary? meta = null)
+		=> CallRuntime("save_scope", slotId, scopeRoot, meta ?? new Dictionary());
+
+	public static SaveFlowCallResult SaveScope(
+		string slotId,
+		Node scopeRoot,
+		SaveFlowSlotMetadata meta)
+		=> CallRuntime("save_scope", slotId, scopeRoot, meta.ToPatchDictionary());
 
 	public static SaveFlowCallResult SaveScope(
 		string slotId,
 		Node scopeRoot,
 		string displayName,
-		Dictionary? context = null,
 		string saveType = "manual",
 		string chapterName = "",
 		string locationName = "",
@@ -206,7 +209,7 @@ public static class SaveFlowClient
 			slotId,
 			scopeRoot,
 			displayName,
-			context ?? new Dictionary(),
+			default,
 			saveType,
 			chapterName,
 			locationName,
@@ -215,11 +218,14 @@ public static class SaveFlowClient
 			thumbnailPath,
 			extraMeta ?? new Dictionary());
 
-	public static SaveFlowCallResult LoadScope(string slotId, Node scopeRoot, bool strict = false, Dictionary? context = null)
-		=> CallRuntime("load_scope", slotId, scopeRoot, strict, context ?? new Dictionary());
+	public static SaveFlowCallResult LoadScope(string slotId, Node scopeRoot, bool strict = false)
+		=> CallRuntime("load_scope", slotId, scopeRoot, strict);
 
 	public static SaveFlowCallResult SaveCurrent(string slotId, Dictionary? meta = null)
 		=> CallRuntime("save_current", slotId, meta ?? new Dictionary());
+
+	public static SaveFlowCallResult SaveCurrent(string slotId, SaveFlowSlotMetadata meta)
+		=> CallRuntime("save_current", slotId, meta.ToPatchDictionary());
 
 	public static SaveFlowCallResult SaveCurrent(
 		string slotId,

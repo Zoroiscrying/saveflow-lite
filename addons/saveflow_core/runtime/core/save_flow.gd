@@ -11,6 +11,11 @@ const TEMP_FILE_SUFFIX := ".tmp"
 const BACKUP_FILE_SUFFIX := ".bak"
 const SaveFlowProjectSettingsScript := preload("res://addons/saveflow_core/runtime/core/saveflow_project_settings.gd")
 const SaveFlowSaveManagerBusScript := preload("res://addons/saveflow_core/runtime/core/saveflow_save_manager_bus.gd")
+const SaveFlowSlotMetadataScript := preload("res://addons/saveflow_core/runtime/types/saveflow_slot_metadata.gd")
+const SaveFlowEntityDescriptorScript := preload("res://addons/saveflow_core/runtime/entities/saveflow_entity_descriptor.gd")
+const SaveFlowPipelineContextScript := preload("res://addons/saveflow_core/runtime/types/saveflow_pipeline_context.gd")
+const SaveFlowPipelineControlScript := preload("res://addons/saveflow_core/runtime/types/saveflow_pipeline_control.gd")
+const SaveFlowPipelineSignalsScript := preload("res://addons/saveflow_core/runtime/types/saveflow_pipeline_signals.gd")
 
 var _settings: SaveSettings = SaveSettings.new()
 var _current_data: Dictionary = {}
@@ -222,7 +227,7 @@ func save_scope(
 	slot_id: String,
 	scope_root: SaveFlowScope,
 	meta_or_display_name: Variant = {},
-	context: Dictionary = {},
+	pipeline_control: SaveFlowPipelineControl = null,
 	save_type: String = "manual",
 	chapter_name: String = "",
 	location_name: String = "",
@@ -231,9 +236,38 @@ func save_scope(
 	thumbnail_path: String = "",
 	extra_meta: Dictionary = {}
 ) -> SaveResult:
-	var gather_result: SaveResult = gather_scope(scope_root, context)
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	_register_pipeline_signal_bridges(pipeline_control, scope_root)
+	var before_save_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_save",
+		{
+			"slot_id": slot_id,
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+		}
+	)
+	if not before_save_result.ok:
+		return _attach_pipeline_trace(before_save_result, pipeline_control.context)
+
+	var gather_result: SaveResult = _gather_scope_with_control(scope_root, pipeline_control)
 	if not gather_result.ok:
 		return gather_result
+	var after_gather_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_gather",
+		{
+			"slot_id": slot_id,
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+			"payload": gather_result.data,
+			"result": gather_result,
+		}
+	)
+	if not after_gather_result.ok:
+		return _attach_pipeline_trace(after_gather_result, pipeline_control.context)
 
 	var final_meta := _resolve_slot_meta_patch(
 		meta_or_display_name,
@@ -247,7 +281,50 @@ func save_scope(
 	)
 	if not final_meta.has("scene_path") and is_instance_valid(scope_root):
 		final_meta["scene_path"] = _resolve_scene_path_for_node(scope_root)
-	return save_slot(slot_id, {"graph": gather_result.data}, final_meta)
+	var before_write_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_write",
+		{
+			"slot_id": slot_id,
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "slot",
+			"payload": {"graph": gather_result.data, "meta": final_meta},
+		}
+	)
+	if not before_write_result.ok:
+		return _attach_pipeline_trace(before_write_result, pipeline_control.context)
+
+	var save_result := save_slot(slot_id, {"graph": gather_result.data}, final_meta)
+	if gather_result.meta.has("pipeline_trace"):
+		save_result.meta["pipeline_trace"] = gather_result.meta["pipeline_trace"]
+	if not save_result.ok:
+		return _finish_pipeline_error(
+			pipeline_control,
+			save_result,
+			{
+				"slot_id": slot_id,
+				"scope": scope_root,
+				"key": _resolve_scope_key_or_empty(scope_root),
+				"kind": "slot",
+			}
+		)
+
+	var after_write_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_write",
+		{
+			"slot_id": slot_id,
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "slot",
+			"result": save_result,
+		}
+	)
+	if not after_write_result.ok:
+		return _attach_pipeline_trace(after_write_result, pipeline_control.context)
+	save_result.meta["pipeline_trace"] = pipeline_control.context.to_trace_array()
+	return save_result
 
 
 func load_slot(slot_id: String) -> SaveResult:
@@ -315,40 +392,124 @@ func load_scene(slot_id: String, root: Node, strict := false, group_name := "sav
 	return load_nodes(slot_id, root, strict, group_name)
 
 
-func load_scope(slot_id: String, scope_root: SaveFlowScope, strict := false, context: Dictionary = {}) -> SaveResult:
+func load_scope(
+	slot_id: String,
+	scope_root: SaveFlowScope,
+	strict := false,
+	pipeline_control: SaveFlowPipelineControl = null
+) -> SaveResult:
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	_register_pipeline_signal_bridges(pipeline_control, scope_root)
+	var before_load_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_load",
+		{
+			"slot_id": slot_id,
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+		}
+	)
+	if not before_load_result.ok:
+		return _attach_pipeline_trace(before_load_result, pipeline_control.context)
+
 	var load_result: SaveResult = load_slot(slot_id)
 	if not load_result.ok:
-		return load_result
+		return _finish_pipeline_error(
+			pipeline_control,
+			load_result,
+			{
+				"slot_id": slot_id,
+				"scope": scope_root,
+				"key": _resolve_scope_key_or_empty(scope_root),
+				"kind": "slot",
+			}
+		)
+	var after_read_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_read",
+		{
+			"slot_id": slot_id,
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "slot",
+			"payload": load_result.data,
+			"result": load_result,
+		}
+	)
+	if not after_read_result.ok:
+		return _attach_pipeline_trace(after_read_result, pipeline_control.context)
 	if not (load_result.data is Dictionary):
-		return _error_result(
+		return _finish_pipeline_error(pipeline_control, _error_result(
 			SaveError.INVALID_FORMAT,
 			"INVALID_FORMAT",
 			"slot data must be a dictionary to load a save graph",
 			{"slot_id": slot_id}
-		)
+		), {"slot_id": slot_id, "scope": scope_root, "kind": "slot"})
 
 	var slot_payload: Dictionary = load_result.data
 	var scene_check := _validate_scene_restore_target(Dictionary(slot_payload.get("meta", {})), scope_root, "scope")
 	if not scene_check.ok:
-		return scene_check
+		return _finish_pipeline_error(
+			pipeline_control,
+			scene_check,
+			{
+				"slot_id": slot_id,
+				"scope": scope_root,
+				"key": _resolve_scope_key_or_empty(scope_root),
+				"kind": "scope",
+			}
+		)
 
 	var payload: Variant = slot_payload.get("data", {})
 	if not (payload is Dictionary):
-		return _error_result(
+		return _finish_pipeline_error(pipeline_control, _error_result(
 			SaveError.INVALID_FORMAT,
 			"INVALID_FORMAT",
 			"slot data must be a dictionary to load a save graph",
 			{"slot_id": slot_id}
-		)
+		), {"slot_id": slot_id, "scope": scope_root, "kind": "slot"})
 	var payload_dict: Dictionary = payload
 	if not payload_dict.has("graph") or not (payload_dict["graph"] is Dictionary):
-		return _error_result(
+		return _finish_pipeline_error(pipeline_control, _error_result(
 			SaveError.INVALID_FORMAT,
 			"INVALID_FORMAT",
 			"slot data must contain a graph dictionary",
 			{"slot_id": slot_id}
-		)
-	return apply_scope(scope_root, payload_dict["graph"], strict, context)
+		), {"slot_id": slot_id, "scope": scope_root, "kind": "slot"})
+
+	var before_apply_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_apply",
+		{
+			"slot_id": slot_id,
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+			"payload": payload_dict["graph"],
+		}
+	)
+	if not before_apply_result.ok:
+		return _attach_pipeline_trace(before_apply_result, pipeline_control.context)
+	var apply_result: SaveResult = _apply_scope_with_control(scope_root, payload_dict["graph"], strict, pipeline_control)
+	if not apply_result.ok:
+		return apply_result
+	var after_load_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_load",
+		{
+			"slot_id": slot_id,
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+			"payload": payload_dict["graph"],
+			"result": apply_result,
+		}
+	)
+	if not after_load_result.ok:
+		return _attach_pipeline_trace(after_load_result, pipeline_control.context)
+	apply_result.meta["pipeline_trace"] = pipeline_control.context.to_trace_array()
+	return apply_result
 
 
 func load_slot_or_default(slot_id: String, default_data: Variant) -> SaveResult:
@@ -358,41 +519,138 @@ func load_slot_or_default(slot_id: String, default_data: Variant) -> SaveResult:
 	return _ok_result(default_data, {"slot_id": slot_id, "used_default": true})
 
 
-func gather_scope(scope_root: SaveFlowScope, context: Dictionary = {}) -> SaveResult:
+func gather_scope(scope_root: SaveFlowScope, pipeline_control: SaveFlowPipelineControl = null) -> SaveResult:
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	_register_pipeline_signal_bridges(pipeline_control, scope_root)
+	var before_save_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_save",
+		{
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+		}
+	)
+	if not before_save_result.ok:
+		return _attach_pipeline_trace(before_save_result, pipeline_control.context)
+	var gather_result: SaveResult = _gather_scope_with_control(scope_root, pipeline_control)
+	if not gather_result.ok:
+		return gather_result
+	var after_gather_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_gather",
+		{
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+			"payload": gather_result.data,
+			"result": gather_result,
+		}
+	)
+	if not after_gather_result.ok:
+		return _attach_pipeline_trace(after_gather_result, pipeline_control.context)
+	gather_result.meta["pipeline_trace"] = pipeline_control.context.to_trace_array()
+	return gather_result
+
+
+func _gather_scope_with_control(scope_root: SaveFlowScope, pipeline_control: SaveFlowPipelineControl) -> SaveResult:
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	var pipeline_context: SaveFlowPipelineContext = pipeline_control.context
 	if not is_instance_valid(scope_root):
-		return _error_result(
+		return _finish_pipeline_error(pipeline_control, _error_result(
 			SaveError.INVALID_ARGUMENT,
 			"INVALID_ARGUMENT",
 			"scope_root cannot be null"
-		)
+		), {"kind": "scope"})
 	if not scope_root.can_save_scope():
-		return _error_result(
+		return _finish_pipeline_error(pipeline_control, _error_result(
 			SaveError.INVALID_SAVEABLE,
 			"INVALID_SAVEABLE",
 			"scope_root is not enabled for save",
 			{"scope_key": scope_root.get_scope_key()}
+		), {"scope": scope_root, "key": scope_root.get_scope_key(), "kind": "scope"})
+	var gather_result: SaveResult = _gather_scope_payload(scope_root, pipeline_control)
+	if not gather_result.ok:
+		return _finish_pipeline_error(
+			pipeline_control,
+			gather_result,
+			{"scope": scope_root, "key": scope_root.get_scope_key(), "kind": "scope"}
 		)
-	return _gather_scope_payload(scope_root, context)
+	return _attach_pipeline_trace(gather_result, pipeline_context)
 
 
 ## Scope apply is the graph-level restore entry point. Individual sources keep
 ## their own gather/apply contracts, while SaveFlow handles traversal order and
 ## strict-mode result propagation.
-func apply_scope(scope_root: SaveFlowScope, scope_payload: Dictionary, strict := false, context: Dictionary = {}) -> SaveResult:
+func apply_scope(
+	scope_root: SaveFlowScope,
+	scope_payload: Dictionary,
+	strict := false,
+	pipeline_control: SaveFlowPipelineControl = null
+) -> SaveResult:
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	_register_pipeline_signal_bridges(pipeline_control, scope_root)
+	var before_apply_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_apply",
+		{
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+			"payload": scope_payload,
+		}
+	)
+	if not before_apply_result.ok:
+		return _attach_pipeline_trace(before_apply_result, pipeline_control.context)
+	var apply_result: SaveResult = _apply_scope_with_control(scope_root, scope_payload, strict, pipeline_control)
+	if not apply_result.ok:
+		return apply_result
+	var after_load_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_load",
+		{
+			"scope": scope_root,
+			"key": _resolve_scope_key_or_empty(scope_root),
+			"kind": "scope",
+			"payload": scope_payload,
+			"result": apply_result,
+		}
+	)
+	if not after_load_result.ok:
+		return _attach_pipeline_trace(after_load_result, pipeline_control.context)
+	apply_result.meta["pipeline_trace"] = pipeline_control.context.to_trace_array()
+	return apply_result
+
+
+func _apply_scope_with_control(
+	scope_root: SaveFlowScope,
+	scope_payload: Dictionary,
+	strict := false,
+	pipeline_control: SaveFlowPipelineControl = null
+) -> SaveResult:
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	var pipeline_context: SaveFlowPipelineContext = pipeline_control.context
 	if not is_instance_valid(scope_root):
-		return _error_result(
+		return _finish_pipeline_error(pipeline_control, _error_result(
 			SaveError.INVALID_ARGUMENT,
 			"INVALID_ARGUMENT",
 			"scope_root cannot be null"
-		)
+		), {"kind": "scope"})
 	if not scope_root.can_load_scope():
-		return _error_result(
+		return _finish_pipeline_error(pipeline_control, _error_result(
 			SaveError.INVALID_SAVEABLE,
 			"INVALID_SAVEABLE",
 			"scope_root is not enabled for load",
 			{"scope_key": scope_root.get_scope_key()}
+		), {"scope": scope_root, "key": scope_root.get_scope_key(), "kind": "scope"})
+	var apply_result: SaveResult = _apply_scope_payload(scope_root, scope_payload, strict, pipeline_control)
+	if not apply_result.ok:
+		return _finish_pipeline_error(
+			pipeline_control,
+			apply_result,
+			{"scope": scope_root, "key": scope_root.get_scope_key(), "kind": "scope"}
 		)
-	return _apply_scope_payload(scope_root, scope_payload, strict, context)
+	return _attach_pipeline_trace(apply_result, pipeline_context)
 
 
 func inspect_scope(scope_root: SaveFlowScope) -> SaveResult:
@@ -477,23 +735,24 @@ func restore_entities(descriptors: Array, context: Dictionary = {}, strict := fa
 	var allow_create_missing := bool(options.get("allow_create_missing", true))
 
 	for descriptor_variant in descriptors:
-		if not (descriptor_variant is Dictionary):
+		if not (descriptor_variant is Dictionary) and not (descriptor_variant is SaveFlowEntityDescriptor):
 			return _error_result(
 				SaveError.INVALID_ARGUMENT,
 				"INVALID_ARGUMENT",
-				"entity descriptor must be a dictionary"
+				"entity descriptor must be a dictionary or SaveFlowEntityDescriptor"
 			)
-		var descriptor: Dictionary = descriptor_variant
-		var type_key: String = String(descriptor.get("type_key", ""))
-		if type_key.is_empty():
+		var entity_descriptor: SaveFlowEntityDescriptor = SaveFlowEntityDescriptorScript.from_variant(descriptor_variant)
+		if not entity_descriptor.is_valid():
 			return _error_result(
 				SaveError.INVALID_ARGUMENT,
 				"INVALID_ARGUMENT",
-				"entity descriptor must contain type_key",
-				{"descriptor": descriptor}
+				entity_descriptor.get_validation_message(),
+				{"descriptor": entity_descriptor.to_dictionary()}
 			)
 
-		var persistent_id: String = String(descriptor.get("persistent_id", ""))
+		var descriptor: Dictionary = entity_descriptor.to_spawn_dictionary()
+		var type_key := entity_descriptor.type_key
+		var persistent_id := entity_descriptor.persistent_id
 		var factory: SaveFlowEntityFactory = _find_entity_factory(type_key)
 		var node: Node = null
 		if factory == null:
@@ -508,7 +767,7 @@ func restore_entities(descriptors: Array, context: Dictionary = {}, strict := fa
 			_append_unique_string(failed_ids, persistent_id if not persistent_id.is_empty() else type_key)
 			continue
 
-		var payload: Variant = descriptor.get("payload", {})
+		var payload: Variant = entity_descriptor.payload
 		var entity_graph_result: Dictionary = _try_apply_entity_graph_payload(node, payload, strict, context)
 		if bool(entity_graph_result.get("handled", false)):
 			if not bool(entity_graph_result.get("ok", false)):
@@ -558,7 +817,9 @@ func _try_apply_entity_graph_payload(node: Node, payload: Variant, strict := fal
 	if entity_scope == null:
 		return {"handled": true, "ok": false}
 
-	var apply_result: SaveResult = apply_scope(entity_scope, scope_payload, strict, context)
+	var entity_control := _resolve_pipeline_control()
+	entity_control.context.values = context
+	var apply_result: SaveResult = apply_scope(entity_scope, scope_payload, strict, entity_control)
 	return {
 		"handled": true,
 		"ok": apply_result.ok,
@@ -943,6 +1204,23 @@ func read_slot_summary(slot_id: String) -> SaveResult:
 	)
 
 
+func read_slot_metadata(slot_id: String, target_metadata: SaveFlowSlotMetadata = null) -> SaveResult:
+	if slot_id.is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"slot_id cannot be empty"
+		)
+
+	var meta_result: SaveResult = _read_slot_meta_for_summary(slot_id)
+	if not meta_result.ok:
+		return meta_result
+
+	var metadata: SaveFlowSlotMetadata = target_metadata if target_metadata != null else SaveFlowSlotMetadataScript.new()
+	metadata.apply_patch(Dictionary(meta_result.data))
+	return _ok_result(metadata, meta_result.meta)
+
+
 func list_slot_summaries() -> SaveResult:
 	var index_result: SaveResult = _read_index_data()
 	if not index_result.ok:
@@ -1059,30 +1337,21 @@ func build_slot_metadata_patch(
 	thumbnail_path: String = "",
 	extra: Dictionary = {}
 ) -> Dictionary:
-	var business_meta: Dictionary = {
-		"display_name": "",
-		"save_type": "manual",
-		"chapter_name": "",
-		"location_name": "",
-		"playtime_seconds": 0,
-		"difficulty": "",
-		"thumbnail_path": "",
-	}
+	if meta_patch_or_display_name is SaveFlowSlotMetadata:
+		return (meta_patch_or_display_name as SaveFlowSlotMetadata).to_patch_dictionary()
 	if meta_patch_or_display_name is Dictionary:
-		for key in meta_patch_or_display_name.keys():
-			business_meta[key] = meta_patch_or_display_name[key]
-		return business_meta
-
-	business_meta["display_name"] = String(meta_patch_or_display_name)
-	business_meta["save_type"] = save_type
-	business_meta["chapter_name"] = chapter_name
-	business_meta["location_name"] = location_name
-	business_meta["playtime_seconds"] = playtime_seconds
-	business_meta["difficulty"] = difficulty
-	business_meta["thumbnail_path"] = thumbnail_path
-	for key in extra.keys():
-		business_meta[key] = extra[key]
-	return business_meta
+		var metadata := SaveFlowSlotMetadataScript.from_dictionary(meta_patch_or_display_name)
+		return metadata.to_patch_dictionary()
+	return build_slot_metadata(
+		String(meta_patch_or_display_name),
+		save_type,
+		chapter_name,
+		location_name,
+		playtime_seconds,
+		difficulty,
+		thumbnail_path,
+		extra
+	).to_patch_dictionary()
 
 
 func build_slot_metadata(
@@ -1094,8 +1363,8 @@ func build_slot_metadata(
 	difficulty: String = "",
 	thumbnail_path: String = "",
 	extra: Dictionary = {}
-) -> Dictionary:
-	return build_slot_metadata_patch(
+) -> SaveFlowSlotMetadata:
+	return SaveFlowSlotMetadataScript.from_values(
 		display_name,
 		save_type,
 		chapter_name,
@@ -1131,26 +1400,27 @@ func _resolve_slot_meta_patch(
 
 
 func build_meta(slot_id: String, meta_patch: Dictionary = {}) -> Dictionary:
-	var base_meta: Dictionary = build_slot_metadata_patch(meta_patch)
-	base_meta.merge(
-		{
-		"slot_id": slot_id,
-		"created_at_unix": Time.get_unix_time_from_system(),
-		"created_at_iso": Time.get_datetime_string_from_system(true, true),
-		"saved_at_unix": Time.get_unix_time_from_system(),
-		"saved_at_iso": Time.get_datetime_string_from_system(true, true),
-		"scene_path": "",
-		"playtime_seconds": 0,
-		"project_title": _settings.project_title,
-		"game_version": _settings.game_version,
-		"data_version": _settings.data_version,
-		"save_schema": _settings.save_schema,
-		},
-		false
-	)
-	if String(base_meta.get("display_name", "")).is_empty():
-		base_meta["display_name"] = slot_id
-	return base_meta
+	var metadata := SaveFlowSlotMetadataScript.from_dictionary(build_slot_metadata_patch(meta_patch))
+	metadata.slot_id = slot_id
+	var now_unix := int(Time.get_unix_time_from_system())
+	var now_iso := Time.get_datetime_string_from_system(true, true)
+	if metadata.created_at_unix == 0:
+		metadata.created_at_unix = now_unix
+	if metadata.created_at_iso.is_empty():
+		metadata.created_at_iso = now_iso
+	metadata.saved_at_unix = now_unix
+	metadata.saved_at_iso = now_iso
+	if metadata.display_name.is_empty():
+		metadata.display_name = slot_id
+	if metadata.project_title.is_empty():
+		metadata.project_title = _settings.project_title
+	if metadata.game_version.is_empty():
+		metadata.game_version = _settings.game_version
+	if metadata.data_version == 0:
+		metadata.data_version = _settings.data_version
+	if metadata.save_schema.is_empty():
+		metadata.save_schema = _settings.save_schema
+	return metadata.to_dictionary()
 
 
 func _read_slot_meta_for_summary(slot_id: String) -> SaveResult:
@@ -1198,48 +1468,28 @@ func _read_slot_meta_for_summary(slot_id: String) -> SaveResult:
 
 
 func _build_slot_summary(slot_id: String, slot_meta: Dictionary) -> Dictionary:
-	var custom_metadata := slot_meta.duplicate(true)
-	for key in [
-		"slot_id",
-		"display_name",
-		"save_type",
-		"chapter_name",
-		"location_name",
-		"playtime_seconds",
-		"difficulty",
-		"thumbnail_path",
-		"created_at_unix",
-		"created_at_iso",
-		"saved_at_unix",
-		"saved_at_iso",
-		"scene_path",
-		"project_title",
-		"game_version",
-		"data_version",
-		"save_schema",
-	]:
-		custom_metadata.erase(key)
+	var metadata := SaveFlowSlotMetadataScript.from_dictionary(slot_meta)
 
 	return {
-		"slot_id": String(slot_meta.get("slot_id", slot_id)),
-		"display_name": String(slot_meta.get("display_name", slot_id)),
-		"save_type": String(slot_meta.get("save_type", "manual")),
-		"chapter_name": String(slot_meta.get("chapter_name", "")),
-		"location_name": String(slot_meta.get("location_name", "")),
-		"playtime_seconds": int(slot_meta.get("playtime_seconds", 0)),
-		"difficulty": String(slot_meta.get("difficulty", "")),
-		"thumbnail_path": String(slot_meta.get("thumbnail_path", "")),
-		"created_at_unix": int(slot_meta.get("created_at_unix", 0)),
-		"created_at_iso": String(slot_meta.get("created_at_iso", "")),
-		"saved_at_unix": int(slot_meta.get("saved_at_unix", 0)),
-		"saved_at_iso": String(slot_meta.get("saved_at_iso", "")),
-		"scene_path": String(slot_meta.get("scene_path", "")),
-		"project_title": String(slot_meta.get("project_title", "")),
-		"game_version": String(slot_meta.get("game_version", "")),
-		"data_version": int(slot_meta.get("data_version", 0)),
-		"save_schema": String(slot_meta.get("save_schema", "")),
+		"slot_id": metadata.slot_id if not metadata.slot_id.is_empty() else slot_id,
+		"display_name": metadata.display_name if not metadata.display_name.is_empty() else slot_id,
+		"save_type": metadata.save_type,
+		"chapter_name": metadata.chapter_name,
+		"location_name": metadata.location_name,
+		"playtime_seconds": metadata.playtime_seconds,
+		"difficulty": metadata.difficulty,
+		"thumbnail_path": metadata.thumbnail_path,
+		"created_at_unix": metadata.created_at_unix,
+		"created_at_iso": metadata.created_at_iso,
+		"saved_at_unix": metadata.saved_at_unix,
+		"saved_at_iso": metadata.saved_at_iso,
+		"scene_path": metadata.scene_path,
+		"project_title": metadata.project_title,
+		"game_version": metadata.game_version,
+		"data_version": metadata.data_version,
+		"save_schema": metadata.save_schema,
 		"compatibility_report": _build_slot_compatibility_report(slot_meta),
-		"custom_metadata": custom_metadata,
+		"custom_metadata": metadata.custom_metadata.duplicate(true),
 	}
 
 
@@ -1490,13 +1740,17 @@ func _collect_saveable_entry(root: Node, node: Node) -> SaveResult:
 			{"root_path": _describe_root(root), "node_path": String(report.get("node_path", ""))}
 		)
 
-	var data: Variant = _gather_source_payload(node)
+	var pipeline_control := _resolve_pipeline_control()
+	var source_result: SaveResult = _gather_source_payload(node, pipeline_control)
+	if not source_result.ok:
+		return source_result
 	return _ok_result(
 		{
 			"save_key": key,
-			"data": data,
+			"data": source_result.data,
 			"report": report,
-		}
+		},
+		{"pipeline_trace": pipeline_control.context.to_trace_array()}
 	)
 
 
@@ -1538,7 +1792,9 @@ func _describe_saveable_kind(node: Node) -> String:
 	return "source"
 
 
-func _gather_scope_payload(scope_root: SaveFlowScope, context: Dictionary = {}) -> SaveResult:
+func _gather_scope_payload(scope_root: SaveFlowScope, pipeline_control: SaveFlowPipelineControl) -> SaveResult:
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	var pipeline_context: SaveFlowPipelineContext = pipeline_control.context
 	if not scope_root.can_save_scope():
 		return _ok_result(
 			{
@@ -1547,7 +1803,20 @@ func _gather_scope_payload(scope_root: SaveFlowScope, context: Dictionary = {}) 
 			}
 		)
 
-	scope_root.before_save(context)
+	var hook_context := pipeline_context.get_hook_context()
+	var before_save_scope_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_save_scope",
+		{
+			"scope": scope_root,
+			"key": scope_root.get_scope_key(),
+			"kind": "scope",
+		}
+	)
+	if not before_save_scope_result.ok:
+		return before_save_scope_result
+	pipeline_context.record("scope.before_save", scope_root, scope_root.get_scope_key(), "scope")
+	scope_root.before_save(hook_context)
 	var entries: Array = []
 	var seen_keys: PackedStringArray = []
 	for child in _get_ordered_graph_children(scope_root):
@@ -1564,8 +1833,9 @@ func _gather_scope_payload(scope_root: SaveFlowScope, context: Dictionary = {}) 
 					{"scope_key": scope_root.get_scope_key(), "child_scope_key": child_scope_key}
 				)
 			seen_keys.append("scope:%s" % child_scope_key)
-			var child_result: SaveResult = _gather_scope_payload(child_scope, context)
+			var child_result: SaveResult = _gather_scope_payload(child_scope, pipeline_control)
 			if not child_result.ok:
+				pipeline_context.record("scope.gather_failed", child_scope, child_scope_key, "scope", false, child_result.error_key)
 				return child_result
 			entries.append(
 				{
@@ -1596,25 +1866,62 @@ func _gather_scope_payload(scope_root: SaveFlowScope, context: Dictionary = {}) 
 			var validate_result: SaveResult = _validate_graph_source(child)
 			if not validate_result.ok:
 				return validate_result
-			var source_data: Variant = _gather_source_payload(child, context)
+			var source_result: SaveResult = _gather_source_payload(child, pipeline_control)
+			if not source_result.ok:
+				return source_result
 			entries.append(
 				{
 					"kind": "source",
 					"key": source_key,
-					"data": source_data,
+					"data": source_result.data,
 				}
 			)
 
-	return _ok_result(
+	pipeline_context.record("scope.gathered", scope_root, scope_root.get_scope_key(), "scope")
+	var scope_payload := {
+		"scope_key": scope_root.get_scope_key(),
+		"entries": entries,
+	}
+	var after_save_scope_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_save_scope",
 		{
-			"scope_key": scope_root.get_scope_key(),
-			"entries": entries,
+			"scope": scope_root,
+			"key": scope_root.get_scope_key(),
+			"kind": "scope",
+			"payload": scope_payload,
 		}
+	)
+	if not after_save_scope_result.ok:
+		return after_save_scope_result
+	return _ok_result(
+		scope_payload
 	)
 
 
-func _apply_scope_payload(scope_root: SaveFlowScope, scope_payload: Dictionary, strict := false, context: Dictionary = {}) -> SaveResult:
-	scope_root.before_load(scope_payload, context)
+func _apply_scope_payload(
+	scope_root: SaveFlowScope,
+	scope_payload: Dictionary,
+	strict := false,
+	pipeline_control: SaveFlowPipelineControl = null
+) -> SaveResult:
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	var pipeline_context: SaveFlowPipelineContext = pipeline_control.context
+	var hook_context := pipeline_context.get_hook_context()
+	var before_load_scope_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_load_scope",
+		{
+			"scope": scope_root,
+			"key": scope_root.get_scope_key(),
+			"kind": "scope",
+			"payload": scope_payload,
+		}
+	)
+	if not before_load_scope_result.ok:
+		return before_load_scope_result
+	pipeline_context.record("scope.before_load", scope_root, scope_root.get_scope_key(), "scope")
+	scope_root.before_load(scope_payload, hook_context)
 	var local_strict: bool = _resolve_scope_strict(scope_root, strict)
 	var payload_entries: Array = Array(scope_payload.get("entries", []))
 	var source_payloads: Dictionary = {}
@@ -1643,8 +1950,9 @@ func _apply_scope_payload(scope_root: SaveFlowScope, scope_payload: Dictionary, 
 			if not scope_payloads.has(child_scope_key):
 				continue
 			consumed_scope_keys.append(child_scope_key)
-			var child_result: SaveResult = _apply_scope_payload(child_scope, scope_payloads[child_scope_key], local_strict, context)
+			var child_result: SaveResult = _apply_scope_payload(child_scope, scope_payloads[child_scope_key], local_strict, pipeline_control)
 			if not child_result.ok:
+				pipeline_context.record("scope.apply_failed", child_scope, child_scope_key, "scope", false, child_result.error_key)
 				return child_result
 			applied_count += int(child_result.data.get("applied_count", 0))
 			for missing in PackedStringArray(child_result.data.get("missing_keys", PackedStringArray())):
@@ -1660,8 +1968,9 @@ func _apply_scope_payload(scope_root: SaveFlowScope, scope_payload: Dictionary, 
 			if not validate_result.ok:
 				_append_unique_string(missing_keys, "source:%s" % source_key)
 				continue
-			var apply_result: SaveResult = _apply_source_payload(child, source_payloads[source_key], context)
+			var apply_result: SaveResult = _apply_source_payload(child, source_payloads[source_key], pipeline_control)
 			if not apply_result.ok:
+				pipeline_context.record("source.apply_failed", child, source_key, "source", false, apply_result.error_key)
 				return apply_result
 			applied_count += 1
 
@@ -1672,7 +1981,20 @@ func _apply_scope_payload(scope_root: SaveFlowScope, scope_payload: Dictionary, 
 		if not consumed_source_keys.has(String(source_key)):
 			_append_unique_string(missing_keys, "source:%s" % String(source_key))
 
-	scope_root.after_load(scope_payload, context)
+	pipeline_context.record("scope.after_load", scope_root, scope_root.get_scope_key(), "scope")
+	scope_root.after_load(scope_payload, hook_context)
+	var after_load_scope_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_load_scope",
+		{
+			"scope": scope_root,
+			"key": scope_root.get_scope_key(),
+			"kind": "scope",
+			"payload": scope_payload,
+		}
+	)
+	if not after_load_scope_result.ok:
+		return after_load_scope_result
 	if local_strict and not missing_keys.is_empty():
 		return _error_result(
 			SaveError.INVALID_SAVEABLE,
@@ -1771,21 +2093,84 @@ func _resolve_graph_source_key(node: Node) -> String:
 	return node.name.to_snake_case()
 
 
-func _gather_source_payload(node: Node, context: Dictionary = {}) -> Variant:
+func _gather_source_payload(node: Node, pipeline_control: SaveFlowPipelineControl) -> SaveResult:
 	var source := node as SaveFlowSource
-	source.before_save(context)
-	return source.gather_save_data()
+	var source_key := source.get_source_key()
+	var pipeline_context: SaveFlowPipelineContext = pipeline_control.context
+	var before_gather_source_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_gather_source",
+		{
+			"source": source,
+			"node": node,
+			"key": source_key,
+			"kind": "source",
+		}
+	)
+	if not before_gather_source_result.ok:
+		return before_gather_source_result
+	pipeline_context.record("source.before_save", node, source_key, "source")
+	source.before_save(pipeline_context.get_hook_context())
+	var payload: Variant = source.gather_save_data()
+	pipeline_context.record("source.gathered", node, source_key, "source")
+	var after_gather_source_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_gather_source",
+		{
+			"source": source,
+			"node": node,
+			"key": source_key,
+			"kind": "source",
+			"payload": payload,
+		}
+	)
+	if not after_gather_source_result.ok:
+		return after_gather_source_result
+	return _ok_result(payload)
 
 
-func _apply_source_payload(node: Node, payload: Variant, context: Dictionary = {}) -> SaveResult:
+func _apply_source_payload(node: Node, payload: Variant, pipeline_control: SaveFlowPipelineControl) -> SaveResult:
 	var source := node as SaveFlowSource
-	source.before_load(payload, context)
-	var apply_result_variant: Variant = source.apply_save_data(payload, context)
+	var source_key := source.get_source_key()
+	var pipeline_context: SaveFlowPipelineContext = pipeline_control.context
+	var hook_context: Dictionary = pipeline_context.get_hook_context()
+	var before_apply_source_result := _notify_pipeline_stage(
+		pipeline_control,
+		"before_apply_source",
+		{
+			"source": source,
+			"node": node,
+			"key": source_key,
+			"kind": "source",
+			"payload": payload,
+		}
+	)
+	if not before_apply_source_result.ok:
+		return before_apply_source_result
+	pipeline_context.record("source.before_load", node, source_key, "source")
+	source.before_load(payload, hook_context)
+	pipeline_context.record("source.apply", node, source_key, "source")
+	var apply_result_variant: Variant = source.apply_save_data(payload, hook_context)
 	if apply_result_variant is SaveResult:
 		var apply_result: SaveResult = apply_result_variant
 		if not apply_result.ok:
+			pipeline_context.record("source.apply_failed", node, source_key, "source", false, apply_result.error_key)
 			return apply_result
-	source.after_load(payload, context)
+	pipeline_context.record("source.after_load", node, source_key, "source")
+	source.after_load(payload, hook_context)
+	var after_apply_source_result := _notify_pipeline_stage(
+		pipeline_control,
+		"after_apply_source",
+		{
+			"source": source,
+			"node": node,
+			"key": source_key,
+			"kind": "source",
+			"payload": payload,
+		}
+	)
+	if not after_apply_source_result.ok:
+		return after_apply_source_result
 	return _ok_result()
 
 
@@ -2687,6 +3072,61 @@ func _append_unique_string(values: PackedStringArray, value: String) -> void:
 	values.append(value)
 
 
+func _notify_pipeline_stage(
+	pipeline_control: SaveFlowPipelineControl,
+	stage: String,
+	options: Dictionary = {}
+) -> SaveResult:
+	pipeline_control = _resolve_pipeline_control(pipeline_control)
+	return pipeline_control.notify(stage, options)
+
+
+func _finish_pipeline_error(
+	pipeline_control: SaveFlowPipelineControl,
+	result: SaveResult,
+	options: Dictionary = {}
+) -> SaveResult:
+	if pipeline_control != null:
+		pipeline_control.notify_error(result, options)
+		return _attach_pipeline_trace(result, pipeline_control.context)
+	return result
+
+
+func _resolve_pipeline_control(pipeline_control: SaveFlowPipelineControl = null) -> SaveFlowPipelineControl:
+	if pipeline_control != null:
+		return pipeline_control
+	return SaveFlowPipelineControlScript.new()
+
+
+func _register_pipeline_signal_bridges(pipeline_control: SaveFlowPipelineControl, root: Node) -> void:
+	if pipeline_control == null or not is_instance_valid(root):
+		return
+	for bridge in _collect_pipeline_signal_bridges(root):
+		pipeline_control.add_signal_bridge(bridge)
+
+
+func _collect_pipeline_signal_bridges(root: Node) -> Array:
+	var bridges: Array = []
+	if not is_instance_valid(root):
+		return bridges
+	_collect_pipeline_signal_bridges_recursive(root, bridges)
+	return bridges
+
+
+func _collect_pipeline_signal_bridges_recursive(node: Node, bridges: Array) -> void:
+	if node is SaveFlowPipelineSignals:
+		bridges.append(node)
+	for child in node.get_children():
+		if child is Node:
+			_collect_pipeline_signal_bridges_recursive(child, bridges)
+
+
+func _resolve_scope_key_or_empty(scope_root: SaveFlowScope) -> String:
+	if not is_instance_valid(scope_root):
+		return ""
+	return scope_root.get_scope_key()
+
+
 func _ok_result(data: Variant = null, meta: Dictionary = {}) -> SaveResult:
 	var result := SaveResult.new()
 	result.ok = true
@@ -2694,6 +3134,13 @@ func _ok_result(data: Variant = null, meta: Dictionary = {}) -> SaveResult:
 	result.error_key = "OK"
 	result.data = data
 	result.meta = meta
+	return result
+
+
+func _attach_pipeline_trace(result: SaveResult, pipeline_context: SaveFlowPipelineContext) -> SaveResult:
+	if result == null or pipeline_context == null:
+		return result
+	result.meta["pipeline_trace"] = pipeline_context.to_trace_array()
 	return result
 
 

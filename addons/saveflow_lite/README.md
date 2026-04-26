@@ -27,6 +27,7 @@ Project repository:
 Useful docs:
 - `addons/saveflow_lite/docs/saveflow-recommended-integration.md`
 - `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn`
 - `addons/saveflow_lite/docs/saveflow-common-authoring-mistakes.md`
 - `addons/saveflow_lite/docs/saveflow-commercial-project-guide.md`
 

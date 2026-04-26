@@ -18,6 +18,7 @@ display_name = "Dungeon Room"
 script = ExtResource("1_room")
 room_id = "dungeon"
 display_name = "Dungeon Room"
+slot_index = 2
 room_bounds = Rect2(140, 140, 1010, 500)
 spawn_position = Vector2(315, 500)
 room_data = SubResource("Resource_dungeon_room_data")
@@ -160,24 +161,27 @@ polygon = PackedVector2Array(0, -24, 24, 0, 0, 24, -24, 0)
 offset_left = 245.0
 offset_top = 300.0
 offset_right = 385.0
-offset_bottom = 330.0
-text = "Save Room Slot"
+offset_bottom = 346.0
+text = "Save
+Room Slot #2"
 horizontal_alignment = 1
 
 [node name="LoadLabel" type="Label" parent="."]
 offset_left = 575.0
 offset_top = 300.0
 offset_right = 715.0
-offset_bottom = 330.0
-text = "Load Room Slot"
+offset_bottom = 346.0
+text = "Load
+Room Slot #2"
 horizontal_alignment = 1
 
 [node name="MutateLabel" type="Label" parent="."]
 offset_left = 900.0
 offset_top = 300.0
 offset_right = 1040.0
-offset_bottom = 330.0
-text = "Relic Forge"
+offset_bottom = 346.0
+text = "Relic Forge
+runtime entity"
 horizontal_alignment = 1
 
 [node name="ExitLabel" type="Label" parent="."]

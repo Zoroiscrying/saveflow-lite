@@ -11,9 +11,10 @@ const CORE_VERSION_PATH := "res://addons/saveflow_core/version.txt"
 const NUGET_CONFIG_PATH := "res://nuget.config"
 const LEGACY_AUTOLOAD_NAME := "Save"
 const PROJECT_SETTINGS_KEY := "saveflow_lite/settings/save_root"
+const SceneValidatorScript := preload("res://addons/saveflow_lite/editor/saveflow_scene_validator.gd")
 
 
-static func inspect_setup() -> Dictionary:
+static func inspect_setup(scene_root: Node = null) -> Dictionary:
 	var checks: Array[Dictionary] = []
 
 	_add_check(
@@ -143,6 +144,7 @@ static func inspect_setup() -> Dictionary:
 		)
 
 	_append_csharp_checks(checks)
+	_append_scene_preflight_checks(checks, scene_root)
 
 	return _build_report(checks)
 
@@ -236,6 +238,160 @@ static func _append_csharp_checks(checks: Array[Dictionary]) -> void:
 			"C# assembly build",
 			"`%s` is available. Project-side C# scripts can be instantiated by the editor/runtime." % built_assembly_path.replace("res://", "")
 		)
+
+
+static func _append_scene_preflight_checks(checks: Array[Dictionary], scene_root: Node = null) -> void:
+	var report: Dictionary = SceneValidatorScript.inspect_scene(scene_root)
+	if not bool(report.get("has_scene", false)):
+		_add_ok(
+			checks,
+			"Current scene preflight",
+			"No edited or current scene is available yet. Open a scene to run SaveFlow authoring checks."
+		)
+		return
+
+	var source_count := int(report.get("source_count", 0))
+	var scope_count := int(report.get("scope_count", 0))
+	var factory_count := int(report.get("factory_count", 0))
+	if source_count == 0 and scope_count == 0 and factory_count == 0:
+		_add_warning(
+			checks,
+			"Current scene preflight",
+			"`%s` has no SaveFlow components yet. Add a Source or Scope when this scene is meant to participate in save/load." %
+			String(report.get("scene_name", "Current Scene"))
+		)
+		return
+
+	_add_ok(
+		checks,
+		"Current scene preflight",
+		"`%s` contains %d source(s), %d scope(s), and %d entity factory node(s)." % [
+			String(report.get("scene_name", "Current Scene")),
+			source_count,
+			scope_count,
+			factory_count,
+		]
+	)
+	_append_scene_source_key_checks(checks, report, source_count)
+	_append_scene_source_plan_checks(checks, report, source_count)
+	_append_scene_scope_plan_checks(checks, report, scope_count)
+	_append_scene_factory_plan_checks(checks, report, factory_count)
+
+
+static func _append_scene_source_key_checks(checks: Array[Dictionary], report: Dictionary, source_count: int) -> void:
+	var issues := _filter_scene_issues(report, "source_key")
+	if not issues.is_empty():
+		_add_error(
+			checks,
+			"Current scene source keys",
+			_format_scene_issue_details(issues)
+		)
+		return
+
+	_add_ok(
+		checks,
+		"Current scene source keys",
+		"All %d source key(s) are non-empty and unique in the current scene preflight." % source_count
+	)
+
+
+static func _append_scene_source_plan_checks(checks: Array[Dictionary], report: Dictionary, source_count: int) -> void:
+	var invalid_sources := _filter_scene_issues(report, "source_plan", "error")
+	var warning_sources := _filter_scene_issues(report, "source_warning", "warning")
+	if not invalid_sources.is_empty():
+		_add_error(
+			checks,
+			"Current scene source plans",
+			_format_scene_issue_details(invalid_sources)
+		)
+	elif source_count == 0:
+		_add_warning(
+			checks,
+			"Current scene source plans",
+			"No SaveFlow sources were found in this scene."
+		)
+	else:
+		_add_ok(
+			checks,
+			"Current scene source plans",
+			"All source plans that expose diagnostics are currently valid."
+		)
+
+	if not warning_sources.is_empty():
+		_add_warning(
+			checks,
+			"Current scene source warnings",
+			_format_scene_issue_details(warning_sources)
+		)
+
+
+static func _append_scene_scope_plan_checks(checks: Array[Dictionary], report: Dictionary, scope_count: int) -> void:
+	if scope_count == 0:
+		return
+	var invalid_scopes := _filter_scene_issues(report, "scope_plan", "error")
+	var warning_scopes := _filter_scene_issues(report, "scope_plan", "warning")
+	if not invalid_scopes.is_empty():
+		_add_error(
+			checks,
+			"Current scene scope plans",
+			_format_scene_issue_details(invalid_scopes)
+		)
+	elif not warning_scopes.is_empty():
+		_add_warning(
+			checks,
+			"Current scene scope plans",
+			_format_scene_issue_details(warning_scopes)
+		)
+	else:
+		_add_ok(
+			checks,
+			"Current scene scope plans",
+			"All %d scope plan(s) are currently valid." % scope_count
+		)
+
+
+static func _append_scene_factory_plan_checks(checks: Array[Dictionary], report: Dictionary, factory_count: int) -> void:
+	if factory_count == 0:
+		return
+	var invalid_factories := _filter_scene_issues(report, "entity_factory", "error")
+	if not invalid_factories.is_empty():
+		_add_error(
+			checks,
+			"Current scene entity factories",
+			_format_scene_issue_details(invalid_factories)
+		)
+		return
+
+	_add_ok(
+		checks,
+		"Current scene entity factories",
+		"All %d entity factory plan(s) are currently valid." % factory_count
+	)
+
+
+static func _filter_scene_issues(report: Dictionary, category: String, state: String = "") -> Array[Dictionary]:
+	var matches: Array[Dictionary] = []
+	for issue_variant in Array(report.get("issues", [])):
+		var issue := Dictionary(issue_variant)
+		if String(issue.get("category", "")) != category:
+			continue
+		if not state.is_empty() and String(issue.get("state", "")) != state:
+			continue
+		matches.append(issue)
+	return matches
+
+
+static func _format_scene_issue_details(issues: Array[Dictionary], max_count: int = 8) -> String:
+	if issues.is_empty():
+		return ""
+	var lines := PackedStringArray()
+	var count: int = mini(issues.size(), max_count)
+	for index in range(count):
+		var issue := issues[index]
+		lines.append(String(issue.get("message", "")))
+	if issues.size() > max_count:
+		lines.append("... and %d more." % (issues.size() - max_count))
+	return "\n".join(lines)
 
 
 static func _inspect_nuget_config() -> Dictionary:

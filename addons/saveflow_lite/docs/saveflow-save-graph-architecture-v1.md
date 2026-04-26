@@ -38,10 +38,10 @@ The save graph addresses those problems directly.
 `SaveFlow` remains the singleton runtime entry.
 
 It now acts as the save manager and exposes:
-- `save_scope(slot_id, scope_root, meta, context)`
-- `load_scope(slot_id, scope_root, strict, context)`
-- `gather_scope(scope_root, context)`
-- `apply_scope(scope_root, scope_payload, strict, context)`
+- `save_scope(slot_id, scope_root, meta, pipeline_control)`
+- `load_scope(slot_id, scope_root, strict, pipeline_control)`
+- `gather_scope(scope_root, pipeline_control)`
+- `apply_scope(scope_root, scope_payload, strict, pipeline_control)`
 - `inspect_scope(scope_root)`
 - `restore_entities(descriptors, context, strict)`
 
@@ -72,9 +72,9 @@ Scope lifecycle:
 - `before_load(payload, context)`
 - `after_load(payload, context)`
 
-Current traversal is tree order.
-That is deliberate for v1.
-It gives explicit and predictable restore ordering without adding a full dependency solver yet.
+Current traversal is ordered by `phase` first, then tree order.
+That is deliberate for v1. It gives explicit and predictable restore ordering
+without adding a full dependency solver yet.
 
 ## 3. SaveFlowSource
 
@@ -166,15 +166,72 @@ This shape is intentionally readable and stable enough for inspection.
 Current v1 ordering:
 
 1. `scope.before_save(context)`
-2. gather child scopes in tree order
-3. gather child sources in tree order
-4. `scope.before_load(payload, context)`
-5. apply child scopes in tree order
-6. apply child sources in tree order
-7. `scope.after_load(payload, context)`
+2. gather child scopes/sources by `phase`, then tree order
+3. `scope.before_load(payload, context)`
+4. apply child scopes/sources by `phase`, then tree order
+5. `scope.after_load(payload, context)`
 
 This is not yet a full dependency graph.
 It is a deterministic restore pipeline with enough structure for authored systems.
+
+`SaveFlowPipelineControl` is the user-facing control object for this local
+pipeline. It exposes typed callback events while keeping `context.values` as the
+plain dictionary passed to existing scope/source hooks:
+
+```gdscript
+var control := SaveFlowPipelineControl.new()
+control.before_load = func(event: SaveFlowPipelineEvent) -> void:
+    print("Loading slot: ", event.slot_id)
+
+control.before_apply_source = func(event: SaveFlowPipelineEvent) -> void:
+    if event.key == "inventory" and not inventory_ready:
+        event.cancel("Inventory source is not ready.")
+
+control.after_load = func(_event: SaveFlowPipelineEvent) -> void:
+    refresh_hud_after_restore()
+
+var result := SaveFlow.load_scope("slot_1", $SaveGraphRoot, true, control)
+```
+
+For scene-authored integration, `SaveFlowPipelineSignals` can be added under a
+`SaveFlowScope` or `SaveFlowSource` and connected through Godot's Node > Signals
+panel. It emits the same local lifecycle events, including source gather/apply
+and scope save/load stages. It is a non-serialized pipeline helper; NodeSource
+does not treat it as a child participant or a gameplay child node.
+
+`SaveFlowPipelineContext` is the diagnostic and shared-data support object
+inside the control. SaveFlow records an ordered trace on the context and returns
+it in result metadata:
+
+```gdscript
+var control := SaveFlowPipelineControl.new()
+control.context.values["events"] = []
+
+var result := SaveFlow.load_scope("slot_1", $SaveGraphRoot, true, control)
+print(result.meta["pipeline_trace"])
+```
+
+Trace stages include:
+- `before_load`
+- `before_save_scope`
+- `after_save_scope`
+- `before_load_scope`
+- `after_load_scope`
+- `before_gather_source`
+- `after_gather_source`
+- `before_apply_source`
+- `after_apply_source`
+- `scope.before_save`
+- `source.before_save`
+- `source.gathered`
+- `scope.before_load`
+- `source.before_load`
+- `source.apply`
+- `source.after_load`
+- `scope.after_load`
+
+This is Lite-level lifecycle visibility. It is not a multi-scene scheduler,
+resource-ready gate, migration pipeline, or late-reference resolver.
 
 ## Diagnostics
 

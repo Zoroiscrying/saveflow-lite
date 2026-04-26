@@ -16,6 +16,7 @@ The goal is to keep the recommended path small and project-like.
 - the panel instantiates without script errors
 - `popup_quick_access()` still works
 - `Open Recommended Template` emits the project workflow scene path
+- `Open Pipeline Signals Demo` emits the pipeline notification scene path
 - `Open DevSaveManager` still emits the expected signal
 - `Open SaveFlow Settings` still emits the expected signal
 
@@ -45,6 +46,14 @@ The goal is to keep the recommended path small and project-like.
 - room save/load writes only that room slot
 - room reset clears runtime coins and restores authored defaults
 
+### Pipeline Notifications
+
+- the pipeline notification scene opens without errors
+- `SaveGraph/PipelineSignals` exists under the scope
+- each typed data source has its own child `SaveFlowPipelineSignals`
+- saving emits source-level notifications before the final `Data Saved!` message
+- loading emits source-level loaded notifications before the final loaded message
+
 ### SaveFlow Components
 
 - room `WorldSource` is `SaveFlowTypedDataSource` and saves `TemplateRoomSaveData`
@@ -56,7 +65,7 @@ The goal is to keep the recommended path small and project-like.
 
 ### Directory Shape
 
-- `recommended_template/gameplay` should expose `project_workflow` only
+- `recommended_template/gameplay` should expose `project_workflow` and `pipeline_notifications` only
 - standalone case scenes should not return to `recommended_template/scenes/cases`
 - legacy starter/launcher scenes should not be reintroduced as first-class template entry points
 

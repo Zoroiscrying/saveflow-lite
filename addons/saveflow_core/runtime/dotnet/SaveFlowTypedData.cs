@@ -496,6 +496,9 @@ public abstract partial class SaveFlowTypedRefCounted : RefCounted, ISaveFlowPay
 
 internal static class SaveFlowTypedDataReflection
 {
+	private const string TypedDataMarkerKey = "__saveflow_typed_data";
+	private const string TypedDataPayloadKey = "data";
+
 	private static readonly ConcurrentDictionary<Type, MemberBinding[]> BindingsByType = new();
 
 	public static GodotDictionary ToPayload(object source)
@@ -545,7 +548,9 @@ internal static class SaveFlowTypedDataReflection
 					ResolveKey(property),
 					property.PropertyType,
 					target => property.GetValue(target),
-					(target, value) => property.SetValue(target, ConvertVariant(value, property.PropertyType))
+					(target, value) => property.SetValue(
+						target,
+						ConvertVariant(value, property.PropertyType, property.GetValue(target)))
 				)
 			);
 		}
@@ -562,7 +567,9 @@ internal static class SaveFlowTypedDataReflection
 					ResolveKey(field),
 					field.FieldType,
 					target => field.GetValue(target),
-					(target, value) => field.SetValue(target, ConvertVariant(value, field.FieldType))
+					(target, value) => field.SetValue(
+						target,
+						ConvertVariant(value, field.FieldType, field.GetValue(target)))
 				)
 			);
 		}
@@ -619,6 +626,18 @@ internal static class SaveFlowTypedDataReflection
 			return variant;
 		if (value.GetType().IsEnum)
 			return Variant.CreateFrom(Convert.ToInt64(value));
+		if (value is ISaveFlowEncodedPayloadProvider encodedProvider)
+			return Variant.CreateFrom(encodedProvider.ToSaveFlowEncodedPayload());
+		if (value is ISaveFlowPayloadProvider payloadProvider)
+		{
+			return Variant.CreateFrom(
+				new GodotDictionary
+				{
+					[TypedDataMarkerKey] = true,
+					[TypedDataPayloadKey] = payloadProvider.ToSaveFlowPayload(),
+				}
+			);
+		}
 		return value switch
 		{
 			bool typedValue => Variant.CreateFrom(typedValue),
@@ -667,7 +686,7 @@ internal static class SaveFlowTypedDataReflection
 		};
 	}
 
-	private static object? ConvertVariant(Variant value, Type targetType)
+	private static object? ConvertVariant(Variant value, Type targetType, object? currentValue = null)
 	{
 		if (targetType == typeof(Variant))
 			return value;
@@ -679,6 +698,11 @@ internal static class SaveFlowTypedDataReflection
 				return null;
 			targetType = nullableType;
 		}
+
+		if (TryApplyEncodedPayloadProvider(value, targetType, currentValue, out var encodedProviderResult))
+			return encodedProviderResult;
+		if (TryApplyPayloadProvider(value, targetType, currentValue, out var payloadProviderResult))
+			return payloadProviderResult;
 
 		if (targetType == typeof(bool))
 			return value.AsBool();
@@ -768,6 +792,64 @@ internal static class SaveFlowTypedDataReflection
 			return value.AsGodotObject();
 
 		return value;
+	}
+
+	private static bool TryApplyEncodedPayloadProvider(
+		Variant value,
+		Type targetType,
+		object? currentValue,
+		out object? result)
+	{
+		result = null;
+		if (!typeof(ISaveFlowEncodedPayloadProvider).IsAssignableFrom(targetType)
+			&& currentValue is not ISaveFlowEncodedPayloadProvider)
+		{
+			return false;
+		}
+		if (value.VariantType != Variant.Type.Dictionary)
+			return false;
+
+		var provider = currentValue as ISaveFlowEncodedPayloadProvider
+			?? Activator.CreateInstance(targetType) as ISaveFlowEncodedPayloadProvider;
+		if (provider is null)
+			return false;
+
+		provider.ApplySaveFlowEncodedPayload(value.AsGodotDictionary());
+		result = provider;
+		return true;
+	}
+
+	private static bool TryApplyPayloadProvider(
+		Variant value,
+		Type targetType,
+		object? currentValue,
+		out object? result)
+	{
+		result = null;
+		if (!typeof(ISaveFlowPayloadProvider).IsAssignableFrom(targetType)
+			&& currentValue is not ISaveFlowPayloadProvider)
+		{
+			return false;
+		}
+		if (value.VariantType != Variant.Type.Dictionary)
+			return false;
+
+		var payload = value.AsGodotDictionary();
+		if (payload.ContainsKey(TypedDataMarkerKey)
+			&& payload.ContainsKey(TypedDataPayloadKey)
+			&& payload[TypedDataPayloadKey].VariantType == Variant.Type.Dictionary)
+		{
+			payload = payload[TypedDataPayloadKey].AsGodotDictionary();
+		}
+
+		var provider = currentValue as ISaveFlowPayloadProvider
+			?? Activator.CreateInstance(targetType) as ISaveFlowPayloadProvider;
+		if (provider is null)
+			return false;
+
+		provider.ApplySaveFlowPayload(payload);
+		result = provider;
+		return true;
 	}
 
 	private sealed class MemberBinding

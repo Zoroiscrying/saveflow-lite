@@ -1,5 +1,6 @@
 ## SaveFlowTypedData is a typed business-data container for data-source payloads.
 ## Define exported fields here, let SaveFlow convert them to a stable Dictionary.
+@icon("res://addons/saveflow_lite/icons/components/saveflow_typed_data_icon.svg")
 @tool
 class_name SaveFlowTypedData
 extends Resource

@@ -1,11 +1,17 @@
 extends Control
 
 const MAIN_SLOT_ID := "project_workflow_main"
+const MAIN_SLOT_INDEX := 0
+const ROOM_SLOT_INDEX_BY_ID := {
+	"forest": 1,
+	"dungeon": 2,
+}
 const PLAYER_SPEED := 200.0
 const INTERACTION_RADIUS := 52.0
 const DEMO_SFX_SCRIPT := preload("res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_demo_sfx.gd")
 const FOREST_ROOM := preload("res://demo/saveflow_lite/recommended_template/scenes/project_workflow/project_room_forest.tscn")
 const DUNGEON_ROOM := preload("res://demo/saveflow_lite/recommended_template/scenes/project_workflow/project_room_dungeon.tscn")
+const TemplateProjectSlotMetadataScript := preload("res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_project_slot_metadata.gd")
 
 @onready var _main_hub: Node2D = $WorldRoot/MainHub
 @onready var _subscene_root: Node2D = $WorldRoot/SubsceneRoot
@@ -19,6 +25,8 @@ const DUNGEON_ROOM := preload("res://demo/saveflow_lite/recommended_template/sce
 @onready var _menu_overlay: ColorRect = $HUD/MenuOverlay
 @onready var _menu_title_label: Label = $HUD/MenuOverlay/MenuPanel/MenuContent/MenuTitleLabel
 @onready var _menu_status_label: Label = $HUD/MenuOverlay/MenuPanel/MenuContent/MenuStatusLabel
+@onready var _main_slot_card_label: Label = $HUD/MenuOverlay/MenuPanel/MenuContent/MenuSlotCards/MainSlotCard/MainSlotCardLabel
+@onready var _room_slot_card_label: Label = $HUD/MenuOverlay/MenuPanel/MenuContent/MenuSlotCards/RoomSlotCard/RoomSlotCardLabel
 @onready var _main_save_button: Button = $HUD/MenuOverlay/MenuPanel/MenuContent/MenuButtons/MainSaveButton
 @onready var _main_load_button: Button = $HUD/MenuOverlay/MenuPanel/MenuContent/MenuButtons/MainLoadButton
 @onready var _return_hub_button: Button = $HUD/MenuOverlay/MenuPanel/MenuContent/MenuButtons/ReturnHubButton
@@ -115,14 +123,7 @@ func save_main() -> SaveResult:
 	var result: SaveResult = SaveFlow.save_data(
 		MAIN_SLOT_ID,
 		payload,
-		{
-			"display_name": "Project Workflow Main Data",
-			"scene_path": scene_file_path,
-			"location_id": _location_id,
-		},
-		"manual",
-		"Chapter 1",
-		_room_display_name(_location_id)
+		_build_main_slot_metadata()
 	)
 	_last_status = "Saved main scene data: location=%s." % _location_id if result.ok else _format_result("Main save", result)
 	_play("play_manual_save" if result.ok else "play_mutate")
@@ -178,7 +179,7 @@ func _apply_room_ui_context(context: Dictionary) -> void:
 func _refresh_ui() -> void:
 	var title := "Project Workflow Template"
 	var area := "MainHub"
-	var stats := "main slot: %s" % MAIN_SLOT_ID
+	var stats := "Main slot #%d | %s" % [MAIN_SLOT_INDEX, MAIN_SLOT_ID]
 	var hint := _current_hub_hint()
 	var status := _last_status
 	if _current_room != null:
@@ -192,10 +193,36 @@ func _refresh_ui() -> void:
 	_top_right_label.text = stats
 	_bottom_hint_label.text = "%s\n%s" % [hint, status]
 	_menu_title_label.text = "Main Scene Save Menu"
-	_menu_status_label.text = "Esc menu writes the main scene data only.\nCurrent location: %s\nCurrent room slot: %s\n%s" % [
+	_menu_status_label.text = "Esc menu writes the main scene data. Room pads write the active subscene slot.\nCurrent location: %s | Active room slot: %s\n%s" % [
 		_location_id,
 		_active_room_slot_id(),
 		status,
+	]
+	_refresh_slot_cards()
+
+
+func _refresh_slot_cards() -> void:
+	_main_slot_card_label.text = _main_slot_card_text()
+	_room_slot_card_label.text = _active_room_slot_card_text()
+
+
+func _main_slot_card_text() -> String:
+	return "Main Slot Card\nIndex: #%d\nStorage key: %s\nDisplay name: Project Workflow Main Data\nPayload: current location + hub player position\nOwner: Esc menu buttons" % [
+		MAIN_SLOT_INDEX,
+		MAIN_SLOT_ID,
+	]
+
+
+func _active_room_slot_card_text() -> String:
+	if _location_id == "main" or _current_room == null:
+		return "Active Room Slot Card\nInactive in MainHub\nEnter Forest or Dungeon to edit a subscene slot.\nRoom slots use their own scene payloads."
+	var room_slot_index := _active_room_slot_index()
+	var room_slot_id := _active_room_slot_id()
+	var room_display_name := String(_room_ui_context.get("slot_display_name", "%s Subscene Data" % _room_display_name(_location_id)))
+	return "Active Room Slot Card\nIndex: #%d\nStorage key: %s\nDisplay name: %s\nPayload: room typed data + player NodeSource + runtime coins" % [
+		room_slot_index,
+		room_slot_id,
+		room_display_name,
 	]
 
 
@@ -229,7 +256,36 @@ func _clear_current_room() -> void:
 func _active_room_slot_id() -> String:
 	if _location_id == "main":
 		return "<none>"
-	return "project_workflow_room_%s" % _location_id
+	return slot_id_for_index(_active_room_slot_index())
+
+
+func _active_room_slot_index() -> int:
+	return int(ROOM_SLOT_INDEX_BY_ID.get(_location_id, -1))
+
+
+func slot_id_for_index(slot_index: int) -> String:
+	if slot_index == MAIN_SLOT_INDEX:
+		return MAIN_SLOT_ID
+	match slot_index:
+		1:
+			return "project_workflow_room_forest"
+		2:
+			return "project_workflow_room_dungeon"
+	return ""
+
+
+func _build_main_slot_metadata() -> SaveFlowSlotMetadata:
+	var meta: TemplateProjectSlotMetadata = TemplateProjectSlotMetadataScript.new()
+	meta.display_name = "Project Workflow Main Data"
+	meta.save_type = "manual"
+	meta.chapter_name = "Chapter 1"
+	meta.location_name = _room_display_name(_location_id)
+	meta.scene_path = scene_file_path
+	meta.location_id = _location_id
+	meta.slot_index = MAIN_SLOT_INDEX
+	meta.slot_role = "main_scene"
+	meta.storage_key = MAIN_SLOT_ID
+	return meta
 
 
 func _room_display_name(room_id: String) -> String:

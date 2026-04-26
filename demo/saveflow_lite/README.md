@@ -4,6 +4,7 @@ Open `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn` to try the cu
 Open `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.tscn` to pressure SaveFlow with a more realistic mid-size save environment.
 Open `res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn` to run a room-switching Zelda-like sandbox with room physics, animation state, room tables, and runtime entity restore.
 Open `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn` to see the recommended integration template: one hub scene, authored subscenes, typed room data, node data, and runtime entity collections in one playable workflow.
+Open `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn` to see scene-authored pipeline signals drive source-level and final "Data Saved!" notifications.
 
 The Zelda-like sample is further split into:
 - `zelda_like/scenes`
