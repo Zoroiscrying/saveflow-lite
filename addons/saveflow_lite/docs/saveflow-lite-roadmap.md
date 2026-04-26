@@ -412,6 +412,24 @@ Before shipping this next Lite release, verify:
    - editor entry points
    - core runtime save/load behavior
 
+### 0.3.x Progress Checkpoint
+
+Current progress toward the **Preflight + reliability polish** release:
+
+- `Setup Health / Preflight v2` now has a scene validator badge, current-scene
+  source/scope/factory checks, pipeline signal checks, component breakdowns,
+  and next-action guidance.
+- `Release tooling hardening` now validates version consistency before sync,
+  requires a clean public sync worktree, fetches/rebases before sync and push,
+  and keeps release asset validation unchanged.
+
+Remaining optional 0.3.x work should be small and selective:
+
+- one focused built-in follow-up if the node state is common, obvious, and
+  covered by runtime tests
+- light slot UI copy/docs polish if it clarifies active slot index, storage key,
+  and display name without adding new architecture
+
 ## What Lite Should Explicitly Avoid
 
 Do not overload Lite with:
