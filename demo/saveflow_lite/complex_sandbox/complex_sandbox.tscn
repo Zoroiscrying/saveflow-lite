@@ -98,30 +98,14 @@ wrap_mode = 2
 position = Vector2(80, 120)
 script = ExtResource("2_script")
 
-[node name="Save" type="Node" parent="StateRoot/PlayerState"]
-script = ExtResource("8_node_source")
-save_key = "player"
-
 [node name="WorldState" type="Node" parent="StateRoot"]
 script = ExtResource("3_script")
-
-[node name="Save" type="Node" parent="StateRoot/WorldState"]
-script = ExtResource("8_node_source")
-save_key = "world"
 
 [node name="QuestState" type="Node" parent="StateRoot"]
 script = ExtResource("4_script")
 
-[node name="Save" type="Node" parent="StateRoot/QuestState"]
-script = ExtResource("8_node_source")
-save_key = "quests"
-
 [node name="SettingsState" type="Node" parent="StateRoot"]
 script = ExtResource("5_script")
-
-[node name="Save" type="Node" parent="StateRoot/SettingsState"]
-script = ExtResource("8_node_source")
-save_key = "settings"
 
 [node name="PartyMembers" type="Node" parent="StateRoot"]
 
@@ -132,20 +116,12 @@ level = 6
 affinity = 12
 unlocked_skill = "healing_song"
 
-[node name="Save" type="Node" parent="StateRoot/PartyMembers/Aria"]
-script = ExtResource("8_node_source")
-save_key = "party/aria"
-
 [node name="Bram" type="Node" parent="StateRoot/PartyMembers"]
 script = ExtResource("6_script")
 member_id = "bram"
 level = 4
 affinity = 5
 unlocked_skill = ""
-
-[node name="Save" type="Node" parent="StateRoot/PartyMembers/Bram"]
-script = ExtResource("8_node_source")
-save_key = "party/bram"
 
 [node name="SpawnedEnemies" type="Node" parent="StateRoot"]
 
@@ -157,10 +133,6 @@ hp = 82
 patrol_index = 1
 loot_seed = 1201
 
-[node name="Save" type="Node" parent="StateRoot/SpawnedEnemies/WolfAlpha"]
-script = ExtResource("8_node_source")
-save_key = "enemy/wolf_alpha"
-
 [node name="SlimeBeta" type="Node2D" parent="StateRoot/SpawnedEnemies"]
 position = Vector2(220, 210)
 script = ExtResource("7_script")
@@ -168,10 +140,6 @@ enemy_id = "slime_beta"
 hp = 46
 patrol_index = 0
 loot_seed = 882
-
-[node name="Save" type="Node" parent="StateRoot/SpawnedEnemies/SlimeBeta"]
-script = ExtResource("8_node_source")
-save_key = "enemy/slime_beta"
 
 [node name="SaveGraphRoot" type="Node" parent="StateRoot"]
 script = ExtResource("9_scope")

@@ -664,6 +664,7 @@ The sandbox demonstrates:
 The complex sandbox demonstrates:
 - a `SaveScope` graph over player, world, settings, party, and enemy domains
 - how a larger save hierarchy can stay readable
+- how one explicit `SaveGraphRoot` can own the save graph without duplicate Source children on target nodes
 - the current limitation around missing runtime entities
 - why entity collections need an entity factory integration seam
 

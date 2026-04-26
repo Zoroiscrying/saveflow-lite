@@ -1,7 +1,6 @@
 extends Control
 
 const SLOT_ID := "complex_slot"
-const SaveFlowNodeSourceScript := preload("res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd")
 const EnemyStateScript := preload("res://demo/saveflow_lite/complex_sandbox/complex_enemy_state.gd")
 
 @onready var _player_state: Node2D = $StateRoot/PlayerState
@@ -133,17 +132,17 @@ func _rebuild_enemy_roster() -> void:
 
 func _create_enemy(enemy_id: String, hp: int, patrol_index: int, loot_seed: int, start_position: Vector2) -> Node2D:
 	var enemy := Node2D.new()
-	enemy.name = enemy_id.capitalize()
+	enemy.name = _to_pascal_node_name(enemy_id)
 	enemy.set_script(EnemyStateScript)
 	enemy.call("reset_state", enemy_id, hp, patrol_index, loot_seed, start_position)
-
-	var component := Node.new()
-	component.name = "Source"
-	component.set_script(SaveFlowNodeSourceScript)
-	component.set("save_key", "enemy/%s" % enemy_id)
-	enemy.add_child(component)
-
 	return enemy
+
+
+func _to_pascal_node_name(value: String) -> String:
+	var result := ""
+	for part in value.split("_", false):
+		result += part.capitalize().replace(" ", "")
+	return result
 
 
 func _refresh_ui(message: String) -> void:
@@ -172,7 +171,7 @@ func _build_summary_text() -> String:
 
 
 func _build_limitation_text() -> String:
-	return "Focus check: SaveFlow now restores this scene through a SaveScope graph, but missing runtime entities still need an entity-factory-driven restore workflow."
+	return "Focus check: this scene uses one explicit SaveGraphRoot. Authored targets restore directly; missing runtime targets need EntityCollectionSource + EntityFactory."
 
 
 func _format_result(action: String, result: SaveResult) -> String:
@@ -203,7 +202,12 @@ func run_complex_analysis() -> Dictionary:
 	return {
 		"baseline_save_ok": baseline_save.ok,
 		"restore_ok": restore_result.ok,
+		"restore_error_key": restore_result.error_key,
+		"restore_error_message": restore_result.error_message,
+		"restore_missing_keys": restore_result.meta.get("missing_keys", []),
 		"dynamic_load_ok": dynamic_result.ok,
+		"dynamic_error_key": dynamic_result.error_key,
+		"dynamic_error_message": dynamic_result.error_message,
 		"dynamic_missing_keys": dynamic_result.meta.get("missing_keys", []) if not dynamic_result.ok else dynamic_result.data.get("missing_keys", []),
 		"enemy_count_after_dynamic_load": _enemy_root.get_child_count(),
 		"inspect_valid": inspect_result.data.get("valid", false) if inspect_result.ok else false,

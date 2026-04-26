@@ -7,6 +7,7 @@ Updated in this release:
 - Kept the public `SaveFlow` API stable while reducing the runtime facade and making future reliability work easier to isolate
 - Preserved slot compatibility, slot summary, backup fallback, scope graph, node graph, pipeline signal, typed-data, and entity restore behavior through the runtime regression suite
 - Fixed broken script resource references in the complex sandbox demo scene
+- Cleaned the complex sandbox so its save graph uses one explicit `SaveGraphRoot` without duplicate Source children on the same targets
 - Updated release metadata for the next Lite reliability release
 
 ## 0.1.10

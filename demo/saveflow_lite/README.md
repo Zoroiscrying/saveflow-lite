@@ -28,8 +28,10 @@ The complex sandbox adds:
 - party members
 - dynamic enemies that expose current runtime-entity limitations
 
-The current sandbox uses `SaveFlowNodeSource` children plus `@export` fields on the target nodes.
-This keeps the target gameplay nodes free from hand-written `get_save_data()` / `apply_save_data()` boilerplate and avoids large manual property lists for ordinary state.
+The current sandbox uses one explicit `SaveGraphRoot` with `SaveFlowNodeSource`
+leaves that point at authored target nodes. This keeps the gameplay nodes free
+from hand-written `get_save_data()` / `apply_save_data()` boilerplate without
+also attaching duplicate Source children to every target.
 
 The complex sandbox shows the next architectural step:
 - `SaveFlowScope` for logical save domains
