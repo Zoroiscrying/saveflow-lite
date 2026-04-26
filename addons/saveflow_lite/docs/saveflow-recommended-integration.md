@@ -144,6 +144,7 @@ Important boundary:
 - SaveFlow does not maintain "the player's current slot"
 - SaveFlow writes exactly the `slot_id` passed to `save_data()`, `save_scene()`, or `save_scope()`
 - the game should keep its own active-slot/session state, then pass a stable storage key to SaveFlow
+- autosave and checkpoint events should write the current active slot, not every visible save card
 
 Slot identity names should stay separate:
 
@@ -173,10 +174,27 @@ the SaveFlow storage key from that index, then store string labels such as
 Minimal active-slot pattern:
 
 ```gdscript
+class_name MySlotMetadata
+extends SaveFlowSlotMetadata
+
+@export var slot_index := 0
+@export var storage_key := ""
+
 var active_slot_index := 1
 
 func slot_id_for_index(slot_index: int) -> String:
     return "slot_%d" % slot_index
+
+func build_slot_metadata(slot_index: int, label: String, save_type: String) -> MySlotMetadata:
+    var slot_id := slot_id_for_index(slot_index)
+    var meta := MySlotMetadata.new()
+    meta.display_name = label
+    meta.save_type = save_type
+    meta.location_name = current_location_name()
+    meta.playtime_seconds = current_playtime_seconds()
+    meta.slot_index = slot_index
+    meta.storage_key = slot_id
+    return meta
 
 func load_slot(slot_index: int) -> void:
     var slot_id := slot_id_for_index(slot_index)
@@ -186,29 +204,29 @@ func load_slot(slot_index: int) -> void:
         apply_payload(result.data)
 
 func manual_save(slot_index: int) -> void:
-    var result := SaveFlow.save_data(
-        slot_id_for_index(slot_index),
-        build_payload(),
-        "Manual Save",
-        "manual",
-        "",
-        "",
-        0,
-        "normal",
-        "",
-        {"slot_index": slot_index}
-    )
+    var meta := build_slot_metadata(slot_index, "Manual Slot %d" % slot_index, "manual")
+    var result := SaveFlow.save_data(slot_id_for_index(slot_index), build_payload(), meta)
     if result.ok:
         active_slot_index = slot_index
 
 func autosave_after_door() -> void:
-    SaveFlow.save_data(slot_id_for_index(active_slot_index), build_payload(), "Door Autosave", "autosave")
+    var meta := build_slot_metadata(active_slot_index, "Door Autosave", "autosave")
+    SaveFlow.save_data(slot_id_for_index(active_slot_index), build_payload(), meta)
 
 func checkpoint_reached(checkpoint_id: String) -> void:
     var payload := build_payload()
     payload["active_checkpoint_id"] = checkpoint_id
-    SaveFlow.save_data(slot_id_for_index(active_slot_index), payload, "Checkpoint", "checkpoint")
+    var meta := build_slot_metadata(active_slot_index, "Checkpoint", "checkpoint")
+    SaveFlow.save_data(slot_id_for_index(active_slot_index), payload, meta)
 ```
+
+Save-card rule:
+
+- card selection changes `active_slot_index`
+- SaveFlow receives one stable `slot_id`
+- `display_name` and row labels come from typed metadata
+- autosave/checkpoint writes the active card only
+- delete removes one storage key, then the UI refreshes summaries
 
 Use:
 

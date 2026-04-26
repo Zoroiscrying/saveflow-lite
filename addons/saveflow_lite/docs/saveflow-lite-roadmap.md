@@ -422,13 +422,15 @@ Current progress toward the **Preflight + reliability polish** release:
 - `Release tooling hardening` now validates version consistency before sync,
   requires a clean public sync worktree, fetches/rebases before sync and push,
   and keeps release asset validation unchanged.
+- the focused built-in follow-up extends common gameplay coverage with
+  `RayCast2D` / `RayCast3D` sensor state so authored interactables, traps, and
+  detection rays need less handwritten state code.
+- slot workflow copy now clarifies active slot index, storage key, display name,
+  and the rule that autosave/checkpoint events write the active slot rather than
+  every visible save card.
 
-Remaining optional 0.3.x work should be small and selective:
-
-- one focused built-in follow-up if the node state is common, obvious, and
-  covered by runtime tests
-- light slot UI copy/docs polish if it clarifies active slot index, storage key,
-  and display name without adding new architecture
+Remaining 0.3.x work should now stay limited to release QA unless a regression
+or packaging issue appears.
 
 ## What Lite Should Explicitly Avoid
 

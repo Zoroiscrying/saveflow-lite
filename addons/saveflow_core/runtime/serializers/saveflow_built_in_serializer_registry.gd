@@ -5,6 +5,12 @@ const _SERIALIZER_AREA_3D := preload("res://addons/saveflow_core/runtime/seriali
 const _SERIALIZER_NAVIGATION_AGENT_3D := preload(
 	"res://addons/saveflow_core/runtime/serializers/saveflow_serializer_navigation_agent_3d.gd"
 )
+const _SERIALIZER_RAY_CAST_2D := preload(
+	"res://addons/saveflow_core/runtime/serializers/saveflow_serializer_ray_cast_2d.gd"
+)
+const _SERIALIZER_RAY_CAST_3D := preload(
+	"res://addons/saveflow_core/runtime/serializers/saveflow_serializer_ray_cast_3d.gd"
+)
 
 static var _serializer_cache: Array = []
 static var _display_name_cache: Dictionary = {}
@@ -43,6 +49,8 @@ static func _serializer_types() -> Array:
 		SaveFlowSerializerCollisionObject3D,
 		SaveFlowSerializerCollisionShape2D,
 		SaveFlowSerializerCollisionShape3D,
+		_SERIALIZER_RAY_CAST_2D,
+		_SERIALIZER_RAY_CAST_3D,
 		SaveFlowSerializerArea2D,
 		_SERIALIZER_AREA_3D,
 		SaveFlowSerializerNavigationAgent2D,

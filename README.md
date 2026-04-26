@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.2.0`
+- Plugin version: `0.3.0`
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 
@@ -252,6 +252,14 @@ Keep the three slot identity concepts separate:
 - `slot_index`: integer UI/session identity for sorting and active-slot state
 - `slot_id`: stable SaveFlow storage key such as `slot_1`
 - `display_name`: player-facing metadata such as `Forest Gate`
+
+Recommended save-card rule:
+
+- the game owns `active_slot_index`
+- SaveFlow writes exactly one `slot_id` per save request
+- manual save, autosave, and checkpoint events write the active card unless the
+  game intentionally selected a different slot
+- `display_name` is metadata for the row/card UI, not the storage key
 
 To keep save-list metadata consistent, start from typed slot metadata. Extend
 `SaveFlowSlotMetadata` when your project needs more save-list fields:

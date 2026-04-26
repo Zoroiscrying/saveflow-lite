@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+Updated in this release:
+- Added current-scene SaveFlow preflight diagnostics through Setup Health and the scene validator badge, including source/scope/factory counts, duplicate or empty source-key checks, invalid source plans, pipeline signal warnings, component breakdowns, and next-action guidance
+- Hardened Lite release automation with version-consistency checks, clean target-repository enforcement, safer fetch/rebase behavior, and unchanged release asset validation
+- Added `RayCast2D` and `RayCast3D` built-in serializers for common gameplay sensor state such as enabled state, target position, collision mask, parent exclusion, area/body collision toggles, and hit options
+- Clarified the recommended save-card workflow so games own `active_slot_index`, SaveFlow receives one stable `slot_id`, and `display_name` remains typed metadata for save-list UI
+- Updated slot workflow examples to use typed `SaveFlowSlotMetadata` instead of repeated low-level metadata dictionaries
+- Preserved runtime behavior through the full runtime regression suite and kept 0.3 scoped to preflight, reliability, and focused built-in polish
+
 ## 0.2.0
 
 Updated in this release:
