@@ -9,6 +9,10 @@ namespace SaveFlow.DotNet;
 /// Node-backed binary provider for the common "one state object" workflow.
 /// Use this with BinaryWriter, MessagePack, protobuf, or any project-owned
 /// serializer that can convert a state object to and from byte[].
+///
+/// Keep this GodotObject-derived script base non-generic and in its same-name
+/// file. Generics are safe for DTO/helper code, but generic Node/Resource
+/// script bases are unsafe for Godot C# editor reload registration.
 /// </summary>
 public abstract partial class SaveFlowBinaryStateProvider : Node, ISaveFlowEncodedPayloadProvider
 {

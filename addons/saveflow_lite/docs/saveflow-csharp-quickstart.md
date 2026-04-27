@@ -21,6 +21,43 @@ The baseline C# wrapper is shipped in `saveflow_core`:
 - `res://addons/saveflow_core/runtime/dotnet/SaveFlowSlotCard.cs`
 - `res://addons/saveflow_core/runtime/dotnet/SaveFlowEntityDescriptor.cs`
 
+## Godot C# Script Registration Boundary
+
+SaveFlow's C# provider bases are intentionally **non-generic Godot script
+classes**:
+
+```csharp
+public partial class RoomStateProvider : SaveFlowJsonStateProvider
+{
+}
+```
+
+Do not write a Godot script base like this:
+
+```csharp
+public partial class RoomStateProvider : SaveFlowJsonStateProvider<RoomSaveState>
+{
+}
+```
+
+Plain C# generics are still fine. Use them for DTOs, source-generated
+`JsonTypeInfo<T>`, `SaveFlowEncodedPayload.CreateJsonPayload<T>()`, and the
+typed state wrapper:
+
+```csharp
+private RoomSaveState State
+{
+	get => GetSaveFlowState<RoomSaveState>();
+	set => SetSaveFlowState(value);
+}
+```
+
+The boundary is Godot's script registration system: `Node`, `Resource`, and
+`RefCounted` script classes should stay non-generic and live in a `.cs` file
+whose filename matches the class name. Generic `GodotObject` script bases can
+compile, but they are unsafe during editor reload because Godot maps script
+resources to C# types differently from ordinary .NET code.
+
 ## Basic Usage
 
 ```csharp
@@ -285,6 +322,10 @@ hand-written dictionary keys in gameplay code.
 For most new C# save data, start with `SaveFlowJsonStateProvider`.
 You define one DTO, one source-generated `JsonTypeInfo`, and optional sections
 for inspector/diagnostic summaries:
+
+The provider class itself stays non-generic for Godot editor reload safety.
+Typed gameplay state is kept through `JsonTypeInfo<T>` and
+`GetSaveFlowState<T>()` / `SetSaveFlowState(...)`.
 
 ```csharp
 using System.Text.Json.Serialization;
@@ -581,5 +622,6 @@ autosave.
 - Compatibility inspection is available in C# too, so schema/data-version checks do not become a GDScript-only workflow.
 - Slot-summary reads are available in C# too, so save-list UI does not need to load the full gameplay payload first.
 - `SaveFlowEncodedPayload` is the preferred C# path when performance matters; it uses user-owned serialization such as source-generated `System.Text.Json` or binary encoders.
-- `SaveFlowJsonStateProvider` and `SaveFlowBinaryStateProvider` now use non-generic Godot bases with default state storage; most providers only need serializer metadata plus optional post-apply logic.
+- `SaveFlowJsonStateProvider` and `SaveFlowBinaryStateProvider` use non-generic Godot bases with default state storage; most providers only need serializer metadata plus optional post-apply logic.
+- Keep `Node`/`Resource`/`RefCounted` C# script bases non-generic and in same-name files. Use generics inside DTOs, `JsonTypeInfo<T>`, encoded payload helpers, and typed state wrappers instead.
 - `SaveFlowTypedResource`, `SaveFlowTypedRefCounted`, and `SaveFlowTypedPayload` are reflection convenience helpers for small or low-frequency state.

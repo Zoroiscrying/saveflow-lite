@@ -8,6 +8,10 @@ namespace SaveFlow.DotNet;
 /// <summary>
 /// Resource base for project-owned binary payloads. SaveFlow only stores the
 /// returned bytes; the project chooses the binary serializer and schema.
+///
+/// Keep this GodotObject-derived script base non-generic and in its same-name
+/// file. Generics are safe for DTO/helper code, but generic Node/Resource
+/// script bases are unsafe for Godot C# editor reload registration.
 /// </summary>
 public abstract partial class SaveFlowBinaryResource : Resource, ISaveFlowEncodedPayloadProvider
 {

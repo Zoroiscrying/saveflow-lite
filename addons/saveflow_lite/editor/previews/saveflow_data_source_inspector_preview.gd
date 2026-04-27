@@ -268,9 +268,19 @@ func _format_details(values: Dictionary) -> String:
 		return "<none>"
 	var lines: PackedStringArray = []
 	for key_variant in values.keys():
-		var key := String(key_variant)
-		lines.append("%s: %s" % [key, String(values[key_variant])])
+		var key := str(key_variant)
+		lines.append("%s: %s" % [key, _format_detail_value(values[key_variant])])
 	return "\n".join(lines)
+
+
+func _format_detail_value(value: Variant) -> String:
+	match typeof(value):
+		TYPE_NIL:
+			return "<null>"
+		TYPE_DICTIONARY, TYPE_ARRAY:
+			return JSON.stringify(value)
+		_:
+			return str(value)
 
 
 func _describe_design_hint() -> String:

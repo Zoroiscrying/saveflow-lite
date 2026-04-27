@@ -140,6 +140,7 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="Background" type="ColorRect" parent="Screen"]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -147,7 +148,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.04, 0.045, 0.055, 0.18)
+color = Color(0.02, 0.025, 0.03, 0.78)
 
 [node name="TopBar" type="PanelContainer" parent="Screen"]
 layout_mode = 1
@@ -175,6 +176,7 @@ text = "$ 12"
 horizontal_alignment = 1
 
 [node name="MainLayout" type="HBoxContainer" parent="Screen"]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -211,6 +213,10 @@ text = "Load"
 [node name="ResetButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
 layout_mode = 2
 text = "Reset Local"
+
+[node name="CloseButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
+layout_mode = 2
+text = "Close"
 
 [node name="StatePanel" type="PanelContainer" parent="Screen/MainLayout/LeftColumn"]
 layout_mode = 2
@@ -263,4 +269,26 @@ theme_override_constants/margin_bottom = 12
 [node name="StatusLabel" type="Label" parent="Screen/MainLayout/RightColumn/StatusPanel/StatusMargin"]
 layout_mode = 2
 text = "C# workflow ready."
+autowrap_mode = 3
+
+[node name="BottomHintPanel" type="PanelContainer" parent="Screen"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -440.0
+offset_top = -92.0
+offset_right = 440.0
+offset_bottom = -22.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="BottomHintLabel" type="Label" parent="Screen/BottomHintPanel"]
+layout_mode = 2
+text = "WASD / arrows move | Enter interact in a colored zone | Esc details"
+horizontal_alignment = 1
+vertical_alignment = 1
 autowrap_mode = 3

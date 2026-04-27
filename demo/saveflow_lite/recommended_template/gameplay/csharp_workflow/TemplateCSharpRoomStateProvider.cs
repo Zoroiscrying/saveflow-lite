@@ -12,7 +12,9 @@ public sealed record TemplateCSharpRoomState(
 	int Coins,
 	bool DoorOpen,
 	string CheckpointId,
-	int MutationCount);
+	int MutationCount,
+	float PlayerX,
+	float PlayerY);
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
 [JsonSerializable(typeof(TemplateCSharpRoomState))]
@@ -40,6 +42,7 @@ public partial class TemplateCSharpRoomStateProvider
 	public bool DoorOpen => State.DoorOpen;
 	public string CheckpointId => State.CheckpointId;
 	public int MutationCount => State.MutationCount;
+	public Vector2 PlayerPosition => new(State.PlayerX, State.PlayerY);
 	[Export] public int ApplyCount { get; set; }
 	[Export] public string LastApplyLabel { get; set; } = "";
 
@@ -49,7 +52,7 @@ public partial class TemplateCSharpRoomStateProvider
 		=> TemplateCSharpRoomStateJsonContext.Default.TemplateCSharpRoomState;
 
 	protected override GodotArray SaveFlowPayloadSections
-		=> new() { "coins", "door_open", "checkpoint_id", "mutation_count" };
+		=> new() { "coins", "door_open", "checkpoint_id", "mutation_count", "player_x", "player_y" };
 
 	public void MutateForDemo()
 	{
@@ -59,6 +62,15 @@ public partial class TemplateCSharpRoomStateProvider
 			DoorOpen = !State.DoorOpen,
 			CheckpointId = State.DoorOpen ? "door_closed" : "door_open",
 			MutationCount = State.MutationCount + 1,
+		};
+	}
+
+	public void SetPlayerPosition(Vector2 position)
+	{
+		State = State with
+		{
+			PlayerX = position.X,
+			PlayerY = position.Y,
 		};
 	}
 
@@ -76,6 +88,8 @@ public partial class TemplateCSharpRoomStateProvider
 			["door_open"] = State.DoorOpen,
 			["checkpoint_id"] = State.CheckpointId,
 			["mutation_count"] = State.MutationCount,
+			["player_x"] = State.PlayerX,
+			["player_y"] = State.PlayerY,
 			["apply_count"] = ApplyCount,
 			["last_apply_label"] = LastApplyLabel,
 		};
@@ -85,6 +99,9 @@ public partial class TemplateCSharpRoomStateProvider
 
 	public void reset_for_demo()
 		=> ResetForDemo();
+
+	public void set_player_position(Vector2 position)
+		=> SetPlayerPosition(position);
 
 	public GodotDictionary snapshot()
 		=> Snapshot();
@@ -99,5 +116,11 @@ public partial class TemplateCSharpRoomStateProvider
 	}
 
 	private static TemplateCSharpRoomState CreateInitialState()
-		=> new(Coins: 12, DoorOpen: false, CheckpointId: "entry", MutationCount: 0);
+		=> new(
+			Coins: 12,
+			DoorOpen: false,
+			CheckpointId: "entry",
+			MutationCount: 0,
+			PlayerX: 325.0f,
+			PlayerY: 390.0f);
 }

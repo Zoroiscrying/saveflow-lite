@@ -11,6 +11,11 @@ namespace SaveFlow.DotNet;
 /// <summary>
 /// Resource base for source-generated JSON payloads. Keep this Godot script
 /// class in a same-name file so Godot's C# reload map has one stable owner.
+///
+/// Do not turn this GodotObject-derived script base into
+/// SaveFlowJsonResource&lt;TData&gt;. Generics are safe inside DTOs, JsonTypeInfo,
+/// and helper methods, but generic Node/Resource script bases can collide with
+/// Godot's C# script registration during editor reload.
 /// </summary>
 public abstract partial class SaveFlowJsonResource : Resource, ISaveFlowEncodedPayloadProvider
 {

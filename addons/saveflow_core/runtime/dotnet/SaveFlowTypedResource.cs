@@ -9,6 +9,9 @@ namespace SaveFlow.DotNet;
 /// Resource-backed reflection convenience path for small C# save data.
 /// Prefer SaveFlowJsonResource or an explicit ISaveFlowEncodedPayloadProvider for
 /// large or frequently saved state.
+///
+/// Keep GodotObject-derived SaveFlow bases non-generic and in same-name files.
+/// Use typed fields/properties or helper methods for generic C# data instead.
 /// </summary>
 public abstract partial class SaveFlowTypedResource : Resource, ISaveFlowPayloadProvider
 {

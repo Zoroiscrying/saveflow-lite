@@ -25,6 +25,8 @@ What the pipeline notification demo demonstrates:
 
 What the C# workflow demo demonstrates:
 - `SaveFlowJsonStateProvider` stores C# typed room data without per-field dictionaries
+- C# provider Godot scripts stay non-generic; typed state still uses
+  `JsonTypeInfo<T>` and `GetSaveFlowState<T>()` inside the provider
 - `SaveFlowTypedDataSource` targets the C# provider from the scene tree
 - `SaveFlowSlotWorkflow` owns the active slot id and typed metadata construction
 - `SaveFlowSlotCard` renders a save-list style summary without loading full payload data

@@ -106,6 +106,24 @@ post-load refresh. Use a tiny typed property around `GetSaveFlowState<T>()` /
 `SetSaveFlowState(...)` when gameplay code wants a strongly typed `State`
 member.
 
+Keep the provider's Godot script class non-generic:
+
+```csharp
+public partial class RoomStateProvider : SaveFlowJsonStateProvider
+{
+	private RoomSaveState State
+	{
+		get => GetSaveFlowState<RoomSaveState>();
+		set => SetSaveFlowState(value);
+	}
+}
+```
+
+Do not create `SaveFlowJsonStateProvider<TState> : Node` or similar generic
+`GodotObject` script bases. Generic DTOs, `JsonTypeInfo<T>`, and helper methods
+are normal C# and are fine; generic Godot script bases can collide with Godot's
+C# editor reload registration.
+
 If the project wants binary payloads, use `SaveFlowBinaryStateProvider`
 or `SaveFlowBinaryResource`. These bases keep SaveFlow out of the binary
 format decision: the project implements `Serialize...(...) -> byte[]` and
