@@ -37,6 +37,8 @@ func gather_data() -> Dictionary:
 	var provider := _resolve_payload_provider()
 	if provider == null:
 		return {}
+	if not _can_call_payload_provider(provider):
+		return {}
 	var gather_method := _resolve_gather_method(provider)
 	if gather_method.is_empty():
 		return {}
@@ -49,6 +51,8 @@ func gather_data() -> Dictionary:
 func apply_data(payload: Dictionary) -> void:
 	var provider := _resolve_payload_provider()
 	if provider == null:
+		return
+	if not _can_call_payload_provider(provider):
 		return
 	var apply_method := _resolve_apply_method(provider)
 	if apply_method.is_empty():
@@ -76,6 +80,8 @@ func describe_data_plan() -> Dictionary:
 			"target": String(resolved_target.name) if resolved_target != null else "<none>",
 			"target_path": str(_target_ref_path),
 			"data_property": data_property,
+			"provider_method_calls_available": _can_call_payload_provider(provider),
+			"editor_method_hint": _resolve_editor_method_hint(provider),
 			"field_count": field_names.size(),
 			"fields": field_names,
 			"payload_info": payload_info,
@@ -153,6 +159,8 @@ func _describe_payload_field_names(provider: Object) -> PackedStringArray:
 	var field_names := PackedStringArray()
 	if provider == null:
 		return field_names
+	if not _can_call_payload_provider(provider):
+		return field_names
 	var payload_info := _describe_payload_info(provider)
 	if not payload_info.is_empty():
 		if payload_info.has("sections") and payload_info["sections"] is Array:
@@ -187,6 +195,8 @@ func _describe_payload_field_names(provider: Object) -> PackedStringArray:
 func _describe_payload_info(provider: Object) -> Dictionary:
 	if provider == null:
 		return {}
+	if not _can_call_payload_provider(provider):
+		return {}
 	var info_method := _resolve_method(provider, _INFO_METHODS)
 	if info_method.is_empty():
 		return {}
@@ -215,6 +225,28 @@ func _describe_provider_type(provider: Object) -> String:
 	if script_resource != null and script_resource.resource_path != "":
 		return script_resource.resource_path.get_file().get_basename()
 	return provider.get_class()
+
+
+func _can_call_payload_provider(provider: Object) -> bool:
+	if provider == null:
+		return false
+	if not Engine.is_editor_hint():
+		return true
+	var script_resource: Script = provider.get_script()
+	if script_resource == null:
+		return true
+	return script_resource.is_tool()
+
+
+func _resolve_editor_method_hint(provider: Object) -> String:
+	if provider == null:
+		return ""
+	if not Engine.is_editor_hint():
+		return ""
+	var script_resource: Script = provider.get_script()
+	if script_resource == null or script_resource.is_tool():
+		return ""
+	return "Provider script is not tool-enabled, so SaveFlow only checks its contract in the editor and waits until runtime to call payload methods."
 
 
 func _resolve_method(value: Variant, method_names: Array) -> String:

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1
+
+Updated in this release:
+- Fixed `SaveFlowTypedDataSource` editor previews for non-tool C# provider nodes so inspector rendering no longer calls methods on Godot placeholder instances
+- Preserved runtime C# typed-data save/load behavior while keeping editor previews contract-only until the provider is available at runtime
+- Added generated script UID sidecars for the new 0.6.x C# helper and demo scripts so public release packages stay aligned with the Godot project state
+
 ## 0.6.0
 
 Updated in this release:
