@@ -1,6 +1,16 @@
 extends RefCounted
 
 const SaveFlowPipelineServiceScript := preload("res://addons/saveflow_core/runtime/core/saveflow_pipeline_service.gd")
+const _SOURCE_GATHER_METHODS := ["gather_save_data", "GatherSaveData"]
+const _SOURCE_APPLY_METHODS := ["apply_save_data", "ApplySaveData"]
+const _SOURCE_KEY_METHODS := ["get_source_key", "GetSourceKey"]
+const _SOURCE_ENABLED_METHODS := ["is_source_enabled", "IsSourceEnabled"]
+const _SOURCE_CAN_SAVE_METHODS := ["can_save_source", "CanSaveSource"]
+const _SOURCE_CAN_LOAD_METHODS := ["can_load_source", "CanLoadSource"]
+const _SOURCE_BEFORE_SAVE_METHODS := ["before_save", "BeforeSave"]
+const _SOURCE_BEFORE_LOAD_METHODS := ["before_load", "BeforeLoad"]
+const _SOURCE_AFTER_LOAD_METHODS := ["after_load", "AfterLoad"]
+const _SOURCE_DESCRIBE_METHODS := ["describe_source", "DescribeSource"]
 
 var _pipeline_service := SaveFlowPipelineServiceScript.new()
 
@@ -264,8 +274,7 @@ func inspect_scope_payload(scope_root: SaveFlowScope) -> SaveResult:
 				"node_path": _describe_node_path(child),
 				"valid": true,
 			}
-			var source := child as SaveFlowSource
-			entry["source"] = source.describe_source()
+			entry["source"] = _describe_graph_source(child)
 			if entry["source"] is Dictionary:
 				var source_description: Dictionary = entry["source"]
 				if source_description.has("plan") and source_description["plan"] is Dictionary:
@@ -295,24 +304,35 @@ func is_graph_source_node(node: Node) -> bool:
 		return false
 	if node is SaveFlowSource:
 		return node.is_source_enabled()
-	return false
+	if not _has_graph_source_contract(node):
+		return false
+	var enabled_method := _resolve_source_method(node, _SOURCE_ENABLED_METHODS)
+	if not enabled_method.is_empty() and _can_call_graph_source_methods(node):
+		return bool(node.call(enabled_method))
+	return true
 
 
 func resolve_graph_source_key(node: Node) -> String:
 	if node is SaveFlowSource:
 		return (node as SaveFlowSource).get_source_key()
+	if _can_call_graph_source_methods(node):
+		var source_key_method := _resolve_source_method(node, _SOURCE_KEY_METHODS)
+		if not source_key_method.is_empty():
+			return String(node.call(source_key_method))
+	var source_key_property := _read_source_key_property(node)
+	if not source_key_property.is_empty():
+		return source_key_property
 	return node.name.to_snake_case()
 
 
 func gather_source_payload(node: Node, pipeline_control: SaveFlowPipelineControl) -> SaveResult:
-	var source := node as SaveFlowSource
-	var source_key := source.get_source_key()
+	var source_key := resolve_graph_source_key(node)
 	var pipeline_context: SaveFlowPipelineContext = pipeline_control.context
 	var before_gather_source_result := _pipeline_service.notify_stage(
 		pipeline_control,
 		"before_gather_source",
 		{
-			"source": source,
+			"source": node,
 			"node": node,
 			"key": source_key,
 			"kind": "source",
@@ -321,14 +341,22 @@ func gather_source_payload(node: Node, pipeline_control: SaveFlowPipelineControl
 	if not before_gather_source_result.ok:
 		return before_gather_source_result
 	pipeline_context.record("source.before_save", node, source_key, "source")
-	source.before_save(pipeline_context.get_hook_context())
-	var payload: Variant = source.gather_save_data()
+	_call_graph_source_hook(node, _SOURCE_BEFORE_SAVE_METHODS, [pipeline_context.get_hook_context()])
+	var gather_method := _resolve_source_method(node, _SOURCE_GATHER_METHODS)
+	if gather_method.is_empty() or not _can_call_graph_source_methods(node):
+		return _error_result(
+			SaveError.INVALID_SAVEABLE,
+			"INVALID_SAVEABLE",
+			"graph source cannot gather payload",
+			{"source_key": source_key, "node_path": _describe_node_path(node)}
+		)
+	var payload: Variant = node.call(gather_method)
 	pipeline_context.record("source.gathered", node, source_key, "source")
 	var after_gather_source_result := _pipeline_service.notify_stage(
 		pipeline_control,
 		"after_gather_source",
 		{
-			"source": source,
+			"source": node,
 			"node": node,
 			"key": source_key,
 			"kind": "source",
@@ -341,15 +369,14 @@ func gather_source_payload(node: Node, pipeline_control: SaveFlowPipelineControl
 
 
 func apply_source_payload(node: Node, payload: Variant, pipeline_control: SaveFlowPipelineControl) -> SaveResult:
-	var source := node as SaveFlowSource
-	var source_key := source.get_source_key()
+	var source_key := resolve_graph_source_key(node)
 	var pipeline_context: SaveFlowPipelineContext = pipeline_control.context
 	var hook_context: Dictionary = pipeline_context.get_hook_context()
 	var before_apply_source_result := _pipeline_service.notify_stage(
 		pipeline_control,
 		"before_apply_source",
 		{
-			"source": source,
+			"source": node,
 			"node": node,
 			"key": source_key,
 			"kind": "source",
@@ -359,21 +386,29 @@ func apply_source_payload(node: Node, payload: Variant, pipeline_control: SaveFl
 	if not before_apply_source_result.ok:
 		return before_apply_source_result
 	pipeline_context.record("source.before_load", node, source_key, "source")
-	source.before_load(payload, hook_context)
+	_call_graph_source_hook(node, _SOURCE_BEFORE_LOAD_METHODS, [payload, hook_context])
 	pipeline_context.record("source.apply", node, source_key, "source")
-	var apply_result_variant: Variant = source.apply_save_data(payload, hook_context)
+	var apply_method := _resolve_source_method(node, _SOURCE_APPLY_METHODS)
+	if apply_method.is_empty() or not _can_call_graph_source_methods(node):
+		return _error_result(
+			SaveError.INVALID_SAVEABLE,
+			"INVALID_SAVEABLE",
+			"graph source cannot apply payload",
+			{"source_key": source_key, "node_path": _describe_node_path(node)}
+		)
+	var apply_result_variant: Variant = node.call(apply_method, payload, hook_context)
 	if apply_result_variant is SaveResult:
 		var apply_result: SaveResult = apply_result_variant
 		if not apply_result.ok:
 			pipeline_context.record("source.apply_failed", node, source_key, "source", false, apply_result.error_key)
 			return apply_result
 	pipeline_context.record("source.after_load", node, source_key, "source")
-	source.after_load(payload, hook_context)
+	_call_graph_source_hook(node, _SOURCE_AFTER_LOAD_METHODS, [payload, hook_context])
 	var after_apply_source_result := _pipeline_service.notify_stage(
 		pipeline_control,
 		"after_apply_source",
 		{
-			"source": source,
+			"source": node,
 			"node": node,
 			"key": source_key,
 			"kind": "source",
@@ -394,8 +429,9 @@ func validate_graph_source(node: Node) -> SaveResult:
 			{"node_path": "<null>"}
 		)
 
-	if node.has_method("describe_source"):
-		var description: Variant = node.call("describe_source")
+	var describe_method := _resolve_source_method(node, _SOURCE_DESCRIBE_METHODS)
+	if not describe_method.is_empty() and _can_call_graph_source_methods(node):
+		var description: Variant = node.call(describe_method)
 		if description is Dictionary:
 			var source_description: Dictionary = description
 			if source_description.has("plan") and source_description["plan"] is Dictionary:
@@ -431,6 +467,9 @@ func can_gather_graph_source(node: Node) -> bool:
 		return false
 	if node is SaveFlowSource:
 		return node.can_save_source()
+	var can_save_method := _resolve_source_method(node, _SOURCE_CAN_SAVE_METHODS)
+	if not can_save_method.is_empty() and _can_call_graph_source_methods(node):
+		return bool(node.call(can_save_method))
 	return true
 
 
@@ -439,6 +478,9 @@ func can_apply_graph_source(node: Node) -> bool:
 		return false
 	if node is SaveFlowSource:
 		return node.can_load_source()
+	var can_load_method := _resolve_source_method(node, _SOURCE_CAN_LOAD_METHODS)
+	if not can_load_method.is_empty() and _can_call_graph_source_methods(node):
+		return bool(node.call(can_load_method))
 	return true
 
 
@@ -473,7 +515,7 @@ func get_ordered_graph_children(scope_root: SaveFlowScope) -> Array:
 func resolve_graph_node_phase(node: Node) -> int:
 	if not is_instance_valid(node):
 		return 0
-	if node.has_method("get_phase"):
+	if node.has_method("get_phase") and _can_call_graph_source_methods(node):
 		return int(node.call("get_phase"))
 	return 0
 
@@ -502,6 +544,73 @@ func _describe_node_path(node: Node) -> String:
 	if node.is_inside_tree():
 		return str(node.get_path())
 	return node.name
+
+
+func _has_graph_source_contract(node: Node) -> bool:
+	if not is_instance_valid(node):
+		return false
+	return not _resolve_source_method(node, _SOURCE_GATHER_METHODS).is_empty() \
+		and not _resolve_source_method(node, _SOURCE_APPLY_METHODS).is_empty()
+
+
+func _resolve_source_method(node: Node, method_names: Array) -> String:
+	if not is_instance_valid(node):
+		return ""
+	for method_name_variant in method_names:
+		var method_name := String(method_name_variant)
+		if node.has_method(method_name):
+			return method_name
+	return ""
+
+
+func _read_source_key_property(node: Node) -> String:
+	if not is_instance_valid(node):
+		return ""
+	for property in node.get_property_list():
+		var property_name := String(Dictionary(property).get("name", ""))
+		if property_name != "source_key" and property_name != "SourceKey":
+			continue
+		var value := String(node.get(property_name)).strip_edges()
+		if not value.is_empty():
+			return value
+	return ""
+
+
+func _can_call_graph_source_methods(node: Node) -> bool:
+	if not is_instance_valid(node):
+		return false
+	if node is SaveFlowSource:
+		return true
+	if not Engine.is_editor_hint():
+		return true
+	var script_resource: Script = node.get_script()
+	if script_resource == null:
+		return true
+	return script_resource.is_tool()
+
+
+func _call_graph_source_hook(node: Node, method_names: Array, args: Array) -> void:
+	if not _can_call_graph_source_methods(node):
+		return
+	var method_name := _resolve_source_method(node, method_names)
+	if method_name.is_empty():
+		return
+	node.callv(method_name, args)
+
+
+func _describe_graph_source(node: Node) -> Dictionary:
+	var describe_method := _resolve_source_method(node, _SOURCE_DESCRIBE_METHODS)
+	if not describe_method.is_empty() and _can_call_graph_source_methods(node):
+		var description: Variant = node.call(describe_method)
+		if description is Dictionary:
+			return Dictionary(description)
+	return {
+		"source_key": resolve_graph_source_key(node),
+		"enabled": is_graph_source_node(node),
+		"save_enabled": can_gather_graph_source(node),
+		"load_enabled": can_apply_graph_source(node),
+		"phase": resolve_graph_node_phase(node),
+	}
 
 
 func _ok_result(data: Variant = null, meta: Dictionary = {}) -> SaveResult:

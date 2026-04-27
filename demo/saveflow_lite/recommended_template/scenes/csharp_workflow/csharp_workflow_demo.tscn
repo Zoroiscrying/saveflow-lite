@@ -3,8 +3,7 @@
 [ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/csharp_workflow/TemplateCSharpWorkflowDemo.cs" id="1_demo"]
 [ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/saveflow/template_saveflow_configurator.gd" id="2_configurator"]
 [ext_resource type="Script" path="res://addons/saveflow_core/runtime/core/saveflow_scope.gd" id="3_scope"]
-[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_typed_data_source.gd" id="4_source"]
-[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/csharp_workflow/TemplateCSharpRoomStateProvider.cs" id="5_state"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/csharp_workflow/TemplateCSharpRoomStateSource.cs" id="4_source"]
 
 [node name="CSharpWorkflowDemo" type="Control"]
 layout_mode = 3
@@ -22,18 +21,13 @@ profile_key = "csharp_workflow"
 project_title = "SaveFlow C# Workflow Demo"
 verify_scene_path_on_load = false
 
-[node name="RoomStateProvider" type="Node" parent="."]
-script = ExtResource("5_state")
-
 [node name="SaveGraph" type="Node" parent="."]
 script = ExtResource("3_scope")
 scope_key = "csharp_workflow"
 
-[node name="RoomStateSource" type="Node" parent="SaveGraph" node_paths=PackedStringArray("target")]
+[node name="RoomStateSource" type="Node" parent="SaveGraph"]
 script = ExtResource("4_source")
-source_key = "room_state"
-target = NodePath("../../RoomStateProvider")
-_target_ref_path = NodePath("../../RoomStateProvider")
+SourceKey = "room_state"
 
 [node name="WorldRoot" type="Node2D" parent="."]
 
@@ -100,7 +94,7 @@ offset_left = 230.0
 offset_top = 238.0
 offset_right = 420.0
 offset_bottom = 300.0
-text = "SaveFlowJsonStateProvider
+text = "SaveFlowTypedStateSource
 typed C# room data"
 horizontal_alignment = 1
 

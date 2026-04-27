@@ -5,6 +5,7 @@ SaveFlow Lite is a comfort-first save workflow plugin for Godot 4.
 Main paths:
 - `SaveFlowNodeSource` for object-owned state
 - `SaveFlowTypedDataSource` for typed system/model-style state
+- `SaveFlowTypedStateSource` for direct C# typed state
 - `SaveFlowDataSource` for custom table, queue, registry, and adapter state
 - `SaveFlowEntityCollectionSource` for runtime entity sets
 - `SaveFlowScope` for domain boundaries and restore order
@@ -12,6 +13,7 @@ Main paths:
 Start with one ownership model:
 - one object -> `SaveFlowNodeSource`
 - one typed system model -> `SaveFlowTypedDataSource`
+- one C# typed state object -> `SaveFlowTypedStateSource`
 - one custom table/registry adapter -> `SaveFlowDataSource`
 - one runtime set -> `SaveFlowEntityCollectionSource` + `SaveFlowPrefabEntityFactory`
 

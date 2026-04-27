@@ -111,7 +111,13 @@ static func _collect_scene_nodes(current: Node, sources: Array, scopes: Array, f
 
 
 static func _is_validator_source(node: Node) -> bool:
-	return node is SaveFlowSource and (node as SaveFlowSource).is_source_enabled()
+	if node is SaveFlowSource:
+		return (node as SaveFlowSource).is_source_enabled()
+	if not (node.has_method("gather_save_data") and node.has_method("apply_save_data")):
+		return false
+	if node.has_method("is_source_enabled") and _can_call_component_methods(node):
+		return bool(node.call("is_source_enabled"))
+	return true
 
 
 static func _is_validator_scope(node: Node) -> bool:
@@ -377,14 +383,19 @@ static func _add_issue(
 
 
 static func _safe_source_key(source: Node) -> String:
-	if source == null or not source.has_method("get_source_key"):
+	if source == null:
 		return ""
+	if not source.has_method("get_source_key") or not _can_call_component_methods(source):
+		var property_key := _read_source_key_property(source)
+		return property_key if not property_key.is_empty() else source.name.to_snake_case()
 	var key_variant: Variant = source.call("get_source_key")
 	return String(key_variant).strip_edges()
 
 
 static func _describe_source_plan(source: Node) -> Dictionary:
 	if source == null:
+		return {}
+	if not _can_call_component_methods(source):
 		return {}
 	for method_name in [
 		"describe_node_plan",
@@ -400,6 +411,8 @@ static func _describe_source_plan(source: Node) -> Dictionary:
 
 static func _read_configuration_warnings(node: Node) -> PackedStringArray:
 	if node == null or not node.has_method("_get_configuration_warnings"):
+		return PackedStringArray()
+	if not _can_call_component_methods(node):
 		return PackedStringArray()
 	var warnings_variant: Variant = node.call("_get_configuration_warnings")
 	if warnings_variant is PackedStringArray:
@@ -429,3 +442,29 @@ static func _describe_node_path(root: Node, node: Node) -> String:
 	if root.is_ancestor_of(node):
 		return str(root.get_path_to(node))
 	return str(node.get_path())
+
+
+static func _can_call_component_methods(node: Node) -> bool:
+	if node == null:
+		return false
+	if node is SaveFlowSource or node is SaveFlowScope or node is SaveFlowPipelineSignals:
+		return true
+	if not Engine.is_editor_hint():
+		return true
+	var script_resource: Script = node.get_script()
+	if script_resource == null:
+		return true
+	return script_resource.is_tool()
+
+
+static func _read_source_key_property(node: Node) -> String:
+	if node == null:
+		return ""
+	for property in node.get_property_list():
+		var property_name := String(Dictionary(property).get("name", ""))
+		if property_name != "source_key" and property_name != "SourceKey":
+			continue
+		var value := String(node.get(property_name)).strip_edges()
+		if not value.is_empty():
+			return value
+	return ""

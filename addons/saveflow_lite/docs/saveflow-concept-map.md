@@ -8,6 +8,7 @@ This document is a fast visual explanation of the current SaveFlow Lite model.
 flowchart LR
     A["Gameplay Object"] --> B["SaveFlowNodeSource"]
     C["Typed System / Payload Provider"] --> D["SaveFlowTypedDataSource"]
+    C2["C# Typed State"] --> D2["SaveFlowTypedStateSource"]
     E["Custom Table / Registry"] --> F["SaveFlowDataSource"]
     G["Runtime Entity Set"] --> H["SaveFlowEntityCollectionSource"]
     H --> I["SaveFlowEntityFactory"]
@@ -16,6 +17,7 @@ flowchart LR
 Interpretation:
 - if the thing is "this object", use `SaveFlowNodeSource`
 - if the thing is "this typed system model or payload provider", use `SaveFlowTypedDataSource`
+- if the thing is "this C# typed state object", use `SaveFlowTypedStateSource`
 - if the thing needs custom table/registry translation, use `SaveFlowDataSource`
 - if the thing is "this changing entity set", use `SaveFlowEntityCollectionSource + SaveFlowEntityFactory`
 
@@ -39,14 +41,17 @@ Interpretation:
 ```mermaid
 flowchart TD
     A["World State Typed Data"] --> B["SaveFlowTypedDataSource"]
-    C["Registry / Service"] --> D["Custom SaveFlowDataSource"]
-    B --> E["Save Graph / Scene Save"]
-    D --> E
+    C["C# Room State"] --> C2["SaveFlowTypedStateSource"]
+    D["Registry / Service"] --> F["Custom SaveFlowDataSource"]
+    B --> G["Save Graph / Scene Save"]
+    C2 --> G
+    F --> G
 ```
 
 Interpretation:
 - the gameplay system owns the runtime state
 - typed data source converts exported fields to save data
+- typed state source lets C# DTO state live directly as a save graph source
 - custom data source translates runtime state when field persistence is not enough
 - the data source plugs directly into SaveFlow
 

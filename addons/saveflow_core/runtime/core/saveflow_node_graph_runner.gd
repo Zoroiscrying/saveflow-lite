@@ -233,9 +233,11 @@ func describe_saveable_node(root: Node, node: Node) -> SaveResult:
 		entry["valid"] = false
 		issues.append("EMPTY_SAVE_KEY")
 
-	if node is SaveFlowSource:
-		var source := node as SaveFlowSource
-		var description: Dictionary = source.describe_source()
+	if _scope_graph_runner.is_graph_source_node(node) and node.has_method("describe_source") and _can_call_saveable_methods(node):
+		var description_variant: Variant = node.call("describe_source")
+		if not (description_variant is Dictionary):
+			return _ok_result(entry)
+		var description: Dictionary = description_variant
 		if description.has("plan") and description["plan"] is Dictionary:
 			var plan: Dictionary = description["plan"]
 			entry["plan"] = plan
@@ -249,8 +251,8 @@ func describe_saveable_node(root: Node, node: Node) -> SaveResult:
 
 
 func resolve_saveable_key(root: Node, node: Node) -> String:
-	if node is SaveFlowSource:
-		return (node as SaveFlowSource).get_save_key()
+	if _scope_graph_runner.is_graph_source_node(node):
+		return _scope_graph_runner.resolve_graph_source_key(node)
 	return str(root.get_path_to(node))
 
 
@@ -292,9 +294,20 @@ func _collect_saveable_nodes_recursive(root: Node, current: Node, results: Array
 func _is_saveable_node(node: Node, _group_name: String) -> bool:
 	if not is_instance_valid(node):
 		return false
+	return _scope_graph_runner.is_graph_source_node(node)
+
+
+func _can_call_saveable_methods(node: Node) -> bool:
+	if not is_instance_valid(node):
+		return false
 	if node is SaveFlowSource:
-		return node.is_source_enabled()
-	return false
+		return true
+	if not Engine.is_editor_hint():
+		return true
+	var script_resource: Script = node.get_script()
+	if script_resource == null:
+		return true
+	return script_resource.is_tool()
 
 
 func _append_unique_string(values: PackedStringArray, value: String) -> void:

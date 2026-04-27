@@ -752,10 +752,10 @@ Current runtime coverage includes:
 ## C# Direction
 
 C# now has a shipped baseline wrapper layer in:
-- `addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs`
-- `addons/saveflow_core/runtime/dotnet/SaveFlowCallResult.cs`
-- `addons/saveflow_core/runtime/dotnet/SaveFlowSlotMetadata.cs`
-- `addons/saveflow_core/runtime/dotnet/SaveFlowEntityDescriptor.cs`
+- `addons/saveflow_core/runtime/dotnet/client/SaveFlowClient.cs`
+- `addons/saveflow_core/runtime/dotnet/client/SaveFlowCallResult.cs`
+- `addons/saveflow_core/runtime/dotnet/slots/SaveFlowSlotMetadata.cs`
+- `addons/saveflow_core/runtime/dotnet/entities/SaveFlowEntityDescriptor.cs`
 
 Current entrypoints include:
 - `SaveFlowClient.SaveData(...)`

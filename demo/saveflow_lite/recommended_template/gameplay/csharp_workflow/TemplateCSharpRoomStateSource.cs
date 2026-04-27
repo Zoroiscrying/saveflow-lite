@@ -1,9 +1,7 @@
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 using Godot;
 
-using GodotArray = Godot.Collections.Array;
 using GodotDictionary = Godot.Collections.Dictionary;
 
 using SaveFlow.DotNet;
@@ -22,8 +20,8 @@ internal partial class TemplateCSharpRoomStateJsonContext : JsonSerializerContex
 {
 }
 
-public partial class TemplateCSharpRoomStateProvider
-	: SaveFlowJsonStateProvider
+public partial class TemplateCSharpRoomStateSource
+	: SaveFlowTypedStateSource
 {
 	private const string Schema = "saveflow.template.csharp_room_state";
 
@@ -33,9 +31,12 @@ public partial class TemplateCSharpRoomStateProvider
 		set => SetSaveFlowState(value);
 	}
 
-	public TemplateCSharpRoomStateProvider()
+	public TemplateCSharpRoomStateSource()
 	{
-		State = CreateInitialState();
+		SourceKey = "room_state";
+		InitializeSaveFlowState(
+			CreateInitialState(),
+			TemplateCSharpRoomStateJsonContext.Default.TemplateCSharpRoomState);
 	}
 
 	public int Coins => State.Coins;
@@ -46,13 +47,9 @@ public partial class TemplateCSharpRoomStateProvider
 	[Export] public int ApplyCount { get; set; }
 	[Export] public string LastApplyLabel { get; set; } = "";
 
+	// Stable payload identity for compatibility checks and future migrations.
+	// Keep this stable even if the C# class or namespace is renamed.
 	protected override string SaveFlowPayloadSchema => Schema;
-
-	protected override JsonTypeInfo SaveFlowJsonTypeInfo
-		=> TemplateCSharpRoomStateJsonContext.Default.TemplateCSharpRoomState;
-
-	protected override GodotArray SaveFlowPayloadSections
-		=> new() { "coins", "door_open", "checkpoint_id", "mutation_count", "player_x", "player_y" };
 
 	public void MutateForDemo()
 	{

@@ -144,8 +144,8 @@ func describe_scope_plan() -> Dictionary:
 				_append_unique_string(duplicate_scope_keys, child_scope_key)
 			else:
 				seen_scope_keys[child_scope_key] = true
-		elif child is SaveFlowSource:
-			var child_source_key := (child as SaveFlowSource).get_source_key()
+		elif _is_source_contract_node(child):
+			var child_source_key := _resolve_child_source_key(child)
 			child_source_count += 1
 			child_source_keys.append(child_source_key)
 			if seen_source_keys.has(child_source_key):
@@ -211,6 +211,51 @@ func _append_unique_string(values: PackedStringArray, value: String) -> void:
 	if values.has(value):
 		return
 	values.append(value)
+
+
+func _is_source_contract_node(node: Node) -> bool:
+	if node == null:
+		return false
+	if node is SaveFlowSource:
+		return (node as SaveFlowSource).is_source_enabled()
+	return node.has_method("gather_save_data") and node.has_method("apply_save_data")
+
+
+func _resolve_child_source_key(node: Node) -> String:
+	if node is SaveFlowSource:
+		return (node as SaveFlowSource).get_source_key()
+	if node.has_method("get_source_key") and _can_call_child_source_methods(node):
+		return String(node.call("get_source_key"))
+	var source_key_property := _read_child_source_key_property(node)
+	if not source_key_property.is_empty():
+		return source_key_property
+	return node.name.to_snake_case()
+
+
+func _can_call_child_source_methods(node: Node) -> bool:
+	if node == null:
+		return false
+	if node is SaveFlowSource:
+		return true
+	if not Engine.is_editor_hint():
+		return true
+	var script_resource: Script = node.get_script()
+	if script_resource == null:
+		return true
+	return script_resource.is_tool()
+
+
+func _read_child_source_key_property(node: Node) -> String:
+	if node == null:
+		return ""
+	for property in node.get_property_list():
+		var property_name := String(Dictionary(property).get("name", ""))
+		if property_name != "source_key" and property_name != "SourceKey":
+			continue
+		var value := String(node.get(property_name)).strip_edges()
+		if not value.is_empty():
+			return value
+	return ""
 
 
 func _describe_restore_policy(value: int) -> String:

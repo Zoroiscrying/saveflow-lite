@@ -111,7 +111,7 @@ func _build_ui() -> void:
 			{
 				"icon": SaveFlowIcon,
 				"title": "Open C# Workflow Demo",
-				"description": "Open the C# path: SaveFlowJsonStateProvider, SaveFlowSlotWorkflow, SaveFlowSlotCard, and SaveFlowClient.SaveScope in one small scene.",
+				"description": "Open the C# path: SaveFlowTypedStateSource, SaveFlowSlotWorkflow, SaveFlowSlotCard, and SaveFlowClient.SaveScope in one small scene.",
 				"action": func() -> void: _emit_scene(CSHARP_WORKFLOW_SCENE),
 			},
 		]

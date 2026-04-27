@@ -10,6 +10,7 @@ Use it like a decision tree:
 If one gameplay feature contains multiple kinds of state, split them:
 - object-owned state -> `SaveFlowNodeSource`
 - typed system-owned state -> `SaveFlowTypedDataSource`
+- C# typed state -> `SaveFlowTypedStateSource`
 - custom system/table adapters -> `SaveFlowDataSource`
 - runtime entity sets -> `SaveFlowEntityCollectionSource`
 - domain grouping / restore order -> `SaveFlowScope`
@@ -24,7 +25,7 @@ flowchart TD
     A --> E["Several domains that must restore in order<br/>(player -> world -> runtime actors)"]
 
     B --> B2["Use SaveFlowNodeSource"]
-    C --> C2["Use SaveFlowTypedDataSource or SaveFlowDataSource"]
+    C --> C2["Use SaveFlowTypedDataSource / SaveFlowTypedStateSource / SaveFlowDataSource"]
     D --> D2["Use SaveFlowEntityCollectionSource"]
     E --> E2["Use SaveFlowScope"]
 ```
@@ -65,7 +66,7 @@ Player
 |- SaveFlowNodeSource
 ```
 
-### 2. `SaveFlowTypedDataSource` / `SaveFlowDataSource`
+### 2. `SaveFlowTypedDataSource` / `SaveFlowTypedStateSource` / `SaveFlowDataSource`
 
 Choose this when the mental model is:
 - save this quest table
@@ -113,6 +114,14 @@ extends SaveFlowTypedData
 
 Use custom `SaveFlowDataSource` when the source must translate a registry,
 service, queue, or several runtime structures into one payload.
+
+For C# state that is one DTO/record, start with `SaveFlowTypedStateSource` and
+place that C# node directly under the `SaveGraph`:
+
+```text
+SaveGraph
+|- RoomStateSource (C# script extends SaveFlowTypedStateSource)
+```
 
 ### 3. `SaveFlowEntityCollectionSource`
 

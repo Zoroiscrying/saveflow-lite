@@ -81,7 +81,7 @@ public partial class TemplateCSharpWorkflowDemo : Control
 
 	public GodotDictionary mutate_demo()
 	{
-		RoomStateProvider().MutateForDemo();
+		RoomStateSource().MutateForDemo();
 		ApplyStateVisuals();
 		RefreshView("C# state mutated. SaveFlow has not saved it yet.");
 		return StateSnapshot();
@@ -89,7 +89,7 @@ public partial class TemplateCSharpWorkflowDemo : Control
 
 	public GodotDictionary reset_demo()
 	{
-		RoomStateProvider().ResetForDemo();
+		RoomStateSource().ResetForDemo();
 		ApplyStateToScene();
 		RefreshView("C# state reset locally. Load restores the saved slot.");
 		return StateSnapshot();
@@ -118,7 +118,7 @@ public partial class TemplateCSharpWorkflowDemo : Control
 
 	private SaveFlowCallResult SaveDemo()
 	{
-		RoomStateProvider().SetPlayerPosition(Player().Position);
+		RoomStateSource().SetPlayerPosition(Player().Position);
 		var result = SaveFlowClient.SaveScope(
 			_slotWorkflow.ActiveSlotId(),
 			GetNode<Node>("SaveGraph"),
@@ -142,7 +142,7 @@ public partial class TemplateCSharpWorkflowDemo : Control
 			"manual",
 			"C# Chapter",
 			"C# Workflow Room",
-			120 + RoomStateProvider().MutationCount * 10,
+			120 + RoomStateSource().MutationCount * 10,
 			"normal",
 			slotRole: "csharp_workflow_demo");
 
@@ -155,16 +155,16 @@ public partial class TemplateCSharpWorkflowDemo : Control
 	}
 
 	private GodotDictionary StateSnapshot()
-		=> RoomStateProvider().Snapshot();
+		=> RoomStateSource().Snapshot();
 
-	private TemplateCSharpRoomStateProvider RoomStateProvider()
-		=> GetNode<TemplateCSharpRoomStateProvider>("RoomStateProvider");
+	private TemplateCSharpRoomStateSource RoomStateSource()
+		=> GetNode<TemplateCSharpRoomStateSource>("SaveGraph/RoomStateSource");
 
 	private void RefreshView(string status, bool rememberStatus = true)
 	{
 		if (rememberStatus)
 			_lastStatus = status;
-		var state = RoomStateProvider();
+		var state = RoomStateSource();
 		SetLabelText(
 			"Screen/MainLayout/LeftColumn/StatePanel/StateMargin/StateLabel",
 			$"C# typed state\ncoins={state.Coins}\ndoor_open={state.DoorOpen}\ncheckpoint_id={state.CheckpointId}\nmutation_count={state.MutationCount}\nplayer=({state.PlayerPosition.X:0}, {state.PlayerPosition.Y:0})\npost_apply={state.LastApplyLabel}");
@@ -223,7 +223,7 @@ public partial class TemplateCSharpWorkflowDemo : Control
 		player.Position = new Vector2(
 			Mathf.Clamp(next.X, RoomBounds.Position.X, RoomBounds.End.X),
 			Mathf.Clamp(next.Y, RoomBounds.Position.Y, RoomBounds.End.Y));
-		RoomStateProvider().SetPlayerPosition(player.Position);
+		RoomStateSource().SetPlayerPosition(player.Position);
 	}
 
 	private Node2D Player()
@@ -231,13 +231,13 @@ public partial class TemplateCSharpWorkflowDemo : Control
 
 	private void ApplyStateToScene()
 	{
-		Player().Position = RoomStateProvider().PlayerPosition;
+		Player().Position = RoomStateSource().PlayerPosition;
 		ApplyStateVisuals();
 	}
 
 	private void ApplyStateVisuals()
 	{
-		var state = RoomStateProvider();
+		var state = RoomStateSource();
 		var door = GetNodeOrNull<Polygon2D>("WorldRoot/Room/DoorMarker");
 		if (door is not null)
 		{

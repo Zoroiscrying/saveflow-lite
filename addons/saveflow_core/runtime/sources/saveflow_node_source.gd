@@ -813,7 +813,7 @@ func _relative_path_from_target(target_node: Node, participant: Node) -> String:
 func _describe_participant_kind(participant: Node) -> String:
 	if _is_pipeline_helper_node(participant):
 		return "pipeline_helper"
-	if participant is SaveFlowSource:
+	if _is_saveflow_source_node(participant):
 		return "source"
 	if not SaveFlowBuiltInSerializerRegistry.supported_ids_for_node(participant).is_empty():
 		return "built_in_node"
@@ -845,6 +845,8 @@ func _describe_participant_ownership_conflict(target_node: Node, path_text: Stri
 		return ""
 	if resolved is SaveFlowEntityCollectionSource:
 		return "%s is an EntityCollectionSource. Runtime sets should be owned directly by that collection source." % path_text
+	if _is_saveflow_source_node(resolved):
+		return ""
 
 	var entity_collection_source := _find_entity_collection_source_for_boundary(target_node, resolved)
 	if entity_collection_source != null:
@@ -934,7 +936,7 @@ func _collect_helper_child_paths() -> PackedStringArray:
 	var paths := PackedStringArray()
 	for child_variant in get_children():
 		var child := child_variant as Node
-		if child == null or child is SaveFlowSource or _is_pipeline_helper_node(child):
+		if child == null or _is_saveflow_source_node(child) or _is_pipeline_helper_node(child):
 			continue
 		paths.append(String(child.name))
 	return paths
@@ -954,13 +956,21 @@ func _collect_child_source_paths_recursive(current: Node, prefix: String, into: 
 		if _is_pipeline_helper_node(child):
 			continue
 		var child_path := String(child.name) if prefix.is_empty() else "%s/%s" % [prefix, child.name]
-		if child is SaveFlowSource:
+		if _is_saveflow_source_node(child):
 			into.append(child_path)
 		_collect_child_source_paths_recursive(child, child_path, into)
 
 
 func _is_pipeline_helper_node(node: Node) -> bool:
 	return node is SaveFlowPipelineSignals
+
+
+func _is_saveflow_source_node(node: Node) -> bool:
+	if node == null:
+		return false
+	if node is SaveFlowSource:
+		return true
+	return node.has_method("gather_save_data") and node.has_method("apply_save_data")
 
 
 func _build_helper_child_suggestions(helper_child_paths: PackedStringArray, target_node: Node) -> PackedStringArray:
@@ -997,7 +1007,7 @@ func _build_source_child_suggestions(source_child_paths: PackedStringArray, targ
 			continue
 		var top_gameplay_node := String(segments[0])
 		var top_node := get_node_or_null(NodePath(top_gameplay_node))
-		if top_node is SaveFlowSource:
+		if _is_saveflow_source_node(top_node):
 			suggestions.append(
 				"Nested source `%s` is inside Source helper `%s`. Move each Source under the real gameplay object it saves, or delete duplicate Sources that try to save the same object." %
 				[path_text, top_gameplay_node]

@@ -6,28 +6,28 @@ Runnable demo:
 
 - `res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn`
 
-That scene uses `SaveFlowJsonStateProvider`,
-`SaveFlowTypedDataSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and
+That scene uses `SaveFlowTypedStateSource`,
+`SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and
 `SaveFlowClient.SaveScope()` together.
 
 ## Wrapper Location
 
 The baseline C# wrapper is shipped in `saveflow_core`:
 
-- `res://addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs`
-- `res://addons/saveflow_core/runtime/dotnet/SaveFlowCallResult.cs`
-- `res://addons/saveflow_core/runtime/dotnet/SaveFlowSlotMetadata.cs`
-- `res://addons/saveflow_core/runtime/dotnet/SaveFlowSlotWorkflow.cs`
-- `res://addons/saveflow_core/runtime/dotnet/SaveFlowSlotCard.cs`
-- `res://addons/saveflow_core/runtime/dotnet/SaveFlowEntityDescriptor.cs`
+- `res://addons/saveflow_core/runtime/dotnet/client/SaveFlowClient.cs`
+- `res://addons/saveflow_core/runtime/dotnet/client/SaveFlowCallResult.cs`
+- `res://addons/saveflow_core/runtime/dotnet/slots/SaveFlowSlotMetadata.cs`
+- `res://addons/saveflow_core/runtime/dotnet/slots/SaveFlowSlotWorkflow.cs`
+- `res://addons/saveflow_core/runtime/dotnet/slots/SaveFlowSlotCard.cs`
+- `res://addons/saveflow_core/runtime/dotnet/entities/SaveFlowEntityDescriptor.cs`
 
 ## Godot C# Script Registration Boundary
 
-SaveFlow's C# provider bases are intentionally **non-generic Godot script
+SaveFlow's C# source bases are intentionally **non-generic Godot script
 classes**:
 
 ```csharp
-public partial class RoomStateProvider : SaveFlowJsonStateProvider
+public partial class RoomStateSource : SaveFlowTypedStateSource
 {
 }
 ```
@@ -35,7 +35,7 @@ public partial class RoomStateProvider : SaveFlowJsonStateProvider
 Do not write a Godot script base like this:
 
 ```csharp
-public partial class RoomStateProvider : SaveFlowJsonStateProvider<RoomSaveState>
+public partial class RoomStateSource : SaveFlowTypedStateSource<RoomSaveState>
 {
 }
 ```
@@ -314,22 +314,35 @@ public static Node SpawnEnemy(Dictionary descriptor)
 
 ## C# Typed Data Without Manual Dictionary Keys
 
-For C# gameplay state, prefer an encoded payload provider. The C# side owns
+For C# gameplay state, prefer a direct encoded typed source. The C# side owns
 serialization, and SaveFlow stores the result as one typed payload inside the
 normal save graph. This avoids per-field SaveFlow reflection and avoids
 hand-written dictionary keys in gameplay code.
 
-For most new C# save data, start with `SaveFlowJsonStateProvider`.
-You define one DTO, one source-generated `JsonTypeInfo`, and optional sections
-for inspector/diagnostic summaries:
+For most new C# save data, start with `SaveFlowTypedStateSource`.
+You define one DTO and one source-generated `JsonTypeInfo`. SaveFlow can derive
+the default schema from the DTO type and the default inspector/diagnostic
+sections from the serialized JSON property names:
 
-The provider class itself stays non-generic for Godot editor reload safety.
-Typed gameplay state is kept through `JsonTypeInfo<T>` and
+The source class itself stays non-generic for Godot editor reload safety.
+Register the source-generated `JsonTypeInfo<T>` once with
+`InitializeSaveFlowState(...)`; after that, typed gameplay state is kept through
 `GetSaveFlowState<T>()` / `SetSaveFlowState(...)`.
+
+Users should not write separate JSON and binary classes for the same business
+state. `SaveFlowTypedStateSource` keeps one typed state lifecycle and exposes
+`PayloadEncoding` as a setting. `JsonText` is editor-friendly; `JsonBytes`
+stores the same typed state as bytes. In both cases load ends with the same
+typed `State` object and calls `OnSaveFlowStateApplied(...)`.
+
+`SaveFlowPayloadSchema` and `SaveFlowPayloadSections` have defaults. Schema uses
+the DTO type name from `JsonTypeInfo`; sections use the serialized JSON property
+names from `JsonTypeInfo.Properties`. Override schema for long-lived commercial
+saves that must survive class/namespace renames. Override sections only when the
+inspector should show broader business groups instead of field names.
 
 ```csharp
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 using Godot;
 using SaveFlow.DotNet;
 
@@ -344,7 +357,7 @@ internal partial class RoomSaveJsonContext : JsonSerializerContext
 {
 }
 
-public partial class RoomStateProvider : SaveFlowJsonStateProvider
+public partial class RoomStateSource : SaveFlowTypedStateSource
 {
 	private RoomSaveState State
 	{
@@ -352,16 +365,13 @@ public partial class RoomStateProvider : SaveFlowJsonStateProvider
 		set => SetSaveFlowState(value);
 	}
 
-	public RoomStateProvider()
+	public RoomStateSource()
 	{
-		State = new RoomSaveState(10, false, "");
+		SourceKey = "room_state";
+		InitializeSaveFlowState(
+			new RoomSaveState(10, false, ""),
+			RoomSaveJsonContext.Default.RoomSaveState);
 	}
-
-	protected override JsonTypeInfo SaveFlowJsonTypeInfo
-		=> RoomSaveJsonContext.Default.RoomSaveState;
-
-	protected override Godot.Collections.Array SaveFlowPayloadSections
-		=> new() { "coins", "door_open", "checkpoint_id" };
 
 	protected override void OnSaveFlowStateApplied(object? state)
 	{
@@ -373,8 +383,17 @@ public partial class RoomStateProvider : SaveFlowJsonStateProvider
 }
 ```
 
-Use the explicit provider methods when an existing manager node cannot inherit
-from a SaveFlow base class, or when capture/apply needs custom project logic:
+Put that C# source directly under the `SaveGraph`/`SaveFlowScope`:
+
+```text
+RoomRoot
+|- SaveGraph
+   |- RoomStateSource (C# script extends SaveFlowTypedStateSource)
+```
+
+Use the explicit encoded-payload methods only when an existing manager node cannot
+inherit from a SaveFlow base class, or when capture/apply needs custom project
+logic:
 
 ```csharp
 using System.Text.Json.Serialization;
@@ -454,13 +473,13 @@ var loadResult = SaveFlowClient.LoadScope("slot_1", graph, strict: true);
 ### Default State Apply
 
 If the saveable C# object is just one state snapshot, inherit
-`SaveFlowJsonStateProvider`. The default load behavior replaces `SaveFlowState`
-and then calls `OnSaveFlowStateApplied(...)`. Use a tiny typed property around
-`GetSaveFlowState<T>()` / `SetSaveFlowState(...)` when gameplay code wants a
-strongly typed `State` member.
+`SaveFlowTypedStateSource`. The default load behavior replaces
+`SaveFlowState` and then calls `OnSaveFlowStateApplied(...)`. Use a tiny typed
+property around `GetSaveFlowState<T>()` / `SetSaveFlowState(...)` when gameplay
+code wants a strongly typed `State` member.
 
 ```csharp
-public partial class RoomStateProvider : SaveFlowJsonStateProvider
+public partial class RoomStateSource : SaveFlowTypedStateSource
 {
 	private RoomSaveState State
 	{
@@ -468,16 +487,13 @@ public partial class RoomStateProvider : SaveFlowJsonStateProvider
 		set => SetSaveFlowState(value);
 	}
 
-	public RoomStateProvider()
+	public RoomStateSource()
 	{
-		State = new RoomSaveState(10, false, "");
+		SourceKey = "room_state";
+		InitializeSaveFlowState(
+			new RoomSaveState(10, false, ""),
+			RoomSaveJsonContext.Default.RoomSaveState);
 	}
-
-	protected override JsonTypeInfo SaveFlowJsonTypeInfo
-		=> RoomSaveJsonContext.Default.RoomSaveState;
-
-	protected override Godot.Collections.Array SaveFlowPayloadSections
-		=> new() { "coins", "door_open", "checkpoint_id" };
 
 	protected override void OnSaveFlowStateApplied(object? state)
 	{
@@ -490,23 +506,39 @@ public partial class RoomStateProvider : SaveFlowJsonStateProvider
 ```
 
 Use the explicit `ToSaveFlowEncodedPayload` / `ApplySaveFlowEncodedPayload`
-shape when applying loaded data requires custom restore logic instead of simple
-state replacement.
+shape only when applying loaded data requires custom restore logic instead of
+simple state replacement.
 
 ### Binary Payloads
 
-JSON is the recommended editor-friendly default, but C# projects can also store
-binary encoded payloads. SaveFlow does not choose a binary format for you; it
-stores the `byte[]` returned by your provider. That keeps the path compatible
-with `BinaryWriter`, MessagePack, protobuf, MemoryPack, or any project-owned
-encoder.
+For normal typed state, do not write a second class just to switch storage
+shape. Keep `SaveFlowTypedStateSource` and change `PayloadEncoding`:
 
-For the common state-object shape, inherit `SaveFlowBinaryStateProvider`:
+```csharp
+public RoomStateSource()
+{
+	SourceKey = "room_state";
+	State = new RoomSaveState(10, false, "");
+	PayloadEncoding = SaveFlowStatePayloadEncoding.JsonBytes;
+}
+```
+
+This still uses the same DTO, same `State` property, same post-apply hook, and
+same `JsonTypeInfo`. SaveFlow writes bytes in the payload, but the loaded result
+is still a typed `RoomSaveState`.
+
+Use `SaveFlowEncodedSource` only for an advanced custom binary format, such as
+`BinaryWriter`, MessagePack, protobuf, MemoryPack, or a project-owned encoder.
+This keeps the node directly composable in the SaveGraph without introducing a
+separate binary source type.
+
+Advanced custom binary shape:
 
 ```csharp
 using System.IO;
 using System.Text;
 using Godot;
+using Godot.Collections;
 using SaveFlow.DotNet;
 
 public sealed record RoomBinaryState(
@@ -514,50 +546,65 @@ public sealed record RoomBinaryState(
 	bool DoorOpen,
 	string CheckpointId);
 
-public partial class RoomBinaryStateProvider
-	: SaveFlowBinaryStateProvider
+public partial class RoomBinaryStateSource : SaveFlowEncodedSource
 {
-	private RoomBinaryState _state = new(10, false, "");
+	private RoomBinaryState State { get; set; } = new(10, false, "");
 
-	protected override string SaveFlowPayloadSchema => "my_game.room_state";
-	protected override string SaveFlowBinaryEncoding => "binary-writer";
-
-	protected override object? CaptureSaveState()
-		=> _state;
-
-	protected override byte[] SerializeSaveState(object? state)
+	public RoomBinaryStateSource()
 	{
-		var roomState = state is RoomBinaryState typedState ? typedState : _state;
+		SourceKey = "room_state";
+	}
+
+	public override Dictionary ToSaveFlowEncodedPayload()
+		=> SaveFlowEncodedPayload.FromBytes(
+			SerializeState(State),
+			"binary-writer",
+			SaveFlowEncodedPayload.ContentTypeBinary,
+			"my_game.room_state");
+
+	public override void ApplySaveFlowEncodedPayload(Dictionary payload)
+	{
+		var bytes = SaveFlowEncodedPayload.GetBytes(payload);
+		if (bytes.Length == 0)
+			return;
+		State = DeserializeState(bytes);
+		RefreshRoomFromState(State);
+	}
+
+	public override Dictionary GetSaveFlowPayloadInfo()
+		=> SaveFlowEncodedPayload.BinaryInfo(
+			"my_game.room_state",
+			sections: new Godot.Collections.Array { "coins", "door_open", "checkpoint_id" },
+			encoding: "binary-writer");
+
+	private static byte[] SerializeState(RoomBinaryState state)
+	{
 		using var stream = new MemoryStream();
 		using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
-		writer.Write(roomState.Coins);
-		writer.Write(roomState.DoorOpen);
-		writer.Write(roomState.CheckpointId);
+		writer.Write(state.Coins);
+		writer.Write(state.DoorOpen);
+		writer.Write(state.CheckpointId);
 		writer.Flush();
 		return stream.ToArray();
 	}
 
-	protected override object? DeserializeSaveState(byte[] bytes)
+	private static RoomBinaryState DeserializeState(byte[] bytes)
 	{
 		using var stream = new MemoryStream(bytes);
 		using var reader = new BinaryReader(stream, Encoding.UTF8);
 		return new(reader.ReadInt32(), reader.ReadBoolean(), reader.ReadString());
 	}
 
-	protected override void ApplySaveState(object? state)
+	private void RefreshRoomFromState(RoomBinaryState state)
 	{
-		if (state is not RoomBinaryState roomState)
-			return;
-
-		_state = roomState;
 		// Refresh visuals, collisions, UI, or derived runtime state here.
 	}
 }
 ```
 
-Use `SaveFlowBinaryResource` for resource-backed binary data, or call
-`SaveFlowEncodedPayload.CreateBinaryPayload(...)` directly if an existing
-manager needs full control over capture/apply.
+Put that source directly under the graph. If an existing manager cannot inherit
+from `SaveFlowEncodedSource`, implement the same encoded-payload methods on the
+manager and point a `SaveFlowTypedDataSource` at it.
 
 ## Reflection Convenience Path
 
@@ -621,7 +668,8 @@ autosave.
 - Prefer `SaveFlowSlotMetadata` and subclasses for save-list fields; use `BuildSlotMetadataPatch(...)` only for compatibility call sites that still expect dictionaries.
 - Compatibility inspection is available in C# too, so schema/data-version checks do not become a GDScript-only workflow.
 - Slot-summary reads are available in C# too, so save-list UI does not need to load the full gameplay payload first.
-- `SaveFlowEncodedPayload` is the preferred C# path when performance matters; it uses user-owned serialization such as source-generated `System.Text.Json` or binary encoders.
-- `SaveFlowJsonStateProvider` and `SaveFlowBinaryStateProvider` use non-generic Godot bases with default state storage; most providers only need serializer metadata plus optional post-apply logic.
+- `SaveFlowTypedStateSource` is the preferred C# path for one typed state object. Put it directly under a `SaveFlowScope`/`SaveGraph`; `PayloadEncoding` only changes payload shape.
+- `SaveFlowEncodedPayload` is the advanced C# path when a manager owns custom capture/apply or a custom binary encoder.
+- `SaveFlowTypedStateSource` owns the common C# typed-state lifecycle and is the preferred direct graph source. Use explicit encoded-payload methods only when a project-owned manager or custom encoder cannot inherit from the source.
 - Keep `Node`/`Resource`/`RefCounted` C# script bases non-generic and in same-name files. Use generics inside DTOs, `JsonTypeInfo<T>`, encoded payload helpers, and typed state wrappers instead.
 - `SaveFlowTypedResource`, `SaveFlowTypedRefCounted`, and `SaveFlowTypedPayload` are reflection convenience helpers for small or low-frequency state.

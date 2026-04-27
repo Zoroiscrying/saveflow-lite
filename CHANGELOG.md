@@ -4,22 +4,26 @@
 
 Updated in this release:
 - Moved every C# `GodotObject`-derived SaveFlow helper into its own same-name `.cs` file so Godot's C# script reload map has one stable script owner per registered type
-- Kept the `SaveFlowJsonStateProvider`, `SaveFlowBinaryStateProvider`, typed resource, and encoded payload APIs unchanged from 0.6.2 while fixing the remaining reload collision path
+- Split the C# runtime helpers into `client`, `payloads`, `sources`, `slots`, and `entities` folders, with a local dotnet layout README covering responsibilities and the required rebuild-before-import workflow after moving Godot C# scripts
+- Added existing SaveFlow component icons to the C# GodotObject-derived source/resource bases through `[GlobalClass, Icon(...)]`
+- Replaced the C# typed-state provider path with direct `SaveFlowTypedStateSource` nodes, removing the intermediate state-provider family from the user-facing API
+- Added `SaveFlowEncodedSource` for direct custom encoded C# sources and removed the format-specific JSON/Binary resource bases from the user-facing API
+- Kept custom C# codec support through explicit encoded-payload methods and typed resources instead of separate provider/resource subclasses per format
 - Updated release automation to create a local `.worktrees/.gdignore` development guard so the mirrored release worktree is not scanned as a second Godot project copy
 
 ## 0.6.2
 
 Updated in this release:
-- Reworked C# JSON/Binary state providers to use non-generic Godot `Node`/`Resource` bases, avoiding Godot C# script reload collisions from generic `GodotObject` base classes
+- Reworked C# typed-state helpers to use non-generic Godot `Node`/`Resource` bases, avoiding Godot C# script reload collisions from generic `GodotObject` base classes
 - Kept C# typed payloads dictionary-free by using `JsonTypeInfo`, `SaveFlowState`, and typed capture/apply overrides instead of per-field SaveFlow dictionaries
-- Updated the C# workflow demo, fixtures, docs, and source map language to the Godot-safe non-generic provider shape
+- Updated the C# workflow demo, fixtures, docs, and source map language to the Godot-safe non-generic source shape
 - Preserved C# workflow behavior through C# build, Godot check-only, Lite runtime regression, and recommended-template regression runs
 
 ## 0.6.1
 
 Updated in this release:
-- Fixed `SaveFlowTypedDataSource` editor previews for non-tool C# provider nodes so inspector rendering no longer calls methods on Godot placeholder instances
-- Preserved runtime C# typed-data save/load behavior while keeping editor previews contract-only until the provider is available at runtime
+- Fixed `SaveFlowTypedDataSource` editor previews for non-tool C# payload nodes so inspector rendering no longer calls methods on Godot placeholder instances
+- Preserved runtime C# typed-data save/load behavior while keeping editor previews contract-only until the target node is available at runtime
 - Added generated script UID sidecars for the new 0.6.x C# helper and demo scripts so public release packages stay aligned with the Godot project state
 
 ## 0.6.0
@@ -27,8 +31,8 @@ Updated in this release:
 Updated in this release:
 - Expanded C# parity with thin `SaveFlowClient` wrappers for baseline slot, metadata, graph, scene, scope, validation, current-data, and entity-restore workflows
 - Added C# `SaveFlowSlotWorkflow` and `SaveFlowSlotCard` helpers so active-slot ownership, typed slot metadata, and save-list cards no longer require repeated string-key glue
-- Improved C# typed-data ergonomics with default state storage and optional payload sections for `SaveFlowJsonStateProvider` and `SaveFlowBinaryStateProvider`
-- Added a scene-authored C# workflow demo showing `SaveFlowJsonStateProvider`, `SaveFlowTypedDataSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()` working together
+- Improved C# typed-data ergonomics with default state storage and optional payload sections for typed-state sources and custom encoded payloads
+- Added a scene-authored C# workflow demo showing `SaveFlowTypedStateSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()` working together
 - Added Quick Access entry, docs, and runtime coverage for the C# workflow demo so C# users can start from a runnable project-style example
 - Updated Setup Health and settings guidance to reference the C# workflow demo instead of the removed standalone Case 4 wording
 - Preserved runtime behavior through Lite runtime, recommended-template, editor-smoke, C# build, and Godot check-only regression runs

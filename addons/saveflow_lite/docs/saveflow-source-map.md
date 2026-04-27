@@ -41,27 +41,48 @@ Use it to answer two questions quickly:
 
 ### `addons/saveflow_core/runtime/dotnet`
 
-- [SaveFlowClient.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs)
+- [README.md](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/README.md)
+  C# runtime folder map. Explains client, payload, source, slot, and entity helper boundaries plus the rebuild-before-import rule for moved C# Godot scripts.
+
+### `addons/saveflow_core/runtime/dotnet/client`
+
+- [SaveFlowClient.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/client/SaveFlowClient.cs)
   Thin C# wrapper around the `SaveFlow` autoload.
-- [SaveFlowTypedData.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowTypedData.cs)
-  C# typed-data helper. Provides encoded payload helpers (`SaveFlowEncodedPayload`, `ISaveFlowEncodedPayloadProvider`) for source-generated JSON, binary bytes, or project-owned encoders.
-- [SaveFlowJsonStateProvider.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowJsonStateProvider.cs)
-  Non-generic Godot `Node` provider for source-generated JSON state. Keep Godot script bases non-generic and in same-name files; use generics inside DTOs, `JsonTypeInfo<T>`, and typed state wrappers.
-- [SaveFlowBinaryStateProvider.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowBinaryStateProvider.cs)
-  Non-generic Godot `Node` provider for project-owned binary state.
-- [SaveFlowJsonResource.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowJsonResource.cs)
-  Non-generic Godot `Resource` provider for source-generated JSON data.
-- [SaveFlowBinaryResource.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowBinaryResource.cs)
-  Non-generic Godot `Resource` provider for project-owned binary payloads.
-- [SaveFlowTypedResource.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowTypedResource.cs)
+- [SaveFlowCallResult.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/client/SaveFlowCallResult.cs)
+  Result wrapper for C# runtime calls.
+
+### `addons/saveflow_core/runtime/dotnet/payloads`
+
+- [SaveFlowPayloadContracts.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/payloads/SaveFlowPayloadContracts.cs)
+  C# payload contracts and `[SaveFlowKey]` / `[SaveFlowIgnore]` attributes.
+- [SaveFlowEncodedPayload.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/payloads/SaveFlowEncodedPayload.cs)
+  Helpers for encoded payload dictionaries used by source-generated JSON, binary bytes, or project-owned encoders.
+- [SaveFlowTypedPayloadReflection.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/payloads/SaveFlowTypedPayloadReflection.cs)
+  Cached reflection bridge used by `SaveFlowTypedResource`, `SaveFlowTypedRefCounted`, and slot metadata.
+- [SaveFlowTypedResource.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/payloads/SaveFlowTypedResource.cs)
   Reflection convenience helper for small editable C# resources.
-- [SaveFlowTypedRefCounted.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowTypedRefCounted.cs)
+- [SaveFlowTypedRefCounted.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/payloads/SaveFlowTypedRefCounted.cs)
   Runtime-only reflection convenience helper for small C# models.
-- [SaveFlowEntityDescriptor.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowEntityDescriptor.cs)
+
+### `addons/saveflow_core/runtime/dotnet/sources`
+
+- [SaveFlowEncodedSource.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/sources/SaveFlowEncodedSource.cs)
+  Direct C# SaveGraph source for project-owned encoded payloads such as custom binary serializers.
+- [SaveFlowTypedStateSource.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/sources/SaveFlowTypedStateSource.cs)
+  Direct C# SaveGraph source for one typed DTO/record. Put derived nodes under `SaveFlowScope` without adding a separate `SaveFlowTypedDataSource` target.
+
+### `addons/saveflow_core/runtime/dotnet/entities`
+
+- [SaveFlowEntityDescriptor.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/entities/SaveFlowEntityDescriptor.cs)
   C# helper for runtime entity descriptors so integrations can avoid handwritten descriptor keys.
-- [SaveFlowSlotWorkflow.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowSlotWorkflow.cs)
+
+### `addons/saveflow_core/runtime/dotnet/slots`
+
+- [SaveFlowSlotWorkflow.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/slots/SaveFlowSlotWorkflow.cs)
   C# active-slot helper that builds stable slot ids, typed metadata, and save-card summaries.
-- [SaveFlowSlotCard.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowSlotCard.cs)
+- [SaveFlowSlotMetadata.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/slots/SaveFlowSlotMetadata.cs)
+  C# typed slot metadata model.
+- [SaveFlowSlotCard.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/slots/SaveFlowSlotCard.cs)
   C# save-list card data for continue/load/save menu rows.
 
 ### `addons/saveflow_core/runtime/entities`
@@ -126,12 +147,14 @@ Use it to answer two questions quickly:
 6. [saveflow_pipeline_context.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/types/saveflow_pipeline_context.gd)
 7. [saveflow_typed_data.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_typed_data.gd)
 8. [saveflow_typed_data_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_typed_data_source.gd)
-9. [SaveFlowTypedData.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowTypedData.cs)
-10. [saveflow_data_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_data_source.gd)
-11. [saveflow_entity_collection_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd)
-12. [saveflow_entity_descriptor.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_descriptor.gd)
-13. [saveflow_prefab_entity_factory.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_prefab_entity_factory.gd)
-14. [saveflow_entity_factory.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_factory.gd)
+9. [SaveFlowPayloadContracts.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/payloads/SaveFlowPayloadContracts.cs)
+10. [SaveFlowEncodedPayload.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/payloads/SaveFlowEncodedPayload.cs)
+11. [SaveFlowTypedPayloadReflection.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/payloads/SaveFlowTypedPayloadReflection.cs)
+12. [saveflow_data_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/sources/saveflow_data_source.gd)
+13. [saveflow_entity_collection_source.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd)
+14. [saveflow_entity_descriptor.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_descriptor.gd)
+15. [saveflow_prefab_entity_factory.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_prefab_entity_factory.gd)
+16. [saveflow_entity_factory.gd](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/entities/saveflow_entity_factory.gd)
 
 ## Naming Rules
 

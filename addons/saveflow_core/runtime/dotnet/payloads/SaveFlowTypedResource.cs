@@ -6,13 +6,15 @@ using GodotDictionary = Godot.Collections.Dictionary;
 namespace SaveFlow.DotNet;
 
 /// <summary>
-/// Runtime-only reflection convenience path for small C# models.
-/// Prefer explicit encoded payload providers for large or frequently saved state.
+/// Resource-backed reflection convenience path for small C# save data.
+/// Prefer SaveFlowTypedStateSource or an explicit ISaveFlowEncodedPayloadProvider
+/// for large or frequently saved state.
 ///
 /// Keep GodotObject-derived SaveFlow bases non-generic and in same-name files.
 /// Use typed fields/properties or helper methods for generic C# data instead.
 /// </summary>
-public abstract partial class SaveFlowTypedRefCounted : RefCounted, ISaveFlowPayloadProvider
+[GlobalClass, Icon("res://addons/saveflow_lite/icons/components/saveflow_typed_data_icon.svg")]
+public abstract partial class SaveFlowTypedResource : Resource, ISaveFlowPayloadProvider
 {
 	public GodotDictionary ToSaveFlowPayload()
 		=> SaveFlowTypedDataReflection.ToPayload(this);

@@ -24,10 +24,10 @@ What the pipeline notification demo demonstrates:
 - scene-authored signal connections can react to save/load lifecycle stages without subclassing every source
 
 What the C# workflow demo demonstrates:
-- `SaveFlowJsonStateProvider` stores C# typed room data without per-field dictionaries
-- C# provider Godot scripts stay non-generic; typed state still uses
-  `JsonTypeInfo<T>` and `GetSaveFlowState<T>()` inside the provider
-- `SaveFlowTypedDataSource` targets the C# provider from the scene tree
+- `SaveFlowTypedStateSource` stores C# typed room data without per-field dictionaries
+- C# source Godot scripts stay non-generic; typed state still uses
+  `JsonTypeInfo<T>` and `GetSaveFlowState<T>()` inside the source
+- the C# source is a direct child of `SaveGraph`, so no extra target node is needed
 - `SaveFlowSlotWorkflow` owns the active slot id and typed metadata construction
 - `SaveFlowSlotCard` renders a save-list style summary without loading full payload data
 - `SaveFlowClient.SaveScope()` / `LoadScope()` keep the C# call site thin
@@ -46,7 +46,7 @@ Folder layout:
 - `gameplay/pipeline_notifications`
   Small typed data and notification controller used by the pipeline demo.
 - `gameplay/csharp_workflow`
-  C# typed state provider and C# scene controller using the public wrapper helpers.
+  C# typed state source and C# scene controller using the public wrapper helpers.
 - `saveflow`
   Small SaveFlow integration helpers shared by the workflow.
 
@@ -73,10 +73,10 @@ the clearest scene-owned Godot workflow.
 Use a custom `SaveFlowDataSource` only when the source itself needs bespoke
 gather/apply behavior.
 
-For C#, the recommended path is the same scene shape with a C# payload provider:
+For C#, the recommended path is the same scene shape with a direct C# source:
 
 ```csharp
-public partial class RoomStateProvider : SaveFlowJsonStateProvider
+public partial class RoomStateSource : SaveFlowTypedStateSource
 {
 	private RoomState State
 	{
@@ -84,16 +84,16 @@ public partial class RoomStateProvider : SaveFlowJsonStateProvider
 		set => SetSaveFlowState(value);
 	}
 
-	public RoomStateProvider()
+	public RoomStateSource()
 	{
-		State = new RoomState(12, false, "entry");
+		SourceKey = "room_state";
+		InitializeSaveFlowState(
+			new RoomState(12, false, "entry"),
+			RoomStateJsonContext.Default.RoomState);
 	}
-
-	protected override JsonTypeInfo SaveFlowJsonTypeInfo
-		=> RoomStateJsonContext.Default.RoomState;
 }
 ```
 
-Point `SaveFlowTypedDataSource.target` at that node, then call SaveFlow from
-C# through `SaveFlowClient` and use `SaveFlowSlotWorkflow` to keep active slot
-ids and save-card metadata out of ad-hoc string-key dictionaries.
+Place `RoomStateSource` directly under `SaveGraph`, then call SaveFlow from C#
+through `SaveFlowClient` and use `SaveFlowSlotWorkflow` to keep active slot ids
+and save-card metadata out of ad-hoc string-key dictionaries.

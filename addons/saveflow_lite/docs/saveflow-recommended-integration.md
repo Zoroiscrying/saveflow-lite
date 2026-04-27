@@ -484,7 +484,7 @@ Use `SaveFlowNodeSource` for:
 
 Do not split one object into separate "state source" and "built-ins source" nodes unless there is a very strong reason.
 
-## 2. System state: `SaveFlowTypedDataSource` / `SaveFlowDataSource`
+## 2. System state: `SaveFlowTypedDataSource` / `SaveFlowTypedStateSource` / `SaveFlowDataSource`
 
 Use this path when the state does not naturally live on one scene object.
 
@@ -530,6 +530,18 @@ Use `target` directly when a manager node implements that contract. Use
 `target + data_property` when a manager owns a runtime `RefCounted`, C# object,
 or other data object that implements the same contract.
 
+For C# state that is one DTO/record, prefer a direct C# source instead of a
+targeted GDScript source:
+
+```text
+SaveGraphRoot
+|- WorldScope
+   |- RoomStateSource (C# script extends SaveFlowTypedStateSource)
+```
+
+`SaveFlowTypedStateSource` lets the C# node gather/apply its own encoded payload
+while still participating in the normal SaveFlow graph.
+
 This keeps business code focused on fields:
 
 ```gdscript
@@ -547,6 +559,7 @@ payload["quest_step"] = int(payload.get("quest_step", 0)) + 1
 Responsibilities:
 - the system object owns the runtime data
 - `SaveFlowTypedDataSource` converts payload-provider objects to and from save data
+- `SaveFlowTypedStateSource` is the direct C# path for one typed state object
 - a custom `SaveFlowDataSource` translates runtime data when typed fields are not enough
 - the data source plugs directly into the SaveFlow graph
 

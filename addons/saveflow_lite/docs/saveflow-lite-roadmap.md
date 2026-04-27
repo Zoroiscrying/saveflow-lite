@@ -278,8 +278,9 @@ Lite behavior:
 - project-level settings and compatibility policy are visible from `SaveFlow Settings`
 - slot summary, business metadata, autosave, checkpoint, and active-slot
   patterns are documented and demonstrated in the recommended template
-- `SaveFlowTypedDataSource` gives Godot and C# users a lower-boilerplate path
-  for typed system/model data
+- `SaveFlowTypedDataSource` gives Godot users a lower-boilerplate path for typed
+  system/model data, while `SaveFlowTypedStateSource` gives C# users a direct
+  graph-source path for one typed state object
 - `SaveFlowPipelineControl` and `SaveFlowPipelineSignals` let scenes react to
   local save/load lifecycle stages without subclassing every Source
 - C# has baseline runtime entry wrappers and typed-data helpers
@@ -484,13 +485,13 @@ Current progress toward the **C# parity and typed-data polish** release:
   recommended active-slot/save-list workflow introduced on the GDScript side.
 - runtime regression coverage now includes a C# fixture for active-slot metadata,
   save-card summaries, and C# client slot operations.
-- C# JSON/Binary state providers now own default `State` storage and optional
-  payload sections, reducing the boilerplate for source-generated JSON state.
+- C# typed-state sources now own default `State` storage and optional payload
+  sections, reducing the boilerplate for source-generated typed state.
 - `saveflow-csharp-quickstart.md` now documents active slots, save cards, and
   the expanded C# wrapper surface.
 - the recommended template now includes a small C# workflow demo that wires
-  `SaveFlowJsonStateProvider`, `SaveFlowTypedDataSource`,
-  `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()`
+  `SaveFlowTypedStateSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and
+  `SaveFlowClient.SaveScope()`
   in one scene-authored example.
 
 ## Previous 0.4 Working Plan
