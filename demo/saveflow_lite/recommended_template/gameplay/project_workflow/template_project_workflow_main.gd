@@ -12,6 +12,7 @@ const DEMO_SFX_SCRIPT := preload("res://demo/saveflow_lite/recommended_template/
 const FOREST_ROOM := preload("res://demo/saveflow_lite/recommended_template/scenes/project_workflow/project_room_forest.tscn")
 const DUNGEON_ROOM := preload("res://demo/saveflow_lite/recommended_template/scenes/project_workflow/project_room_dungeon.tscn")
 const TemplateProjectSlotMetadataScript := preload("res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_project_slot_metadata.gd")
+const SaveFlowSlotWorkflowScript := preload("res://addons/saveflow_core/runtime/types/saveflow_slot_workflow.gd")
 
 @onready var _main_hub: Node2D = $WorldRoot/MainHub
 @onready var _subscene_root: Node2D = $WorldRoot/SubsceneRoot
@@ -39,10 +40,12 @@ var _room_ui_context: Dictionary = {}
 var _menu_open := false
 var _sfx: Node
 var _move_tick_cooldown := 0.0
+var _slot_workflow: Resource = SaveFlowSlotWorkflowScript.new()
 
 
 func _ready() -> void:
 	_install_sfx()
+	_configure_slot_workflow()
 	_hub_player.z_index = 50
 	_bind_menu()
 	_set_menu_open(false)
@@ -177,6 +180,7 @@ func _apply_room_ui_context(context: Dictionary) -> void:
 
 
 func _refresh_ui() -> void:
+	_sync_active_slot()
 	var title := "Project Workflow Template"
 	var area := "MainHub"
 	var stats := "Main slot #%d | %s" % [MAIN_SLOT_INDEX, MAIN_SLOT_ID]
@@ -207,10 +211,8 @@ func _refresh_slot_cards() -> void:
 
 
 func _main_slot_card_text() -> String:
-	return "Main Slot Card\nIndex: #%d\nStorage key: %s\nDisplay name: Project Workflow Main Data\nPayload: current location + hub player position\nOwner: Esc menu buttons" % [
-		MAIN_SLOT_INDEX,
-		MAIN_SLOT_ID,
-	]
+	var card: Resource = _slot_workflow.build_card_for_index(MAIN_SLOT_INDEX, _read_slot_summary_or_empty(MAIN_SLOT_ID))
+	return "%s\nPayload: current location + hub player position\nOwner: Esc menu buttons" % card.to_label_text()
 
 
 func _active_room_slot_card_text() -> String:
@@ -218,12 +220,8 @@ func _active_room_slot_card_text() -> String:
 		return "Active Room Slot Card\nInactive in MainHub\nEnter Forest or Dungeon to edit a subscene slot.\nRoom slots use their own scene payloads."
 	var room_slot_index := _active_room_slot_index()
 	var room_slot_id := _active_room_slot_id()
-	var room_display_name := String(_room_ui_context.get("slot_display_name", "%s Subscene Data" % _room_display_name(_location_id)))
-	return "Active Room Slot Card\nIndex: #%d\nStorage key: %s\nDisplay name: %s\nPayload: room typed data + player NodeSource + runtime coins" % [
-		room_slot_index,
-		room_slot_id,
-		room_display_name,
-	]
+	var card: Resource = _slot_workflow.build_card_for_index(room_slot_index, _read_slot_summary_or_empty(room_slot_id))
+	return "%s\nPayload: room typed data + player NodeSource + runtime coins" % card.to_label_text()
 
 
 func _current_hub_interaction() -> String:
@@ -264,28 +262,47 @@ func _active_room_slot_index() -> int:
 
 
 func slot_id_for_index(slot_index: int) -> String:
-	if slot_index == MAIN_SLOT_INDEX:
-		return MAIN_SLOT_ID
-	match slot_index:
-		1:
-			return "project_workflow_room_forest"
-		2:
-			return "project_workflow_room_dungeon"
-	return ""
+	return _slot_workflow.slot_id_for_index(slot_index)
 
 
 func _build_main_slot_metadata() -> SaveFlowSlotMetadata:
-	var meta: TemplateProjectSlotMetadata = TemplateProjectSlotMetadataScript.new()
-	meta.display_name = "Project Workflow Main Data"
-	meta.save_type = "manual"
-	meta.chapter_name = "Chapter 1"
-	meta.location_name = _room_display_name(_location_id)
+	var meta := _slot_workflow.build_slot_metadata(
+		MAIN_SLOT_INDEX,
+		"Project Workflow Main Data",
+		"manual",
+		"Chapter 1",
+		_room_display_name(_location_id),
+		0,
+		"",
+		"",
+		"main_scene"
+	) as TemplateProjectSlotMetadata
 	meta.scene_path = scene_file_path
 	meta.location_id = _location_id
-	meta.slot_index = MAIN_SLOT_INDEX
-	meta.slot_role = "main_scene"
-	meta.storage_key = MAIN_SLOT_ID
 	return meta
+
+
+func _configure_slot_workflow() -> void:
+	_slot_workflow.metadata_script = TemplateProjectSlotMetadataScript
+	_slot_workflow.empty_display_name_template = "Project Slot {index}"
+	_slot_workflow.set_slot_id_override(MAIN_SLOT_INDEX, MAIN_SLOT_ID)
+	_slot_workflow.set_slot_id_override(1, "project_workflow_room_forest")
+	_slot_workflow.set_slot_id_override(2, "project_workflow_room_dungeon")
+	_slot_workflow.select_slot_index(MAIN_SLOT_INDEX)
+
+
+func _sync_active_slot() -> void:
+	var next_active_slot_index := MAIN_SLOT_INDEX if _location_id == "main" else _active_room_slot_index()
+	_slot_workflow.select_slot_index(next_active_slot_index)
+
+
+func _read_slot_summary_or_empty(slot_id: String) -> Dictionary:
+	if slot_id.is_empty() or slot_id == "<none>":
+		return {}
+	var summary_result: SaveResult = SaveFlow.read_slot_summary(slot_id)
+	if not summary_result.ok:
+		return {}
+	return summary_result.data if summary_result.data is Dictionary else {}
 
 
 func _room_display_name(room_id: String) -> String:

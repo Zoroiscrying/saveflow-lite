@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0
+
+Updated in this release:
+- Added `SaveFlowSlotWorkflow` and `SaveFlowSlotCard` helpers for active slot index ownership, stable slot-id construction, typed slot metadata, and production-style save-list cards
+- Updated the recommended project workflow so manual saves, load slots, delete slots, autosave, and checkpoint saves all operate through one explicit active slot instead of writing every visible save card
+- Added runtime tests for active-slot save/delete behavior, autosave/checkpoint writes, and recommended-template card summaries
+- Added `SaveFlowNodeSource` authoring warnings for unsupported target built-in selections and invalid target built-in field overrides so stale inspector settings no longer fail silently
+- Added `SaveFlowEntityCollectionSource` authoring warnings for duplicate runtime entity `persistent_id` values, default `Identity` fallback ids, and entity `type_key` values that the configured factory cannot handle
+- Expanded scene validator regression coverage so NodeSource built-in warnings and EntityCollection identity/factory warnings surface consistently from validator issue lists
+- Expanded user-facing docs for fixing common source ownership, built-in selection, runtime container, identity, and factory routing mistakes
+
 ## 0.3.0
 
 Updated in this release:

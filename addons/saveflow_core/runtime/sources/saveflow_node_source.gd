@@ -302,6 +302,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 	var missing_properties: PackedStringArray = PackedStringArray(plan.get("missing_properties", PackedStringArray()))
 	if not missing_properties.is_empty():
 		warnings.append("Missing target properties: %s" % ", ".join(missing_properties))
+	for warning in PackedStringArray(plan.get("built_in_selection_warnings", PackedStringArray())):
+		warnings.append(warning)
 	for warning in get_saveflow_authoring_warnings():
 		warnings.append(warning)
 	return warnings
@@ -330,6 +332,7 @@ func describe_node_plan() -> Dictionary:
 			"source_child_paths": source_child_paths,
 			"source_child_suggestions": _build_source_child_suggestions(source_child_paths, null),
 			"target_is_source_helper": false,
+			"built_in_selection_warnings": PackedStringArray(),
 			"missing_properties": PackedStringArray(),
 			"missing_paths": included_paths.duplicate(),
 			"missing_path_suggestions": _build_missing_path_suggestions(included_paths.duplicate(), source_child_paths, null),
@@ -342,6 +345,7 @@ func describe_node_plan() -> Dictionary:
 	var target_properties: PackedStringArray = _resolve_target_property_names(target_node)
 	var supported_ids: PackedStringArray = SaveFlowBuiltInSerializerRegistry.supported_ids_for_node(target_node)
 	var active_ids: PackedStringArray = _resolve_active_target_builtin_ids(target_node)
+	var built_in_selection_warnings: PackedStringArray = _collect_target_builtin_selection_warnings(target_node)
 	var missing_properties: PackedStringArray = []
 	for property_name in target_properties:
 		if _is_ignored(property_name):
@@ -407,6 +411,7 @@ func describe_node_plan() -> Dictionary:
 		"helper_child_suggestions": helper_child_suggestions,
 		"source_child_paths": source_child_paths,
 		"source_child_suggestions": source_child_suggestions,
+		"built_in_selection_warnings": built_in_selection_warnings,
 		"missing_properties": missing_properties,
 		"missing_paths": missing_paths,
 		"missing_path_suggestions": missing_path_suggestions,
@@ -626,6 +631,69 @@ func _resolve_active_target_builtin_field_overrides(target_node: Node) -> Dictio
 			continue
 		overrides[serializer_id] = field_ids
 	return overrides
+
+
+func _collect_target_builtin_selection_warnings(target_node: Node) -> PackedStringArray:
+	var warnings: PackedStringArray = []
+	if target_node == null or not include_target_built_ins:
+		return warnings
+
+	var supported_ids: PackedStringArray = SaveFlowBuiltInSerializerRegistry.supported_ids_for_node(target_node)
+	var active_ids: PackedStringArray = _resolve_active_target_builtin_ids(target_node)
+	var target_label := _describe_target_path(target_node)
+	var supported_summary := _format_supported_id_list(supported_ids)
+
+	for serializer_id in included_target_builtin_ids:
+		if supported_ids.has(serializer_id):
+			continue
+		warnings.append(
+			"Selected target built-in `%s` is not supported by `%s`. Supported target built-ins: %s." %
+			[serializer_id, target_label, supported_summary]
+		)
+
+	for serializer_id_variant in target_builtin_field_overrides.keys():
+		var serializer_id := String(serializer_id_variant)
+		if serializer_id.is_empty():
+			continue
+		if not supported_ids.has(serializer_id):
+			warnings.append(
+				"Field override for target built-in `%s` is ignored because `%s` does not support that built-in. Supported target built-ins: %s." %
+				[serializer_id, target_label, supported_summary]
+			)
+			continue
+		if not active_ids.has(serializer_id):
+			warnings.append(
+				"Field override for target built-in `%s` is ignored because that built-in is not selected for `%s`." %
+				[serializer_id, target_label]
+			)
+			continue
+
+		var supported_field_ids := _field_ids_for_target_builtin(target_node, serializer_id)
+		if supported_field_ids.is_empty():
+			continue
+		for field_id in _to_packed_string_array(target_builtin_field_overrides[serializer_id_variant]):
+			if supported_field_ids.has(field_id):
+				continue
+			warnings.append(
+				"Target built-in `%s` does not expose field `%s` on `%s`. Supported fields: %s." %
+				[serializer_id, field_id, target_label, _format_supported_id_list(supported_field_ids)]
+			)
+	return warnings
+
+
+func _field_ids_for_target_builtin(target_node: Node, serializer_id: String) -> PackedStringArray:
+	var field_ids: PackedStringArray = []
+	for field_variant in SaveFlowBuiltInSerializerRegistry.fields_for_node(target_node, serializer_id):
+		if not (field_variant is Dictionary):
+			continue
+		_append_unique(field_ids, String(Dictionary(field_variant).get("id", "")))
+	return field_ids
+
+
+func _format_supported_id_list(ids: PackedStringArray) -> String:
+	if ids.is_empty():
+		return "<none>"
+	return ", ".join(ids)
 
 
 func _collect_participant_candidates(target_node: Node, current: Node, into: Array) -> void:

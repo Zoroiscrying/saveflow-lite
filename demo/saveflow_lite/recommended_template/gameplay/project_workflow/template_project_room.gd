@@ -7,6 +7,7 @@ const DEMO_SFX_SCRIPT := preload("res://demo/saveflow_lite/recommended_template/
 const RuntimeCoinScene := preload("res://demo/saveflow_lite/recommended_template/scenes/prefabs/template_runtime_coin.tscn")
 const TemplateRoomSaveDataScript := preload("res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_room_save_data.gd")
 const TemplateProjectSlotMetadataScript := preload("res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_project_slot_metadata.gd")
+const SaveFlowSlotWorkflowScript := preload("res://addons/saveflow_core/runtime/types/saveflow_slot_workflow.gd")
 
 @export var room_id := "forest"
 @export var display_name := "Forest Room"
@@ -36,10 +37,12 @@ var _sfx: Node
 var _move_tick_cooldown := 0.0
 var _input_active := true
 var _player_step_index := 0
+var _slot_workflow: Resource = SaveFlowSlotWorkflowScript.new()
 
 
 func _ready() -> void:
 	_install_sfx()
+	_configure_slot_workflow()
 	_ensure_room_data()
 	_ensure_player_animation_library()
 	if room_data.room_id.is_empty():
@@ -367,21 +370,31 @@ func _insert_track_keys(animation: Animation, path: NodePath, values: Array) -> 
 
 
 func _slot_id() -> String:
-	return "project_workflow_room_%s" % room_id
+	return _slot_workflow.slot_id_for_index(slot_index)
 
 
 func _build_room_slot_metadata() -> SaveFlowSlotMetadata:
-	var meta: TemplateProjectSlotMetadata = TemplateProjectSlotMetadataScript.new()
-	meta.display_name = "%s Subscene Data" % display_name
-	meta.save_type = "manual"
-	meta.chapter_name = "Chapter 1"
-	meta.location_name = display_name
+	var meta := _slot_workflow.build_slot_metadata(
+		slot_index,
+		"%s Subscene Data" % display_name,
+		"manual",
+		"Chapter 1",
+		display_name,
+		0,
+		"",
+		"",
+		"room_subscene"
+	) as TemplateProjectSlotMetadata
 	meta.room_scene_path = scene_file_path
 	meta.room_id = room_id
-	meta.slot_index = slot_index
-	meta.slot_role = "room_subscene"
-	meta.storage_key = _slot_id()
 	return meta
+
+
+func _configure_slot_workflow() -> void:
+	_slot_workflow.metadata_script = TemplateProjectSlotMetadataScript
+	_slot_workflow.empty_display_name_template = "%s Slot {index}" % display_name
+	_slot_workflow.set_slot_id_override(slot_index, "project_workflow_room_%s" % room_id)
+	_slot_workflow.select_slot_index(slot_index)
 
 
 func _format_result(label: String, result: SaveResult) -> String:

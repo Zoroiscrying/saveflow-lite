@@ -171,7 +171,9 @@ Use an integer slot index for gameplay identity, selection, and sorting. Derive
 the SaveFlow storage key from that index, then store string labels such as
 `Forest Gate` or `Manual Slot 2` as metadata.
 
-Minimal active-slot pattern:
+Use `SaveFlowSlotWorkflow` for the common active-slot pattern. It keeps the
+game-owned active index explicit while removing repeated string-key glue for
+slot ids, metadata, and save-card UI rows:
 
 ```gdscript
 class_name MySlotMetadata
@@ -180,45 +182,69 @@ extends SaveFlowSlotMetadata
 @export var slot_index := 0
 @export var storage_key := ""
 
-var active_slot_index := 1
+const SlotWorkflowScript := preload("res://addons/saveflow_core/runtime/types/saveflow_slot_workflow.gd")
 
-func slot_id_for_index(slot_index: int) -> String:
-    return "slot_%d" % slot_index
+var slot_workflow: Resource = SlotWorkflowScript.new()
 
-func build_slot_metadata(slot_index: int, label: String, save_type: String) -> MySlotMetadata:
-    var slot_id := slot_id_for_index(slot_index)
-    var meta := MySlotMetadata.new()
-    meta.display_name = label
-    meta.save_type = save_type
-    meta.location_name = current_location_name()
-    meta.playtime_seconds = current_playtime_seconds()
-    meta.slot_index = slot_index
-    meta.storage_key = slot_id
-    return meta
+func _ready() -> void:
+    slot_workflow.metadata_script = MySlotMetadata
+    slot_workflow.slot_id_template = "slot_{index}"
+    slot_workflow.empty_display_name_template = "Manual Slot {index}"
+    slot_workflow.select_slot_index(1)
 
 func load_slot(slot_index: int) -> void:
-    var slot_id := slot_id_for_index(slot_index)
+    var slot_id := slot_workflow.slot_id_for_index(slot_index)
     var result := SaveFlow.load_data(slot_id)
     if result.ok:
-        active_slot_index = slot_index
+        slot_workflow.select_slot_index(slot_index)
         apply_payload(result.data)
 
 func manual_save(slot_index: int) -> void:
-    var meta := build_slot_metadata(slot_index, "Manual Slot %d" % slot_index, "manual")
-    var result := SaveFlow.save_data(slot_id_for_index(slot_index), build_payload(), meta)
+    slot_workflow.select_slot_index(slot_index)
+    var meta := slot_workflow.build_active_slot_metadata(
+        "Manual Slot %d" % slot_index,
+        "manual",
+        "Chapter 1",
+        current_location_name(),
+        current_playtime_seconds()
+    )
+    var result := SaveFlow.save_data(slot_workflow.active_slot_id(), build_payload(), meta)
     if result.ok:
-        active_slot_index = slot_index
+        refresh_save_cards()
 
 func autosave_after_door() -> void:
-    var meta := build_slot_metadata(active_slot_index, "Door Autosave", "autosave")
-    SaveFlow.save_data(slot_id_for_index(active_slot_index), build_payload(), meta)
+    var meta := slot_workflow.build_active_slot_metadata(
+        "Door Autosave",
+        "autosave",
+        "Chapter 1",
+        current_location_name(),
+        current_playtime_seconds()
+    )
+    SaveFlow.save_data(slot_workflow.active_slot_id(), build_payload(), meta)
 
 func checkpoint_reached(checkpoint_id: String) -> void:
     var payload := build_payload()
     payload["active_checkpoint_id"] = checkpoint_id
-    var meta := build_slot_metadata(active_slot_index, "Checkpoint", "checkpoint")
-    SaveFlow.save_data(slot_id_for_index(active_slot_index), payload, meta)
+    var meta := slot_workflow.build_active_slot_metadata(
+        "Checkpoint",
+        "checkpoint",
+        "Chapter 1",
+        current_location_name(),
+        current_playtime_seconds()
+    )
+    SaveFlow.save_data(slot_workflow.active_slot_id(), payload, meta)
+
+func refresh_save_cards() -> void:
+    var summaries := SaveFlow.list_slot_summaries()
+    if not summaries.ok:
+        return
+    var cards := slot_workflow.build_cards_for_indices(PackedInt32Array([1, 2, 3]), summaries.data)
+    render_cards(cards)
 ```
+
+`SaveFlowSlotWorkflow` is intentionally not a hidden slot manager. It does not
+call save/load/delete by itself. Game code still chooses the event, the payload,
+and the SaveFlow entry point.
 
 Save-card rule:
 

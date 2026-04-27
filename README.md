@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.3.0`
+- Plugin version: `0.5.0`
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 
@@ -174,6 +174,7 @@ SaveFlow Lite focuses on:
 - `SaveFlowPrefabEntityFactory` as the default low-boilerplate runtime factory
 - slot operations: save, load, delete, copy, rename, list
 - typed slot metadata helpers through `SaveFlowSlotMetadata`
+- active-slot and save-card UI helpers through `SaveFlowSlotWorkflow` and `SaveFlowSlotCard`
 - safe-write pipeline with temp file replacement
 - optional last-known-good slot backup beside each slot file
 - compatibility inspection and baseline load blocking for schema/data-version mismatches
@@ -260,6 +261,41 @@ Recommended save-card rule:
 - manual save, autosave, and checkpoint events write the active card unless the
   game intentionally selected a different slot
 - `display_name` is metadata for the row/card UI, not the storage key
+
+Use `SaveFlowSlotWorkflow` when your game follows the common pattern of
+integer slot selection plus stable storage keys:
+
+```gdscript
+const SlotWorkflowScript := preload("res://addons/saveflow_core/runtime/types/saveflow_slot_workflow.gd")
+
+var slot_workflow: Resource = SlotWorkflowScript.new()
+
+func _ready() -> void:
+	slot_workflow.slot_id_template = "slot_{index}"
+	slot_workflow.empty_display_name_template = "Manual Slot {index}"
+	slot_workflow.select_slot_index(1)
+
+func manual_save(slot_index: int) -> void:
+	slot_workflow.select_slot_index(slot_index)
+	var meta: SaveFlowSlotMetadata = slot_workflow.build_active_slot_metadata(
+		"Manual Slot %d" % slot_index,
+		"manual",
+		"Chapter 1",
+		current_location_name(),
+		current_playtime_seconds()
+	)
+	SaveFlow.save_data(slot_workflow.active_slot_id(), build_payload(), meta)
+
+func build_save_cards() -> Array:
+	var summaries := SaveFlow.list_slot_summaries()
+	if not summaries.ok:
+		return []
+	return slot_workflow.build_cards_for_indices(PackedInt32Array([1, 2, 3]), summaries.data)
+```
+
+`SaveFlowSlotWorkflow` does not save automatically and does not own your
+session. It only centralizes active slot index, storage-key mapping, metadata
+construction, and save-card summary data.
 
 To keep save-list metadata consistent, start from typed slot metadata. Extend
 `SaveFlowSlotMetadata` when your project needs more save-list fields:

@@ -252,6 +252,15 @@ Recommended focus:
 - autosave and checkpoint integration examples
 - better business-facing save-slot ergonomics without adding Pro orchestration concepts
 
+### Lite v0.5
+
+Recommended focus:
+
+- built-in final pass
+- authoring warning polish
+- scene validator consistency
+- docs for fixing common source ownership and built-in selection mistakes
+
 ## Current Roadmap Checkpoint
 
 As of `0.1.10`, several roadmap lines have moved from "planned" into baseline
@@ -287,14 +296,180 @@ That does **not** mean these areas are complete forever.
 It means the next Lite work should avoid adding new concepts unless they remove
 a concrete adoption or reliability problem.
 
-The largest remaining Lite gap is now:
+The largest remaining Lite gap for the next line is now:
 
-- users can configure SaveFlow correctly, but they still need faster feedback
-  when the current project or scene is subtly unsafe
+- users can compose real scenes correctly, but stale built-in selections,
+  incorrect field overrides, ownership mistakes, and incomplete authoring plans
+  should become clearer before runtime save/load tests
 
 ## Next Release Working Plan
 
 The next Lite release should be framed as:
+
+- **Built-in final pass and authoring warnings**
+
+The goal is not to add another save model.
+The goal is to make the existing node-authored workflow safer:
+
+- common Godot node state should be covered by focused built-ins
+- built-in serializer and field selections should not fail silently
+- ownership mistakes should remain visible from the node inspector and scene validator
+- every new warning should point at a concrete fix
+
+### Must Have
+
+#### 1. Built-in coverage audit
+
+Target problem:
+
+- built-ins reduce boilerplate only when their restore semantics are obvious
+- adding too many node types makes Lite harder to explain
+- authors need to know when a built-in is enough and when a custom source is better
+
+Lite should audit:
+
+- every registered built-in serializer
+- current test coverage for each high-value category
+- candidate gaps with a clear "add", "defer", or "do not add" decision
+
+Acceptance bar:
+
+- every built-in has a clear reason to exist
+- no new built-in ships without a focused runtime test
+- unclear Godot node state is deferred instead of guessed
+
+#### 2. Built-in selection warnings
+
+Target problem:
+
+- `SaveFlowNodeSource` can be edited after the target node type changes
+- stale serializer ids and field ids may be filtered out safely at runtime
+- safe filtering is still confusing when the author expects that state to save
+
+Lite should warn when:
+
+- `included_target_builtin_ids` contains unsupported serializer ids
+- `target_builtin_field_overrides` references an unsupported serializer
+- field overrides reference fields that the serializer does not expose
+
+Acceptance bar:
+
+- inspector warnings explain what is ignored and why
+- scene validator surfaces those warnings
+- save/load behavior remains backwards compatible
+
+#### 3. Entity factory and collection warning pass
+
+Target problem:
+
+- runtime entity save/load is easy to misconfigure
+- missing containers, missing factories, missing type keys, or stale prefab setup should be visible before pressing Play
+- warnings should explain the node relationship, not just say "invalid"
+
+Lite should tighten:
+
+- prefab factory plan details
+- collection source plan details
+- double-collection diagnostics
+- missing identity guidance
+
+Acceptance bar:
+
+- a user can fix the setup from the node tree and inspector
+- custom factories still work without forcing prefab-factory assumptions
+- warnings do not become runtime-only logs
+
+#### 4. Scene validator consistency
+
+Target problem:
+
+- users often edit scenes without opening Save Graph tooling
+- node warnings and the scene validator badge should agree about the same problems
+- duplicate keys and invalid plans should remain easy to find
+
+Lite should ensure:
+
+- source/scope/factory/pipeline warnings flow into the validator
+- duplicate source keys stay errors
+- incomplete but safe authoring states stay warnings
+- each issue includes node path and next-action guidance
+
+#### 5. Documentation
+
+Target problem:
+
+- warnings help only when users understand the underlying ownership model
+- built-ins are useful only when users know their boundary
+
+Lite docs should explain:
+
+- when `SaveFlowNodeSource` built-ins are enough
+- when to add a child source directly instead of saving the child subtree
+- when to use `SaveFlowEntityCollectionSource` for runtime containers
+- how to fix stale built-in selections and field overrides
+
+### Not In This Release
+
+Keep these out of scope:
+
+- migration frameworks
+- cloud save
+- cross-device conflict handling
+- reference repair systems
+- staged multi-scene restore orchestration
+- multithreaded seamless save pipelines
+- a full save-menu UI framework
+- broad setup wizards
+- C# parity expansion beyond bug fixes
+
+### Release Readiness Check
+
+Before shipping this release, verify:
+
+1. every new built-in has a focused runtime test
+2. every new warning appears in the relevant inspector warning path
+3. scene validator shows source/scope/factory/pipeline warnings consistently
+4. docs explain the fix, not only the error
+5. runtime smoke tests still pass
+
+### 0.5.x Progress Checkpoint
+
+Current progress toward the **Built-in final pass and authoring warnings** release:
+
+- `SaveFlowNodeSource` now reports unsupported target built-in ids and unknown
+  target built-in field overrides instead of silently filtering them out.
+- `SaveFlowEntityCollectionSource` now reports duplicate runtime
+  `persistent_id` values, default `Identity` fallback ids, and entity
+  `type_key` values that the configured factory cannot handle.
+- scene validator regression tests now confirm both the NodeSource built-in
+  warnings and EntityCollection identity/factory warnings surface from the
+  validator issue list.
+- `saveflow-common-authoring-mistakes.md` now includes concrete fixes for stale
+  built-ins, invalid field overrides, duplicate entity ids, default identity ids,
+  factory type mismatches, and double-collected runtime containers.
+- `docs/workspace/saveflow-lite-0.5-builtins-authoring-audit.md` now tracks the
+  0.5.x audit scope, current coverage, recommended work order, and release bar.
+
+## Previous 0.4 Working Plan
+
+The 0.4 Lite release was framed as:
+
+- **Business save-slot workflow polish**
+
+Current completed scope:
+
+- `SaveFlowSlotWorkflow` centralizes active slot index, slot-id templates,
+  slot-id overrides, typed metadata construction, and save-card construction.
+- `SaveFlowSlotCard` provides typed card data for in-game continue/load/save UI
+  without loading full gameplay payloads.
+- the recommended project workflow template uses the helper for main-scene and
+  subscene slot cards while keeping save/load calls explicit.
+- runtime tests cover active slot save/delete behavior, autosave/checkpoint
+  writes to the active slot only, and recommended template card summaries.
+
+## Previous 0.3 Working Plan
+
+The 0.3 Lite release was framed as:
 
 - **Preflight + reliability polish**
 

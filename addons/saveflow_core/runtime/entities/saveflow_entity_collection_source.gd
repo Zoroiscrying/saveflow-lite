@@ -191,6 +191,9 @@ func describe_entity_collection_plan() -> Dictionary:
 		if not bool(candidate.get("has_identity", false)):
 			missing_identity_nodes.append(String(candidate.get("path", "")))
 
+	var duplicate_persistent_id_conflicts := _detect_duplicate_persistent_id_conflicts(entity_candidates)
+	var default_identity_persistent_id_nodes := _detect_default_identity_persistent_id_nodes(entity_candidates)
+	var unsupported_entity_type_nodes := _detect_unsupported_entity_type_nodes(entity_candidates, factory)
 	return {
 		"valid": target != null and _is_entity_collection_plan_factory_valid(factory, saveflow_autoload_available),
 		"reason": _resolve_plan_reason(target, factory, saveflow_autoload_available),
@@ -215,6 +218,9 @@ func describe_entity_collection_plan() -> Dictionary:
 		"auto_register_factory": auto_register_factory,
 		"entity_count": entity_candidates.size(),
 		"missing_identity_nodes": missing_identity_nodes,
+		"duplicate_persistent_id_conflicts": duplicate_persistent_id_conflicts,
+		"default_identity_persistent_id_nodes": default_identity_persistent_id_nodes,
+		"unsupported_entity_type_nodes": unsupported_entity_type_nodes,
 		"entity_candidates": entity_candidates,
 	}
 
@@ -232,13 +238,16 @@ func discover_entity_candidates() -> Array:
 		var identity := _find_identity(entity)
 		var entity_scope := _resolve_entity_scope(entity)
 		var descriptor_extra := _collect_entity_descriptor_extra(entity, identity)
+		var identity_path := _relative_path_from_target(target, identity) if identity != null else ""
 		entities.append(
 			{
 				"name": entity.name,
 				"path": _relative_path_from_target(target, entity),
 				"has_identity": identity != null,
+				"identity_path": identity_path,
 				"persistent_id": identity.get_persistent_id() if identity != null else "",
 				"type_key": identity.get_type_key() if identity != null else "",
+				"uses_default_identity_name_id": _uses_default_identity_name_id(identity),
 				"descriptor_extra_keys": PackedStringArray(_dictionary_key_names(descriptor_extra)),
 				"has_local_scope": entity_scope != null,
 			}
@@ -253,6 +262,12 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("SaveFlowEntityCollectionSource plan is invalid: %s" % String(plan.get("reason", "INVALID_ENTITY_COLLECTION")))
 	for path_text in PackedStringArray(plan.get("missing_identity_nodes", PackedStringArray())):
 		warnings.append("Runtime entity is missing SaveFlowIdentity: %s" % path_text)
+	for conflict_text in PackedStringArray(plan.get("duplicate_persistent_id_conflicts", PackedStringArray())):
+		warnings.append("Duplicate runtime entity persistent_id: %s" % conflict_text)
+	for path_text in PackedStringArray(plan.get("default_identity_persistent_id_nodes", PackedStringArray())):
+		warnings.append("SaveFlowIdentity is using its helper node name as persistent_id: %s. Set a stable persistent_id on the Identity node." % path_text)
+	for warning_text in PackedStringArray(plan.get("unsupported_entity_type_nodes", PackedStringArray())):
+		warnings.append(warning_text)
 	for conflict_text in PackedStringArray(plan.get("double_collection_conflicts", PackedStringArray())):
 		warnings.append("Runtime set may be double-collected by parent object save logic: %s" % conflict_text)
 	for warning in get_saveflow_authoring_warnings():
@@ -333,6 +348,14 @@ func _find_identity(entity: Node) -> Node:
 		if child.has_method("get_persistent_id") and child.has_method("get_type_key"):
 			return child
 	return null
+
+
+func _uses_default_identity_name_id(identity: Node) -> bool:
+	if not (identity is SaveFlowIdentity):
+		return false
+	if not String(identity.get("persistent_id")).is_empty():
+		return false
+	return String(identity.name).to_snake_case() == String(identity.call("get_persistent_id"))
 
 
 func _collect_entity_payload(entity: Node) -> Dictionary:
@@ -693,6 +716,60 @@ func _describe_factory_spawn_summary(factory_plan: Dictionary) -> String:
 	if not supported_entity_types.is_empty():
 		return "Factory handles `%s`.%s" % [type_summary, _describe_spawn_container_suffix(auto_create_container, container_name)]
 	return "Custom entity factory flow.%s" % _describe_spawn_container_suffix(auto_create_container, container_name)
+
+
+func _detect_duplicate_persistent_id_conflicts(entity_candidates: Array) -> PackedStringArray:
+	var paths_by_id: Dictionary = {}
+	for candidate_variant in entity_candidates:
+		var candidate := Dictionary(candidate_variant)
+		if not bool(candidate.get("has_identity", false)):
+			continue
+		var persistent_id := String(candidate.get("persistent_id", "")).strip_edges()
+		if persistent_id.is_empty():
+			continue
+		var paths := PackedStringArray(paths_by_id.get(persistent_id, PackedStringArray()))
+		paths.append(String(candidate.get("path", "")))
+		paths_by_id[persistent_id] = paths
+
+	var conflicts: PackedStringArray = []
+	for persistent_id_variant in paths_by_id.keys():
+		var persistent_id := String(persistent_id_variant)
+		var paths := PackedStringArray(paths_by_id[persistent_id_variant])
+		if paths.size() <= 1:
+			continue
+		conflicts.append("`%s` appears on %s" % [persistent_id, ", ".join(paths)])
+	return conflicts
+
+
+func _detect_default_identity_persistent_id_nodes(entity_candidates: Array) -> PackedStringArray:
+	var paths: PackedStringArray = []
+	for candidate_variant in entity_candidates:
+		var candidate := Dictionary(candidate_variant)
+		if not bool(candidate.get("uses_default_identity_name_id", false)):
+			continue
+		_append_unique_string(paths, String(candidate.get("identity_path", "")))
+	return paths
+
+
+func _detect_unsupported_entity_type_nodes(entity_candidates: Array, factory: Node) -> PackedStringArray:
+	var warnings: PackedStringArray = []
+	if factory == null or not factory.has_method("can_handle_type"):
+		return warnings
+	for candidate_variant in entity_candidates:
+		var candidate := Dictionary(candidate_variant)
+		if not bool(candidate.get("has_identity", false)):
+			continue
+		var type_key := String(candidate.get("type_key", "")).strip_edges()
+		if type_key.is_empty():
+			continue
+		var can_handle: bool = factory.call("can_handle_type", type_key)
+		if can_handle:
+			continue
+		warnings.append(
+			"Runtime entity `%s` uses type_key `%s`, but factory `%s` does not handle that type." %
+			[String(candidate.get("path", "")), type_key, _describe_node_name(factory)]
+		)
+	return warnings
 
 
 func _detect_ancestor_node_source_conflicts(target: Node) -> PackedStringArray:
