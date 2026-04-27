@@ -100,7 +100,7 @@ offset_left = 230.0
 offset_top = 238.0
 offset_right = 420.0
 offset_bottom = 300.0
-text = "SaveFlowJsonStateProvider<T>
+text = "SaveFlowJsonStateProvider
 typed C# room data"
 horizontal_alignment = 1
 

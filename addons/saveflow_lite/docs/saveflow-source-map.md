@@ -44,7 +44,7 @@ Use it to answer two questions quickly:
 - [SaveFlowClient.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs)
   Thin C# wrapper around the `SaveFlow` autoload.
 - [SaveFlowTypedData.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowTypedData.cs)
-  C# typed-data helper. Provides encoded payload helpers (`SaveFlowEncodedPayload`, `ISaveFlowEncodedPayloadProvider`, `SaveFlowJsonStateProvider`, `SaveFlowBinaryStateProvider`) for source-generated JSON, binary bytes, or project-owned encoders. State providers include default state storage and optional payload sections; reflection convenience helpers (`SaveFlowTypedResource`, `SaveFlowTypedRefCounted`, `SaveFlowTypedPayload`) remain available for small state.
+  C# typed-data helper. Provides encoded payload helpers (`SaveFlowEncodedPayload`, `ISaveFlowEncodedPayloadProvider`, `SaveFlowJsonStateProvider`, `SaveFlowBinaryStateProvider`) for source-generated JSON, binary bytes, or project-owned encoders. JSON/Binary state providers use non-generic Godot bases to avoid C# script reload collisions; reflection convenience helpers (`SaveFlowTypedResource`, `SaveFlowTypedRefCounted`, `SaveFlowTypedPayload`) remain available for small state.
 - [SaveFlowEntityDescriptor.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowEntityDescriptor.cs)
   C# helper for runtime entity descriptors so integrations can avoid handwritten descriptor keys.
 - [SaveFlowSlotWorkflow.cs](F:/Coding-Projects/Godot/plugin-development/addons/saveflow_core/runtime/dotnet/SaveFlowSlotWorkflow.cs)

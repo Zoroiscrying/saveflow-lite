@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2
+
+Updated in this release:
+- Reworked C# JSON/Binary state providers to use non-generic Godot `Node`/`Resource` bases, avoiding Godot C# script reload collisions from generic `GodotObject` base classes
+- Kept C# typed payloads dictionary-free by using `JsonTypeInfo`, `SaveFlowState`, and typed capture/apply overrides instead of per-field SaveFlow dictionaries
+- Updated the C# workflow demo, fixtures, docs, and source map language to the Godot-safe non-generic provider shape
+- Preserved C# workflow behavior through C# build, Godot check-only, Lite runtime regression, and recommended-template regression runs
+
 ## 0.6.1
 
 Updated in this release:
@@ -12,8 +20,8 @@ Updated in this release:
 Updated in this release:
 - Expanded C# parity with thin `SaveFlowClient` wrappers for baseline slot, metadata, graph, scene, scope, validation, current-data, and entity-restore workflows
 - Added C# `SaveFlowSlotWorkflow` and `SaveFlowSlotCard` helpers so active-slot ownership, typed slot metadata, and save-list cards no longer require repeated string-key glue
-- Improved C# typed-data ergonomics with default `State` storage and optional payload sections for `SaveFlowJsonStateProvider<TState>` and `SaveFlowBinaryStateProvider<TState>`
-- Added a scene-authored C# workflow demo showing `SaveFlowJsonStateProvider<TState>`, `SaveFlowTypedDataSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()` working together
+- Improved C# typed-data ergonomics with default state storage and optional payload sections for `SaveFlowJsonStateProvider` and `SaveFlowBinaryStateProvider`
+- Added a scene-authored C# workflow demo showing `SaveFlowJsonStateProvider`, `SaveFlowTypedDataSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()` working together
 - Added Quick Access entry, docs, and runtime coverage for the C# workflow demo so C# users can start from a runnable project-style example
 - Updated Setup Health and settings guidance to reference the C# workflow demo instead of the removed standalone Case 4 wording
 - Preserved runtime behavior through Lite runtime, recommended-template, editor-smoke, C# build, and Godot check-only regression runs

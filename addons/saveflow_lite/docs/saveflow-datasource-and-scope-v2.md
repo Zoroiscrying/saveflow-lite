@@ -100,13 +100,14 @@ project-owned encoder. SaveFlow stores the encoded result as one payload and
 does not inspect every C# field.
 
 For the common C# case where one DTO is the source of truth, inherit
-`SaveFlowJsonStateProvider<TState>`. It captures `State` during save, replaces
-`State` during load, and then calls `OnSaveFlowStateApplied(state)` for
-post-load refresh. Use explicit encoded provider methods only when state
-replacement is not enough.
+`SaveFlowJsonStateProvider`. It captures `SaveFlowState` during save, replaces
+that state during load, and then calls `OnSaveFlowStateApplied(state)` for
+post-load refresh. Use a tiny typed property around `GetSaveFlowState<T>()` /
+`SetSaveFlowState(...)` when gameplay code wants a strongly typed `State`
+member.
 
-If the project wants binary payloads, use `SaveFlowBinaryStateProvider<TState>`
-or `SaveFlowBinaryResource<TData>`. These bases keep SaveFlow out of the binary
+If the project wants binary payloads, use `SaveFlowBinaryStateProvider`
+or `SaveFlowBinaryResource`. These bases keep SaveFlow out of the binary
 format decision: the project implements `Serialize...(...) -> byte[]` and
 `Deserialize...(byte[])`, while SaveFlow stores the bytes under the same encoded
 payload contract. This is the intended hook for MessagePack, protobuf,

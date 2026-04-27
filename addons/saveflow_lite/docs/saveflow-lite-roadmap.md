@@ -489,7 +489,7 @@ Current progress toward the **C# parity and typed-data polish** release:
 - `saveflow-csharp-quickstart.md` now documents active slots, save cards, and
   the expanded C# wrapper surface.
 - the recommended template now includes a small C# workflow demo that wires
-  `SaveFlowJsonStateProvider<TState>`, `SaveFlowTypedDataSource`,
+  `SaveFlowJsonStateProvider`, `SaveFlowTypedDataSource`,
   `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()`
   in one scene-authored example.
 

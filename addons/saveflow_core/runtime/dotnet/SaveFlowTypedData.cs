@@ -251,30 +251,36 @@ public static class SaveFlowTypedPayload
 }
 
 /// <summary>
-/// Resource base for source-generated JSON payloads.
-/// Use this when the save data can be captured as a DTO and serialized with a
-/// JsonSerializerContext-generated JsonTypeInfo.
+/// Resource base for source-generated JSON payloads. The base is intentionally
+/// non-generic because Godot registers every GodotObject-derived partial script;
+/// generic GodotObject bases can collide during C# script reload.
 /// </summary>
-public abstract partial class SaveFlowJsonResource<TData> : Resource, ISaveFlowEncodedPayloadProvider
+public abstract partial class SaveFlowJsonResource : Resource, ISaveFlowEncodedPayloadProvider
 {
-	protected virtual string SaveFlowPayloadSchema => typeof(TData).FullName ?? typeof(TData).Name;
 	protected virtual int SaveFlowPayloadDataVersion => 1;
 	protected virtual GodotArray? SaveFlowPayloadSections => null;
-	protected abstract JsonTypeInfo<TData> SaveFlowJsonTypeInfo { get; }
+	protected abstract JsonTypeInfo SaveFlowJsonTypeInfo { get; }
+	protected virtual string SaveFlowPayloadSchema => SaveFlowJsonTypeInfo.Type.FullName ?? SaveFlowJsonTypeInfo.Type.Name;
 
-	protected abstract TData CaptureSaveData();
+	protected abstract object? CaptureSaveData();
 
-	protected abstract void ApplySaveData(TData data);
+	protected abstract void ApplySaveData(object? data);
 
 	public GodotDictionary ToSaveFlowEncodedPayload()
-		=> SaveFlowEncodedPayload.CreateJsonPayload(
-			CaptureSaveData(),
-			SaveFlowJsonTypeInfo,
+		=> SaveFlowEncodedPayload.FromText(
+			JsonSerializer.Serialize(CaptureSaveData(), SaveFlowJsonTypeInfo),
+			SaveFlowEncodedPayload.EncodingJson,
+			SaveFlowEncodedPayload.ContentTypeJson,
 			SaveFlowPayloadSchema,
 			SaveFlowPayloadDataVersion);
 
 	public void ApplySaveFlowEncodedPayload(GodotDictionary payload)
-		=> SaveFlowEncodedPayload.ApplyJsonPayload(payload, SaveFlowJsonTypeInfo, ApplySaveData);
+	{
+		var text = SaveFlowEncodedPayload.GetText(payload);
+		if (string.IsNullOrEmpty(text))
+			return;
+		ApplySaveData(JsonSerializer.Deserialize(text, SaveFlowJsonTypeInfo));
+	}
 
 	public virtual GodotDictionary GetSaveFlowPayloadInfo()
 		=> SaveFlowEncodedPayload.JsonInfo(
@@ -294,39 +300,51 @@ public abstract partial class SaveFlowJsonResource<TData> : Resource, ISaveFlowE
 
 /// <summary>
 /// Node-backed source-generated JSON provider for the common "one state object"
-/// workflow. Loading replaces State by default, then calls OnSaveFlowStateApplied
-/// so gameplay code can refresh derived runtime state.
+/// workflow. Loading replaces SaveFlowState by default, then calls
+/// OnSaveFlowStateApplied so gameplay code can refresh derived runtime state.
 /// </summary>
-public abstract partial class SaveFlowJsonStateProvider<TState> : Node, ISaveFlowEncodedPayloadProvider
+public abstract partial class SaveFlowJsonStateProvider : Node, ISaveFlowEncodedPayloadProvider
 {
-	protected virtual string SaveFlowPayloadSchema => typeof(TState).FullName ?? typeof(TState).Name;
 	protected virtual int SaveFlowPayloadDataVersion => 1;
 	protected virtual GodotArray? SaveFlowPayloadSections => null;
-	protected abstract JsonTypeInfo<TState> SaveFlowJsonTypeInfo { get; }
-	protected virtual TState State { get; set; } = default!;
+	protected abstract JsonTypeInfo SaveFlowJsonTypeInfo { get; }
+	protected virtual string SaveFlowPayloadSchema => SaveFlowJsonTypeInfo.Type.FullName ?? SaveFlowJsonTypeInfo.Type.Name;
+	protected virtual object? SaveFlowState { get; set; }
 
-	protected virtual TState CaptureSaveState()
-		=> State;
+	protected virtual object? CaptureSaveState()
+		=> SaveFlowState;
 
-	protected virtual void ApplySaveState(TState state)
+	protected virtual void ApplySaveState(object? state)
 	{
-		State = state;
+		SaveFlowState = state;
 		OnSaveFlowStateApplied(state);
 	}
 
-	protected virtual void OnSaveFlowStateApplied(TState state)
+	protected virtual void OnSaveFlowStateApplied(object? state)
 	{
 	}
 
+	protected TState GetSaveFlowState<TState>()
+		=> SaveFlowState is TState state ? state : default!;
+
+	protected void SetSaveFlowState<TState>(TState state)
+		=> SaveFlowState = state;
+
 	public GodotDictionary ToSaveFlowEncodedPayload()
-		=> SaveFlowEncodedPayload.CreateJsonPayload(
-			CaptureSaveState(),
-			SaveFlowJsonTypeInfo,
+		=> SaveFlowEncodedPayload.FromText(
+			JsonSerializer.Serialize(CaptureSaveState(), SaveFlowJsonTypeInfo),
+			SaveFlowEncodedPayload.EncodingJson,
+			SaveFlowEncodedPayload.ContentTypeJson,
 			SaveFlowPayloadSchema,
 			SaveFlowPayloadDataVersion);
 
 	public void ApplySaveFlowEncodedPayload(GodotDictionary payload)
-		=> SaveFlowEncodedPayload.ApplyJsonPayload(payload, SaveFlowJsonTypeInfo, ApplySaveState);
+	{
+		var text = SaveFlowEncodedPayload.GetText(payload);
+		if (string.IsNullOrEmpty(text))
+			return;
+		ApplySaveState(JsonSerializer.Deserialize(text, SaveFlowJsonTypeInfo));
+	}
 
 	public virtual GodotDictionary GetSaveFlowPayloadInfo()
 		=> SaveFlowEncodedPayload.JsonInfo(
@@ -348,33 +366,37 @@ public abstract partial class SaveFlowJsonStateProvider<TState> : Node, ISaveFlo
 /// Resource base for project-owned binary payloads. SaveFlow only stores the
 /// returned bytes; the project chooses the binary serializer and schema.
 /// </summary>
-public abstract partial class SaveFlowBinaryResource<TData> : Resource, ISaveFlowEncodedPayloadProvider
+public abstract partial class SaveFlowBinaryResource : Resource, ISaveFlowEncodedPayloadProvider
 {
-	protected virtual string SaveFlowPayloadSchema => typeof(TData).FullName ?? typeof(TData).Name;
+	protected virtual string SaveFlowPayloadSchema => GetType().FullName ?? GetType().Name;
 	protected virtual int SaveFlowPayloadDataVersion => 1;
 	protected virtual string SaveFlowBinaryEncoding => SaveFlowEncodedPayload.EncodingBinary;
 	protected virtual string SaveFlowBinaryContentType => SaveFlowEncodedPayload.ContentTypeBinary;
 	protected virtual GodotArray? SaveFlowPayloadSections => null;
 
-	protected abstract TData CaptureSaveData();
+	protected abstract object? CaptureSaveData();
 
-	protected abstract byte[] SerializeSaveData(TData data);
+	protected abstract byte[] SerializeSaveData(object? data);
 
-	protected abstract TData DeserializeSaveData(byte[] bytes);
+	protected abstract object? DeserializeSaveData(byte[] bytes);
 
-	protected abstract void ApplySaveData(TData data);
+	protected abstract void ApplySaveData(object? data);
 
 	public GodotDictionary ToSaveFlowEncodedPayload()
-		=> SaveFlowEncodedPayload.CreateBinaryPayload(
-			CaptureSaveData(),
-			SerializeSaveData,
-			SaveFlowPayloadSchema,
-			SaveFlowPayloadDataVersion,
+		=> SaveFlowEncodedPayload.FromBytes(
+			SerializeSaveData(CaptureSaveData()),
 			SaveFlowBinaryEncoding,
-			SaveFlowBinaryContentType);
+			SaveFlowBinaryContentType,
+			SaveFlowPayloadSchema,
+			SaveFlowPayloadDataVersion);
 
 	public void ApplySaveFlowEncodedPayload(GodotDictionary payload)
-		=> SaveFlowEncodedPayload.ApplyBinaryPayload(payload, DeserializeSaveData, ApplySaveData);
+	{
+		var bytes = SaveFlowEncodedPayload.GetBytes(payload);
+		if (bytes.Length == 0)
+			return;
+		ApplySaveData(DeserializeSaveData(bytes));
+	}
 
 	public virtual GodotDictionary GetSaveFlowPayloadInfo()
 		=> SaveFlowEncodedPayload.BinaryInfo(
@@ -399,43 +421,53 @@ public abstract partial class SaveFlowBinaryResource<TData> : Resource, ISaveFlo
 /// Use this with BinaryWriter, MessagePack, protobuf, or any project-owned
 /// serializer that can convert a state object to and from byte[].
 /// </summary>
-public abstract partial class SaveFlowBinaryStateProvider<TState> : Node, ISaveFlowEncodedPayloadProvider
+public abstract partial class SaveFlowBinaryStateProvider : Node, ISaveFlowEncodedPayloadProvider
 {
-	protected virtual string SaveFlowPayloadSchema => typeof(TState).FullName ?? typeof(TState).Name;
+	protected virtual string SaveFlowPayloadSchema => GetType().FullName ?? GetType().Name;
 	protected virtual int SaveFlowPayloadDataVersion => 1;
 	protected virtual string SaveFlowBinaryEncoding => SaveFlowEncodedPayload.EncodingBinary;
 	protected virtual string SaveFlowBinaryContentType => SaveFlowEncodedPayload.ContentTypeBinary;
 	protected virtual GodotArray? SaveFlowPayloadSections => null;
-	protected virtual TState State { get; set; } = default!;
+	protected virtual object? SaveFlowState { get; set; }
 
-	protected virtual TState CaptureSaveState()
-		=> State;
+	protected virtual object? CaptureSaveState()
+		=> SaveFlowState;
 
-	protected abstract byte[] SerializeSaveState(TState state);
+	protected abstract byte[] SerializeSaveState(object? state);
 
-	protected abstract TState DeserializeSaveState(byte[] bytes);
+	protected abstract object? DeserializeSaveState(byte[] bytes);
 
-	protected virtual void ApplySaveState(TState state)
+	protected virtual void ApplySaveState(object? state)
 	{
-		State = state;
+		SaveFlowState = state;
 		OnSaveFlowStateApplied(state);
 	}
 
-	protected virtual void OnSaveFlowStateApplied(TState state)
+	protected virtual void OnSaveFlowStateApplied(object? state)
 	{
 	}
 
+	protected TState GetSaveFlowState<TState>()
+		=> SaveFlowState is TState state ? state : default!;
+
+	protected void SetSaveFlowState<TState>(TState state)
+		=> SaveFlowState = state;
+
 	public GodotDictionary ToSaveFlowEncodedPayload()
-		=> SaveFlowEncodedPayload.CreateBinaryPayload(
-			CaptureSaveState(),
-			SerializeSaveState,
-			SaveFlowPayloadSchema,
-			SaveFlowPayloadDataVersion,
+		=> SaveFlowEncodedPayload.FromBytes(
+			SerializeSaveState(CaptureSaveState()),
 			SaveFlowBinaryEncoding,
-			SaveFlowBinaryContentType);
+			SaveFlowBinaryContentType,
+			SaveFlowPayloadSchema,
+			SaveFlowPayloadDataVersion);
 
 	public void ApplySaveFlowEncodedPayload(GodotDictionary payload)
-		=> SaveFlowEncodedPayload.ApplyBinaryPayload(payload, DeserializeSaveState, ApplySaveState);
+	{
+		var bytes = SaveFlowEncodedPayload.GetBytes(payload);
+		if (bytes.Length == 0)
+			return;
+		ApplySaveState(DeserializeSaveState(bytes));
+	}
 
 	public virtual GodotDictionary GetSaveFlowPayloadInfo()
 		=> SaveFlowEncodedPayload.BinaryInfo(

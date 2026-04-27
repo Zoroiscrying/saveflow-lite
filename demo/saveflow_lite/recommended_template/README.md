@@ -24,7 +24,7 @@ What the pipeline notification demo demonstrates:
 - scene-authored signal connections can react to save/load lifecycle stages without subclassing every source
 
 What the C# workflow demo demonstrates:
-- `SaveFlowJsonStateProvider<TState>` stores C# typed room data without per-field dictionaries
+- `SaveFlowJsonStateProvider` stores C# typed room data without per-field dictionaries
 - `SaveFlowTypedDataSource` targets the C# provider from the scene tree
 - `SaveFlowSlotWorkflow` owns the active slot id and typed metadata construction
 - `SaveFlowSlotCard` renders a save-list style summary without loading full payload data
@@ -74,14 +74,20 @@ gather/apply behavior.
 For C#, the recommended path is the same scene shape with a C# payload provider:
 
 ```csharp
-public partial class RoomStateProvider : SaveFlowJsonStateProvider<RoomState>
+public partial class RoomStateProvider : SaveFlowJsonStateProvider
 {
+	private RoomState State
+	{
+		get => GetSaveFlowState<RoomState>();
+		set => SetSaveFlowState(value);
+	}
+
 	public RoomStateProvider()
 	{
 		State = new RoomState(12, false, "entry");
 	}
 
-	protected override JsonTypeInfo<RoomState> SaveFlowJsonTypeInfo
+	protected override JsonTypeInfo SaveFlowJsonTypeInfo
 		=> RoomStateJsonContext.Default.RoomState;
 }
 ```

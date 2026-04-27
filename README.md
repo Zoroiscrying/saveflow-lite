@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.6.1`
+- Plugin version: `0.6.2`
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 

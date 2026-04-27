@@ -21,9 +21,15 @@ internal partial class TemplateCSharpRoomStateJsonContext : JsonSerializerContex
 }
 
 public partial class TemplateCSharpRoomStateProvider
-	: SaveFlowJsonStateProvider<TemplateCSharpRoomState>
+	: SaveFlowJsonStateProvider
 {
 	private const string Schema = "saveflow.template.csharp_room_state";
+
+	private TemplateCSharpRoomState State
+	{
+		get => GetSaveFlowState<TemplateCSharpRoomState>();
+		set => SetSaveFlowState(value);
+	}
 
 	public TemplateCSharpRoomStateProvider()
 	{
@@ -39,7 +45,7 @@ public partial class TemplateCSharpRoomStateProvider
 
 	protected override string SaveFlowPayloadSchema => Schema;
 
-	protected override JsonTypeInfo<TemplateCSharpRoomState> SaveFlowJsonTypeInfo
+	protected override JsonTypeInfo SaveFlowJsonTypeInfo
 		=> TemplateCSharpRoomStateJsonContext.Default.TemplateCSharpRoomState;
 
 	protected override GodotArray SaveFlowPayloadSections
@@ -83,10 +89,13 @@ public partial class TemplateCSharpRoomStateProvider
 	public GodotDictionary snapshot()
 		=> Snapshot();
 
-	protected override void OnSaveFlowStateApplied(TemplateCSharpRoomState state)
+	protected override void OnSaveFlowStateApplied(object? state)
 	{
+		if (state is not TemplateCSharpRoomState typedState)
+			return;
+
 		ApplyCount += 1;
-		LastApplyLabel = $"{state.CheckpointId}:{state.Coins}";
+		LastApplyLabel = $"{typedState.CheckpointId}:{typedState.Coins}";
 	}
 
 	private static TemplateCSharpRoomState CreateInitialState()
