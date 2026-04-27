@@ -261,6 +261,15 @@ Recommended focus:
 - scene validator consistency
 - docs for fixing common source ownership and built-in selection mistakes
 
+### Lite v0.6
+
+Recommended focus:
+
+- C# parity for baseline Lite workflows
+- typed-data ergonomics and documentation polish
+- C# active-slot and save-card workflow helpers
+- regression tests for C# wrappers that project code is expected to call directly
+
 ## Current Roadmap Checkpoint
 
 As of `0.1.10`, several roadmap lines have moved from "planned" into baseline
@@ -302,7 +311,7 @@ The largest remaining Lite gap for the next line is now:
   incorrect field overrides, ownership mistakes, and incomplete authoring plans
   should become clearer before runtime save/load tests
 
-## Next Release Working Plan
+## Previous 0.5 Working Plan
 
 The next Lite release should be framed as:
 
@@ -449,6 +458,40 @@ Current progress toward the **Built-in final pass and authoring warnings** relea
   factory type mismatches, and double-collected runtime containers.
 - `docs/workspace/saveflow-lite-0.5-builtins-authoring-audit.md` now tracks the
   0.5.x audit scope, current coverage, recommended work order, and release bar.
+
+## Next Release Working Plan
+
+The next Lite release should be framed as:
+
+- **C# parity and typed-data polish**
+
+The goal is not to create a second C#-only save model.
+The goal is to make the existing Lite model equally reachable from C#:
+
+- active-slot and save-card helpers should exist in C# as well as GDScript
+- baseline slot, metadata, graph, entity, and validation calls should have thin C# wrappers
+- typed metadata and typed data should remain the default C# path for new project code
+- docs should show when to use typed helpers instead of raw dictionaries
+
+### 0.6.x Progress Checkpoint
+
+Current progress toward the **C# parity and typed-data polish** release:
+
+- `SaveFlowClient` now exposes more baseline runtime wrappers for slot
+  management, metadata reads/writes, validation, graph inspection/application,
+  current-data helpers, and entity restore.
+- C# now has `SaveFlowSlotWorkflow` and `SaveFlowSlotCard`, matching the
+  recommended active-slot/save-list workflow introduced on the GDScript side.
+- runtime regression coverage now includes a C# fixture for active-slot metadata,
+  save-card summaries, and C# client slot operations.
+- C# JSON/Binary state providers now own default `State` storage and optional
+  payload sections, reducing the boilerplate for source-generated JSON state.
+- `saveflow-csharp-quickstart.md` now documents active slots, save cards, and
+  the expanded C# wrapper surface.
+- the recommended template now includes a small C# workflow demo that wires
+  `SaveFlowJsonStateProvider<TState>`, `SaveFlowTypedDataSource`,
+  `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()`
+  in one scene-authored example.
 
 ## Previous 0.4 Working Plan
 

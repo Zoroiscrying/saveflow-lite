@@ -625,13 +625,13 @@ func _build_setup_hint_text(report: Dictionary) -> String:
 		lines.append("If the plugin was just enabled, reload the project once so the editor runtime can see `/root/SaveFlow`.")
 
 	if _report_has_state(report, "C# project file", "error"):
-		lines.append("If you want to use Case 4 or project-side C# scripts, add the main `%s.csproj` file for this Godot project." % String(ProjectSettings.get_setting("dotnet/project/assembly_name", "YourProject")).strip_edges())
+		lines.append("If you want to use the C# workflow demo or project-side C# scripts, add the main `%s.csproj` file for this Godot project." % String(ProjectSettings.get_setting("dotnet/project/assembly_name", "YourProject")).strip_edges())
 
 	if _report_has_state(report, "C# package source", "warning"):
 		lines.append("If `dotnet build` cannot resolve `Godot.NET.Sdk`, add a local GodotSharp package source in `nuget.config`.")
 
 	if _report_has_state(report, "C# assembly build", "warning"):
-		lines.append("Build the project C# assembly once so Case 4 can instantiate the C# helper instead of showing setup guidance.")
+		lines.append("Build the project C# assembly once so the C# workflow demo can instantiate its C# helpers instead of showing setup guidance.")
 
 	if lines.is_empty():
 		lines.append("No action needed right now. This project looks ready for SaveFlow Lite.")

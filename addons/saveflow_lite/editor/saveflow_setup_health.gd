@@ -202,7 +202,7 @@ static func _append_csharp_checks(checks: Array[Dictionary]) -> void:
 		_add_error(
 			checks,
 			"C# project file",
-			"`%s.csproj` is missing. Case 4 and any project-owned C# scripts need a main Godot C# project file." % assembly_name
+			"`%s.csproj` is missing. The C# workflow demo and any project-owned C# scripts need a main Godot C# project file." % assembly_name
 		)
 
 	var nuget_detail := _inspect_nuget_config()
@@ -230,7 +230,7 @@ static func _append_csharp_checks(checks: Array[Dictionary]) -> void:
 		_add_warning(
 			checks,
 			"C# assembly build",
-			"No built `%s.dll` was found under `.godot/mono/temp/bin`. Case 4 stays in guidance-only mode until the project C# assembly is built once." % assembly_name
+			"No built `%s.dll` was found under `.godot/mono/temp/bin`. The C# workflow demo stays in guidance-only mode until the project C# assembly is built once." % assembly_name
 		)
 	else:
 		_add_ok(

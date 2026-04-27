@@ -259,6 +259,7 @@ public abstract partial class SaveFlowJsonResource<TData> : Resource, ISaveFlowE
 {
 	protected virtual string SaveFlowPayloadSchema => typeof(TData).FullName ?? typeof(TData).Name;
 	protected virtual int SaveFlowPayloadDataVersion => 1;
+	protected virtual GodotArray? SaveFlowPayloadSections => null;
 	protected abstract JsonTypeInfo<TData> SaveFlowJsonTypeInfo { get; }
 
 	protected abstract TData CaptureSaveData();
@@ -276,7 +277,10 @@ public abstract partial class SaveFlowJsonResource<TData> : Resource, ISaveFlowE
 		=> SaveFlowEncodedPayload.ApplyJsonPayload(payload, SaveFlowJsonTypeInfo, ApplySaveData);
 
 	public virtual GodotDictionary GetSaveFlowPayloadInfo()
-		=> SaveFlowEncodedPayload.JsonInfo(SaveFlowPayloadSchema, SaveFlowPayloadDataVersion);
+		=> SaveFlowEncodedPayload.JsonInfo(
+			SaveFlowPayloadSchema,
+			SaveFlowPayloadDataVersion,
+			SaveFlowPayloadSections);
 
 	public GodotDictionary to_saveflow_encoded_payload()
 		=> ToSaveFlowEncodedPayload();
@@ -297,8 +301,9 @@ public abstract partial class SaveFlowJsonStateProvider<TState> : Node, ISaveFlo
 {
 	protected virtual string SaveFlowPayloadSchema => typeof(TState).FullName ?? typeof(TState).Name;
 	protected virtual int SaveFlowPayloadDataVersion => 1;
+	protected virtual GodotArray? SaveFlowPayloadSections => null;
 	protected abstract JsonTypeInfo<TState> SaveFlowJsonTypeInfo { get; }
-	protected abstract TState State { get; set; }
+	protected virtual TState State { get; set; } = default!;
 
 	protected virtual TState CaptureSaveState()
 		=> State;
@@ -324,7 +329,10 @@ public abstract partial class SaveFlowJsonStateProvider<TState> : Node, ISaveFlo
 		=> SaveFlowEncodedPayload.ApplyJsonPayload(payload, SaveFlowJsonTypeInfo, ApplySaveState);
 
 	public virtual GodotDictionary GetSaveFlowPayloadInfo()
-		=> SaveFlowEncodedPayload.JsonInfo(SaveFlowPayloadSchema, SaveFlowPayloadDataVersion);
+		=> SaveFlowEncodedPayload.JsonInfo(
+			SaveFlowPayloadSchema,
+			SaveFlowPayloadDataVersion,
+			SaveFlowPayloadSections);
 
 	public GodotDictionary to_saveflow_encoded_payload()
 		=> ToSaveFlowEncodedPayload();
@@ -346,6 +354,7 @@ public abstract partial class SaveFlowBinaryResource<TData> : Resource, ISaveFlo
 	protected virtual int SaveFlowPayloadDataVersion => 1;
 	protected virtual string SaveFlowBinaryEncoding => SaveFlowEncodedPayload.EncodingBinary;
 	protected virtual string SaveFlowBinaryContentType => SaveFlowEncodedPayload.ContentTypeBinary;
+	protected virtual GodotArray? SaveFlowPayloadSections => null;
 
 	protected abstract TData CaptureSaveData();
 
@@ -371,7 +380,8 @@ public abstract partial class SaveFlowBinaryResource<TData> : Resource, ISaveFlo
 		=> SaveFlowEncodedPayload.BinaryInfo(
 			SaveFlowPayloadSchema,
 			SaveFlowPayloadDataVersion,
-			encoding: SaveFlowBinaryEncoding,
+			SaveFlowPayloadSections,
+			SaveFlowBinaryEncoding,
 			contentType: SaveFlowBinaryContentType);
 
 	public GodotDictionary to_saveflow_encoded_payload()
@@ -395,7 +405,8 @@ public abstract partial class SaveFlowBinaryStateProvider<TState> : Node, ISaveF
 	protected virtual int SaveFlowPayloadDataVersion => 1;
 	protected virtual string SaveFlowBinaryEncoding => SaveFlowEncodedPayload.EncodingBinary;
 	protected virtual string SaveFlowBinaryContentType => SaveFlowEncodedPayload.ContentTypeBinary;
-	protected abstract TState State { get; set; }
+	protected virtual GodotArray? SaveFlowPayloadSections => null;
+	protected virtual TState State { get; set; } = default!;
 
 	protected virtual TState CaptureSaveState()
 		=> State;
@@ -430,7 +441,8 @@ public abstract partial class SaveFlowBinaryStateProvider<TState> : Node, ISaveF
 		=> SaveFlowEncodedPayload.BinaryInfo(
 			SaveFlowPayloadSchema,
 			SaveFlowPayloadDataVersion,
-			encoding: SaveFlowBinaryEncoding,
+			SaveFlowPayloadSections,
+			SaveFlowBinaryEncoding,
 			contentType: SaveFlowBinaryContentType);
 
 	public GodotDictionary to_saveflow_encoded_payload()

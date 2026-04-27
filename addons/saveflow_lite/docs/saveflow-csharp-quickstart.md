@@ -2,6 +2,14 @@
 
 This document shows the minimal C# path for calling SaveFlow runtime APIs.
 
+Runnable demo:
+
+- `res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn`
+
+That scene uses `SaveFlowJsonStateProvider<TState>`,
+`SaveFlowTypedDataSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and
+`SaveFlowClient.SaveScope()` together.
+
 ## Wrapper Location
 
 The baseline C# wrapper is shipped in `saveflow_core`:
@@ -9,6 +17,8 @@ The baseline C# wrapper is shipped in `saveflow_core`:
 - `res://addons/saveflow_core/runtime/dotnet/SaveFlowClient.cs`
 - `res://addons/saveflow_core/runtime/dotnet/SaveFlowCallResult.cs`
 - `res://addons/saveflow_core/runtime/dotnet/SaveFlowSlotMetadata.cs`
+- `res://addons/saveflow_core/runtime/dotnet/SaveFlowSlotWorkflow.cs`
+- `res://addons/saveflow_core/runtime/dotnet/SaveFlowSlotCard.cs`
 - `res://addons/saveflow_core/runtime/dotnet/SaveFlowEntityDescriptor.cs`
 
 ## Basic Usage
@@ -68,17 +78,36 @@ public partial class SaveFlowCSharpExample : Node
 
 - `SaveFlowClient.SaveData(...)`
 - `SaveFlowClient.LoadData(...)`
+- `SaveFlowClient.SaveSlot(...)`
+- `SaveFlowClient.LoadSlot(...)`
+- `SaveFlowClient.LoadSlotData(...)`
 - `SaveFlowClient.BuildSlotMetadata(...)`
 - `SaveFlowClient.BuildSlotMetadataPatch(...)`
+- `SaveFlowClient.ListSlots(...)`
 - `SaveFlowClient.ReadSlotSummary(...)`
+- `SaveFlowClient.ReadSlotMetadata(...)`
+- `SaveFlowClient.ReadSlotMetadataAsObject<TMetadata>(...)`
+- `SaveFlowClient.TryReadSlotMetadata<TMetadata>(...)`
 - `SaveFlowClient.ListSlotSummaries(...)`
+- `SaveFlowClient.DeleteSlot(...)`
+- `SaveFlowClient.CopySlot(...)`
+- `SaveFlowClient.RenameSlot(...)`
+- `SaveFlowClient.ValidateSlot(...)`
+- `SaveFlowClient.InspectSlotStorage(...)`
 - `SaveFlowClient.SaveNodes(...)`
 - `SaveFlowClient.LoadNodes(...)`
+- `SaveFlowClient.InspectScene(...)`
+- `SaveFlowClient.CollectNodes(...)`
+- `SaveFlowClient.ApplyNodes(...)`
 - `SaveFlowClient.SaveScope(...)`
 - `SaveFlowClient.LoadScope(...)`
+- `SaveFlowClient.InspectScope(...)`
+- `SaveFlowClient.GatherScope(...)`
+- `SaveFlowClient.ApplyScope(...)`
 - `SaveFlowClient.SaveCurrent(...)`
 - `SaveFlowClient.LoadCurrent(...)`
 - `SaveFlowClient.InspectSlotCompatibility(...)`
+- `SaveFlowClient.RestoreEntities(...)`
 - `SaveFlowClient.SaveDevNamedEntry(...)`
 - `SaveFlowClient.LoadDevNamedEntry(...)`
 
@@ -149,7 +178,7 @@ public partial class SaveMenuExample : Node
 			SlotRole = "room_subscene",
 		};
 
-		var saveResult = SaveFlowClient.SaveData("slot_1", payload, meta);
+var saveResult = SaveFlowClient.SaveData("slot_1", payload, meta);
 	}
 }
 ```
@@ -162,6 +191,70 @@ SaveFlow emits an authoring warning when metadata contains runtime objects, raw
 Godot objects, or too many custom fields. Keep metadata focused on save-list UI;
 move full gameplay state into the payload, a SaveFlow source, or an encoded C#
 payload provider.
+
+## Active Slot and Save Cards
+
+Use `SaveFlowSlotWorkflow` when your C# save menu owns an integer selected slot
+and needs stable storage keys plus UI-facing cards.
+
+```csharp
+using Godot;
+using SaveFlow.DotNet;
+
+public sealed class MySlotMetadata : SaveFlowSlotMetadata
+{
+	[Export] public int SlotIndex { get; set; }
+	[Export] public string StorageKey { get; set; } = "";
+	[Export] public string SlotRole { get; set; } = "";
+}
+
+public partial class SaveMenuController : Node
+{
+	private readonly SaveFlowSlotWorkflow _slots = new()
+	{
+		SlotIdTemplate = "slot_{index}",
+		EmptyDisplayNameTemplate = "Manual Slot {index}",
+	};
+
+	public void SelectSlot(int index)
+	{
+		_slots.SelectSlotIndex(index);
+	}
+
+	public void SaveSelectedSlot()
+	{
+		var metadata = _slots.BuildActiveSlotMetadata<MySlotMetadata>(
+			"Forest Gate",
+			saveType: "manual",
+			chapterName: "Chapter 2",
+			locationName: "Forest Gate",
+			playtimeSeconds: 960,
+			slotRole: "manual");
+
+		var result = SaveFlowClient.SaveData(
+			_slots.ActiveSlotId(),
+			new Godot.Collections.Dictionary { ["coins"] = 14 },
+			metadata);
+	}
+}
+```
+
+To build a load screen, read summaries and map them to cards:
+
+```csharp
+var summaries = SaveFlowClient.ListSlotSummaries();
+var summaryArray = summaries.Ok && summaries.Data.VariantType == Variant.Type.Array
+	? summaries.Data.AsGodotArray()
+	: new Godot.Collections.Array();
+
+var cards = _slots.BuildCardsForIndices(new[] { 1, 2, 3 }, summaryArray);
+```
+
+The workflow keeps three concepts separate:
+
+- `SlotIndex` is the user-facing selected row/order.
+- `StorageKey` / `SlotId` is the stable SaveFlow slot id, such as `slot_2`.
+- `DisplayName` is metadata shown in the save-list UI.
 
 ## Runtime Entity Descriptor Helper
 
@@ -188,6 +281,50 @@ For C# gameplay state, prefer an encoded payload provider. The C# side owns
 serialization, and SaveFlow stores the result as one typed payload inside the
 normal save graph. This avoids per-field SaveFlow reflection and avoids
 hand-written dictionary keys in gameplay code.
+
+For most new C# save data, start with `SaveFlowJsonStateProvider<TState>`.
+You define one DTO, one source-generated `JsonTypeInfo`, and optional sections
+for inspector/diagnostic summaries:
+
+```csharp
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
+using Godot;
+using SaveFlow.DotNet;
+
+public sealed record RoomSaveState(
+	int Coins,
+	bool DoorOpen,
+	string CheckpointId);
+
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower)]
+[JsonSerializable(typeof(RoomSaveState))]
+internal partial class RoomSaveJsonContext : JsonSerializerContext
+{
+}
+
+public partial class RoomStateProvider : SaveFlowJsonStateProvider<RoomSaveState>
+{
+	public RoomStateProvider()
+	{
+		State = new RoomSaveState(10, false, "");
+	}
+
+	protected override JsonTypeInfo<RoomSaveState> SaveFlowJsonTypeInfo
+		=> RoomSaveJsonContext.Default.RoomSaveState;
+
+	protected override Godot.Collections.Array SaveFlowPayloadSections
+		=> new() { "coins", "door_open", "checkpoint_id" };
+
+	protected override void OnSaveFlowStateApplied(RoomSaveState state)
+	{
+		// Refresh visuals, collisions, UI, or derived runtime state here.
+	}
+}
+```
+
+Use the explicit provider methods when an existing manager node cannot inherit
+from a SaveFlow base class, or when capture/apply needs custom project logic:
 
 ```csharp
 using System.Text.Json.Serialization;
@@ -268,21 +405,22 @@ var loadResult = SaveFlowClient.LoadScope("slot_1", graph, strict: true);
 
 If the saveable C# object is just one state snapshot, inherit
 `SaveFlowJsonStateProvider<TState>`. The default load behavior replaces
-`State` and then calls `OnSaveFlowStateApplied(...)`.
+`State` and then calls `OnSaveFlowStateApplied(...)`. The base class already
+stores `State`; override it only when your project needs a custom backing model.
 
 ```csharp
 public partial class RoomStateProvider : SaveFlowJsonStateProvider<RoomSaveState>
 {
-	private RoomSaveState _state = new(10, false, "");
-
-	protected override RoomSaveState State
+	public RoomStateProvider()
 	{
-		get => _state;
-		set => _state = value;
+		State = new RoomSaveState(10, false, "");
 	}
 
 	protected override JsonTypeInfo<RoomSaveState> SaveFlowJsonTypeInfo
 		=> RoomSaveJsonContext.Default.RoomSaveState;
+
+	protected override Godot.Collections.Array SaveFlowPayloadSections
+		=> new() { "coins", "door_open", "checkpoint_id" };
 
 	protected override void OnSaveFlowStateApplied(RoomSaveState state)
 	{
@@ -423,4 +561,5 @@ autosave.
 - Compatibility inspection is available in C# too, so schema/data-version checks do not become a GDScript-only workflow.
 - Slot-summary reads are available in C# too, so save-list UI does not need to load the full gameplay payload first.
 - `SaveFlowEncodedPayload` is the preferred C# path when performance matters; it uses user-owned serialization such as source-generated `System.Text.Json` or binary encoders.
+- `SaveFlowJsonStateProvider<TState>` and `SaveFlowBinaryStateProvider<TState>` now own default state storage; most providers only need serializer metadata plus optional post-apply logic.
 - `SaveFlowTypedResource`, `SaveFlowTypedRefCounted`, and `SaveFlowTypedPayload` are reflection convenience helpers for small or low-frequency state.

@@ -11,6 +11,7 @@ const SURFACE_BORDER := Color("31415f")
 
 const PROJECT_WORKFLOW_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn"
 const PIPELINE_NOTIFICATION_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn"
+const CSHARP_WORKFLOW_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn"
 
 const SaveFlowIcon := preload("res://addons/saveflow_lite/icons/saveflow_icon.svg")
 const EntityFactoryIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_entity_factory_icon.svg")
@@ -106,6 +107,12 @@ func _build_ui() -> void:
 				"title": "Open Pipeline Signals Demo",
 				"description": "Open a small scene-authored pipeline demo: SaveFlowPipelineSignals nodes drive source-level and final Data Saved notifications without subclassing sources.",
 				"action": func() -> void: _emit_scene(PIPELINE_NOTIFICATION_SCENE),
+			},
+			{
+				"icon": SaveFlowIcon,
+				"title": "Open C# Workflow Demo",
+				"description": "Open the C# path: SaveFlowJsonStateProvider<T>, SaveFlowSlotWorkflow, SaveFlowSlotCard, and SaveFlowClient.SaveScope in one small scene.",
+				"action": func() -> void: _emit_scene(CSHARP_WORKFLOW_SCENE),
 			},
 		]
 	))

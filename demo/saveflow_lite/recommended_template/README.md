@@ -7,6 +7,7 @@ reference cases.
 Open:
 - `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn`
 - `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn`
 
 What the project workflow demonstrates:
 - main-scene data decides whether the player is in the hub, forest room, or dungeon room
@@ -22,17 +23,28 @@ What the pipeline notification demo demonstrates:
 - the scope-level bridge emits the final "Data Saved!" notification
 - scene-authored signal connections can react to save/load lifecycle stages without subclassing every source
 
+What the C# workflow demo demonstrates:
+- `SaveFlowJsonStateProvider<TState>` stores C# typed room data without per-field dictionaries
+- `SaveFlowTypedDataSource` targets the C# provider from the scene tree
+- `SaveFlowSlotWorkflow` owns the active slot id and typed metadata construction
+- `SaveFlowSlotCard` renders a save-list style summary without loading full payload data
+- `SaveFlowClient.SaveScope()` / `LoadScope()` keep the C# call site thin
+
 Folder layout:
 - `scenes/project_workflow`
   Runnable hub and room scenes.
 - `scenes/pipeline_notifications`
   Runnable pipeline notification scene.
+- `scenes/csharp_workflow`
+  Small C# typed-data and slot-workflow scene.
 - `scenes/prefabs`
   Small runtime prefab used by the room entity collection.
 - `gameplay/project_workflow`
   The minimal scripts that make the playable workflow run.
 - `gameplay/pipeline_notifications`
   Small typed data and notification controller used by the pipeline demo.
+- `gameplay/csharp_workflow`
+  C# typed state provider and C# scene controller using the public wrapper helpers.
 - `saveflow`
   Small SaveFlow integration helpers shared by the workflow.
 
@@ -58,3 +70,22 @@ The Source also accepts any object with `to_saveflow_payload()` and
 the clearest scene-owned Godot workflow.
 Use a custom `SaveFlowDataSource` only when the source itself needs bespoke
 gather/apply behavior.
+
+For C#, the recommended path is the same scene shape with a C# payload provider:
+
+```csharp
+public partial class RoomStateProvider : SaveFlowJsonStateProvider<RoomState>
+{
+	public RoomStateProvider()
+	{
+		State = new RoomState(12, false, "entry");
+	}
+
+	protected override JsonTypeInfo<RoomState> SaveFlowJsonTypeInfo
+		=> RoomStateJsonContext.Default.RoomState;
+}
+```
+
+Point `SaveFlowTypedDataSource.target` at that node, then call SaveFlow from
+C# through `SaveFlowClient` and use `SaveFlowSlotWorkflow` to keep active slot
+ids and save-card metadata out of ad-hoc string-key dictionaries.

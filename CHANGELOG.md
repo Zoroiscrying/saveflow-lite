@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0
+
+Updated in this release:
+- Expanded C# parity with thin `SaveFlowClient` wrappers for baseline slot, metadata, graph, scene, scope, validation, current-data, and entity-restore workflows
+- Added C# `SaveFlowSlotWorkflow` and `SaveFlowSlotCard` helpers so active-slot ownership, typed slot metadata, and save-list cards no longer require repeated string-key glue
+- Improved C# typed-data ergonomics with default `State` storage and optional payload sections for `SaveFlowJsonStateProvider<TState>` and `SaveFlowBinaryStateProvider<TState>`
+- Added a scene-authored C# workflow demo showing `SaveFlowJsonStateProvider<TState>`, `SaveFlowTypedDataSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()` working together
+- Added Quick Access entry, docs, and runtime coverage for the C# workflow demo so C# users can start from a runnable project-style example
+- Updated Setup Health and settings guidance to reference the C# workflow demo instead of the removed standalone Case 4 wording
+- Preserved runtime behavior through Lite runtime, recommended-template, editor-smoke, C# build, and Godot check-only regression runs
+
 ## 0.5.0
 
 Updated in this release:
