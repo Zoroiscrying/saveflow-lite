@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.3
+
+Updated in this release:
+- Moved every C# `GodotObject`-derived SaveFlow helper into its own same-name `.cs` file so Godot's C# script reload map has one stable script owner per registered type
+- Kept the `SaveFlowJsonStateProvider`, `SaveFlowBinaryStateProvider`, typed resource, and encoded payload APIs unchanged from 0.6.2 while fixing the remaining reload collision path
+- Updated release automation to create a local `.worktrees/.gdignore` development guard so the mirrored release worktree is not scanned as a second Godot project copy
+
 ## 0.6.2
 
 Updated in this release:
