@@ -1,0 +1,64 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">SaveFlow slot workflow</title>
+  <desc id="desc">The project selects an active slot, SaveFlowSlotWorkflow builds metadata and cards, and SaveFlow writes the active slot.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#121E24"/>
+      <stop offset="1" stop-color="#223E45"/>
+    </linearGradient>
+    <filter id="shadow" x="-30" y="-30" width="150" height="150" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="640" rx="36" fill="url(#bg)"/>
+  <text x="76" y="84" fill="#F6FAFB" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="760">Slot workflow</text>
+  <text x="76" y="124" fill="#BCD2D7" font-family="Segoe UI, Arial, sans-serif" font-size="20">The project owns current slot selection. SaveFlow provides typed helpers and deterministic slot writes.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="92" y="200" width="250" height="210" rx="24" fill="#172B32" stroke="#7BC4D4" stroke-width="2"/>
+    <text x="217" y="246" fill="#F5FAFA" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="740" text-anchor="middle">Player chooses</text>
+    <text x="217" y="282" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">manual slot 1</text>
+    <rect x="138" y="318" width="158" height="46" rx="12" fill="#234852"/>
+    <text x="217" y="348" fill="#9EDBE8" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="700" text-anchor="middle">active_slot = 1</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="396" y="176" width="280" height="258" rx="24" fill="#172B32" stroke="#9AD6B8" stroke-width="2"/>
+    <text x="536" y="222" fill="#F5FAFA" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="740" text-anchor="middle">SlotWorkflow</text>
+    <text x="536" y="258" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">Builds stable slot IDs</text>
+    <text x="536" y="288" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">Builds typed metadata</text>
+    <text x="536" y="318" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">Builds save cards</text>
+    <rect x="446" y="356" width="180" height="42" rx="12" fill="#1E4A3A"/>
+    <text x="536" y="383" fill="#A7E8C7" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="middle">slot_id = slot_1</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="730" y="200" width="250" height="210" rx="24" fill="#172B32" stroke="#F2C46D" stroke-width="2"/>
+    <text x="855" y="246" fill="#F5FAFA" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="740" text-anchor="middle">Write active slot</text>
+    <text x="855" y="282" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">Manual, autosave, checkpoint</text>
+    <rect x="774" y="318" width="162" height="46" rx="12" fill="#5A4420"/>
+    <text x="855" y="348" fill="#F5D28B" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="700" text-anchor="middle">save_scope(slot_1)</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1036" y="176" width="166" height="258" rx="24" fill="#F5FAFA"/>
+    <rect x="1060" y="204" width="118" height="44" rx="10" fill="#244A54"/>
+    <text x="1119" y="232" fill="#F5FAFA" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Slot 1</text>
+    <rect x="1060" y="264" width="118" height="44" rx="10" fill="#D9E9EC"/>
+    <text x="1119" y="292" fill="#244A54" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Slot 2</text>
+    <rect x="1060" y="324" width="118" height="44" rx="10" fill="#D9E9EC"/>
+    <text x="1119" y="352" fill="#244A54" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Slot 3</text>
+    <text x="1119" y="406" fill="#45616A" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Save cards</text>
+  </g>
+
+  <g stroke="#9EDBE8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M342 306H386"/>
+    <path d="M376 296L386 306L376 316"/>
+    <path d="M676 306H720"/>
+    <path d="M710 296L720 306L710 316"/>
+    <path d="M980 306H1026"/>
+    <path d="M1016 296L1026 306L1016 316"/>
+  </g>
+
+  <text x="640" y="540" fill="#D6EBEF" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="650" text-anchor="middle">Autosave and checkpoint should update the selected active slot, not every slot.</text>
+</svg>

@@ -28,6 +28,12 @@
 *.temp
 *.import
 
+# Docs site generated files
+/docs-site/node_modules/
+/docs-site/.docusaurus/
+/docs-site/build/
+/docs-site/.env*
+
 # IDE
 .idea/
 *.DotSettings.user

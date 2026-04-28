@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.6.3`
+- Plugin version: `0.7.0`
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
 
@@ -86,6 +86,8 @@ bridges before running the game.
   [saveflow-quick-selection-map.md](addons/saveflow_lite/docs/saveflow-quick-selection-map.md)
 - Recommended integration path:
   [saveflow-recommended-integration.md](addons/saveflow_lite/docs/saveflow-recommended-integration.md)
+- Public docs site source:
+  [docs-site/README.md](docs-site/README.md)
 - Recommended template:
   `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn`
 - Pipeline signals demo:

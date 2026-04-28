@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+Updated in this release:
+- Added the public SaveFlow Lite documentation site source with concept guides, API reference pages, workflow starters, and screenshot-backed project workflow examples
+- Added GitHub Pages deployment workflow syncing to the public `saveflow-lite` repository so the docs site can be published alongside release mirrors
+- Updated release automation to sync `docs-site` and its deployment workflow while keeping Godot Asset Library archives limited to `addons/`
+- Cleaned user-facing documentation so public docs no longer expose local development paths or internal workspace planning links
+- Expanded Lite roadmap and documentation references around the 0.7.x docs/template cleanup phase
+
 ## 0.6.3
 
 Updated in this release:

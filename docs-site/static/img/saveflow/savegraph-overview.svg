@@ -1,0 +1,59 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">SaveFlow save graph overview</title>
+  <desc id="desc">A Save Graph groups scopes and sources into explicit Godot save ownership boundaries.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#11252D"/>
+      <stop offset="0.52" stop-color="#1E3B42"/>
+      <stop offset="1" stop-color="#0E171B"/>
+    </linearGradient>
+    <linearGradient id="scope" x1="92" y1="162" x2="1188" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D6576" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#98D6C2" stop-opacity="0.14"/>
+    </linearGradient>
+    <filter id="shadow" x="-30" y="-30" width="140" height="140" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="640" rx="36" fill="url(#bg)"/>
+  <circle cx="1108" cy="92" r="180" fill="#7BC4D4" opacity="0.08"/>
+  <circle cx="150" cy="552" r="220" fill="#F2C46D" opacity="0.06"/>
+
+  <text x="80" y="88" fill="#F5FAFA" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="750">Save Graph</text>
+  <text x="80" y="128" fill="#C4D8DC" font-family="Segoe UI, Arial, sans-serif" font-size="20">Scene-authored ownership for what gets saved, by which domain, and through which Source.</text>
+
+  <rect x="80" y="168" width="1120" height="352" rx="28" fill="url(#scope)" stroke="#78C6D4" stroke-width="2"/>
+  <text x="116" y="222" fill="#E9F6F7" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">SaveFlowScope: Room Domain</text>
+  <text x="116" y="252" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="18">The scope is the save/load boundary. Sources still own their own data.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="124" y="302" width="260" height="140" rx="20" fill="#13252B" stroke="#7BC4D4" stroke-width="2"/>
+    <rect x="150" y="328" width="54" height="54" rx="12" fill="#65B7D7"/>
+    <path d="M176 342L192 370H160L176 342Z" fill="#0D1B20"/>
+    <text x="224" y="344" fill="#F2FBFC" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">NodeSource</text>
+    <text x="224" y="374" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="17">Player node state</text>
+    <text x="224" y="402" fill="#8FB5BE" font-family="Segoe UI, Arial, sans-serif" font-size="15">Transform, animation, selected properties</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="510" y="302" width="260" height="140" rx="20" fill="#13252B" stroke="#9AD6B8" stroke-width="2"/>
+    <rect x="536" y="328" width="54" height="54" rx="12" fill="#7DDBA7"/>
+    <path d="M563 342L584 362L563 382L542 362L563 342Z" fill="#0D1B20"/>
+    <text x="610" y="344" fill="#F2FBFC" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">TypedDataSource</text>
+    <text x="610" y="374" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="17">Room model</text>
+    <text x="610" y="402" fill="#8FB5BE" font-family="Segoe UI, Arial, sans-serif" font-size="15">Typed fields, not string-key glue</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="896" y="302" width="260" height="140" rx="20" fill="#13252B" stroke="#F2C46D" stroke-width="2"/>
+    <rect x="922" y="328" width="54" height="54" rx="12" fill="#F2C46D"/>
+    <circle cx="949" cy="355" r="17" fill="#0D1B20"/>
+    <text x="996" y="344" fill="#F2FBFC" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">EntityCollection</text>
+    <text x="996" y="374" fill="#B8D1D6" font-family="Segoe UI, Arial, sans-serif" font-size="17">Runtime coins</text>
+    <text x="996" y="402" fill="#8FB5BE" font-family="Segoe UI, Arial, sans-serif" font-size="15">Identity, descriptors, factory restore</text>
+  </g>
+
+  <path d="M384 372H510" stroke="#9EDBE8" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 10"/>
+  <path d="M770 372H896" stroke="#9EDBE8" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 10"/>
+  <text x="472" y="488" fill="#D6EBEF" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="650">SaveFlow.save_scope(slot_id, RoomScope, metadata)</text>
+</svg>

@@ -12,7 +12,7 @@ The Zelda-like sample is further split into:
 - `zelda_like/gameplay`
 - `zelda_like/saveflow`
 
-See [zelda_like/README.md](F:/Coding-Projects/Godot/plugin-development/demo/saveflow_lite/zelda_like/README.md) for the intent of each folder.
+See [zelda_like/README.md](zelda_like/README.md) for the intent of each folder.
 
 The scene is meant to demonstrate the main Lite workflow:
 - mutate local state

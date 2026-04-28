@@ -419,9 +419,9 @@ It is **not**:
 
 Examples in this project:
 
-- [`complex_sandbox.gd`](F:/Coding-Projects/Godot/plugin-development/demo/saveflow_lite/complex_sandbox/complex_sandbox.gd)
-- [`plugin_sandbox.gd`](F:/Coding-Projects/Godot/plugin-development/demo/saveflow_lite/plugin_sandbox/plugin_sandbox.gd)
-- [`zelda_like_sandbox.gd`](F:/Coding-Projects/Godot/plugin-development/demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.gd)
+- `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.gd`
+- `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.gd`
+- `res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.gd`
 
 ### How it is implemented
 

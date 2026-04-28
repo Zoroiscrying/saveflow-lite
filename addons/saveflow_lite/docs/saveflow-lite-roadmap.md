@@ -270,6 +270,16 @@ Recommended focus:
 - C# active-slot and save-card workflow helpers
 - regression tests for C# wrappers that project code is expected to call directly
 
+### Lite v0.7
+
+Recommended focus:
+
+- template and demo cleanup before API freeze
+- documentation-site foundation for the public English docs
+- clearer docs information architecture around Godot workflows
+- final pass over examples so each scene explains one SaveFlow idea through real scene nodes, not UI-only panels
+- release packaging checks that keep public docs, README, examples, and Asset Library wording aligned
+
 ## Current Roadmap Checkpoint
 
 As of `0.1.10`, several roadmap lines have moved from "planned" into baseline
@@ -457,12 +467,12 @@ Current progress toward the **Built-in final pass and authoring warnings** relea
 - `saveflow-common-authoring-mistakes.md` now includes concrete fixes for stale
   built-ins, invalid field overrides, duplicate entity ids, default identity ids,
   factory type mismatches, and double-collected runtime containers.
-- `docs/workspace/saveflow-lite-0.5-builtins-authoring-audit.md` now tracks the
-  0.5.x audit scope, current coverage, recommended work order, and release bar.
+- an internal 0.5.x authoring audit now tracks the audit scope, current
+  coverage, recommended work order, and release bar.
 
-## Next Release Working Plan
+## Previous 0.6 Working Plan
 
-The next Lite release should be framed as:
+The 0.6 Lite release was framed as:
 
 - **C# parity and typed-data polish**
 
@@ -493,6 +503,163 @@ Current progress toward the **C# parity and typed-data polish** release:
   `SaveFlowTypedStateSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and
   `SaveFlowClient.SaveScope()`
   in one scene-authored example.
+
+## Next Release Working Plan
+
+The next Lite release should be framed as:
+
+- **Template/demo cleanup and documentation-site foundation**
+
+The goal is not to add another save feature.
+The goal is to make the existing Lite workflow easier to learn, evaluate, and
+copy into a real Godot project:
+
+- examples should be scene-authored and visually understandable
+- each demo should prove one workflow instead of hiding behavior in managers
+- public docs should have a stable English information architecture before API freeze
+- README, Asset Library wording, in-repo docs, and future website docs should tell the same story
+
+### 0.7.x Must Have
+
+#### 1. Public docs site foundation
+
+Target problem:
+
+- the current docs are useful, but they are scattered across README links and
+  in-repo markdown files
+- users need a web-friendly entry path similar to a normal product docs site
+- docs should be ready before the 0.8 API-freeze beta, not after it
+
+Lite should prepare:
+
+- a docs-site structure for public English documentation
+- top-level sections for Getting Started, Core Concepts, Godot Workflows,
+  Components, C#, Examples, Troubleshooting, and Roadmap
+- a rule for which docs are public Lite docs and which docs remain workspace/internal
+- release checks that prevent internal Pro planning docs from being shipped as Lite user docs
+
+Acceptance bar:
+
+- a new user can land on the docs and choose the right first tutorial
+- public docs do not expose internal workspace planning
+- every public page maps back to an actual Godot workflow or component
+
+#### 2. Template and demo cleanup
+
+Target problem:
+
+- demos can become harder to understand than the plugin if they rely on too
+  many manager scripts, hidden dynamic loading, or UI-only explanations
+- Lite examples should teach SaveFlow through normal Godot scene composition
+
+Lite should review:
+
+- recommended template scenes
+- C# example scenes
+- runtime entity examples
+- typed data examples
+- pipeline signal examples
+- any old UI-only or non-interactive cases
+
+Acceptance bar:
+
+- each kept example has one clear reason to exist
+- each scene can be understood from the node tree before reading all scripts
+- obsolete or duplicate cases are removed instead of maintained forever
+- examples use real scene nodes, screen-space UI only where needed, and
+  explicit SaveFlow components in the tree
+
+#### 3. Documentation freeze preparation
+
+Target problem:
+
+- 0.8.x should freeze public API shape, so 0.7.x must expose confusing names,
+  missing docs, and unclear workflows while they are still cheap to fix
+
+Lite should audit:
+
+- public class and component names
+- C# wrapper naming and comments
+- typed data and metadata docs
+- source ownership docs
+- scene validator and authoring warning docs
+- save-slot workflow docs
+
+Acceptance bar:
+
+- docs explain the intended workflow before listing API details
+- string-key dictionary patterns are avoided in examples unless they are truly
+  lower-level escape hatches
+- confusing public names are either fixed before 0.8 or explicitly deferred
+
+#### 4. Release packaging and public wording alignment
+
+Target problem:
+
+- GitHub Releases, Asset Library text, README, and docs can drift apart
+- users should not see one description in the Asset Library and a different
+  product promise in the docs
+
+Lite should align:
+
+- Asset Library description
+- README quick-start and feature list
+- public docs landing page
+- release notes template
+- release asset contents
+
+Acceptance bar:
+
+- release assets contain only intended Lite public files
+- public wording describes Lite as the baseline save model, not Pro orchestration
+- version, Godot compatibility, and installation instructions match everywhere
+
+### Not In This Release
+
+Keep these out of scope:
+
+- new Pro feature implementation
+- migration registry or save upgrade pipeline
+- cloud sync
+- reference repair system
+- staged multi-scene restore orchestration
+- background save pipeline
+- full API freeze
+
+### Release Readiness Check
+
+Before shipping a 0.7.x build, verify:
+
+1. public docs site structure exists and can be built or previewed locally
+2. public docs are English-first and exclude internal workspace planning docs
+3. kept demos are interactive, scene-authored, and explain their SaveFlow component usage
+4. stale or redundant examples are removed from public navigation
+5. README, Asset Library wording, release notes, and docs site entry page are aligned
+6. runtime and recommended-case regression tests still pass
+
+### 0.7.x Progress Checkpoint
+
+Current progress toward the **Template/demo cleanup and documentation-site
+foundation** release:
+
+- `docs-site` now contains the first Docusaurus-based public docs-site source.
+- the public docs information architecture now has first-pass sections for
+  Getting Started, Core Concepts, Godot Workflows, Components, C#, Examples,
+  Troubleshooting, and Roadmap.
+- an internal 0.7.x public-docs inventory classifies the current Lite docs as
+  keep, rewrite, merge, internal, or QA-only.
+- release sync now includes `docs-site` in the public repository projection,
+  while `.gitattributes` still keeps Godot Asset Library archives limited to
+  `addons/`.
+- the public repository projection now includes a GitHub Pages workflow for
+  building and deploying the docs site from `docs-site`.
+- the first content migration pass now covers Save Graph, ownership,
+  Source choice, NodeSource, typed data, entity collections, Scopes, slot
+  workflow, pipeline signals, editor tools, C#, examples, and troubleshooting.
+- the docs site now includes a Reference section for key GDScript runtime calls,
+  Source contracts, component properties, slot metadata, pipeline signals, and
+  C# wrapper APIs.
+- `docs-site` now builds successfully with Docusaurus 3.10 on Node 24/npm 11.
 
 ## Previous 0.4 Working Plan
 

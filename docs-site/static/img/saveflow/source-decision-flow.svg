@@ -1,0 +1,66 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">SaveFlow source decision flow</title>
+  <desc id="desc">A decision flow for choosing NodeSource, TypedDataSource, TypedStateSource, EntityCollectionSource, Scope, or DataSource.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5FAFA"/>
+      <stop offset="1" stop-color="#E7F0F2"/>
+    </linearGradient>
+    <filter id="soft" x="-25" y="-25" width="150" height="150" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="14" flood-color="#23444C" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="720" rx="36" fill="url(#bg)"/>
+  <text x="76" y="82" fill="#14272D" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="760">Choose the Source by data shape</text>
+  <text x="76" y="122" fill="#4C6870" font-family="Segoe UI, Arial, sans-serif" font-size="20">Start from the gameplay ownership question, not from the longest feature list.</text>
+
+  <g filter="url(#soft)">
+    <rect x="440" y="164" width="400" height="92" rx="22" fill="#16323A"/>
+    <text x="640" y="201" fill="#F5FAFA" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="740" text-anchor="middle">What owns this saved data?</text>
+    <text x="640" y="231" fill="#B9D3D8" font-family="Segoe UI, Arial, sans-serif" font-size="17" text-anchor="middle">Pick the smallest owner that matches the game object.</text>
+  </g>
+
+  <g stroke="#83AEB8" stroke-width="3" stroke-linecap="round">
+    <path d="M640 256V306"/>
+    <path d="M260 306H1020"/>
+    <path d="M260 306V354"/>
+    <path d="M450 306V354"/>
+    <path d="M640 306V354"/>
+    <path d="M830 306V354"/>
+    <path d="M1020 306V354"/>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="118" y="354" width="284" height="168" rx="20" fill="#FFFFFF" stroke="#65B7D7" stroke-width="3"/>
+    <text x="260" y="394" fill="#16323A" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="740" text-anchor="middle">One visible object</text>
+    <text x="260" y="430" fill="#41606A" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">Player, chest, trap, camera</text>
+    <text x="260" y="472" fill="#1E7488" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="760" text-anchor="middle">SaveFlowNodeSource</text>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="448" y="354" width="284" height="168" rx="20" fill="#FFFFFF" stroke="#7DDBA7" stroke-width="3"/>
+    <text x="590" y="394" fill="#16323A" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="740" text-anchor="middle">One typed model</text>
+    <text x="590" y="430" fill="#41606A" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">Room, profile, settings</text>
+    <text x="590" y="464" fill="#257E58" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="760" text-anchor="middle">TypedDataSource</text>
+    <text x="590" y="492" fill="#257E58" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="650" text-anchor="middle">or C# TypedStateSource</text>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="778" y="354" width="284" height="168" rx="20" fill="#FFFFFF" stroke="#F2C46D" stroke-width="3"/>
+    <text x="920" y="394" fill="#16323A" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="740" text-anchor="middle">Runtime set</text>
+    <text x="920" y="430" fill="#41606A" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">Coins, enemies, dropped items</text>
+    <text x="920" y="472" fill="#A16C13" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="760" text-anchor="middle">EntityCollectionSource</text>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="222" y="568" width="374" height="88" rx="18" fill="#E9F7F3" stroke="#8DD2B1" stroke-width="2"/>
+    <text x="409" y="603" fill="#16323A" font-family="Segoe UI, Arial, sans-serif" font-size="21" font-weight="720" text-anchor="middle">Several sources move together?</text>
+    <text x="409" y="631" fill="#257E58" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="760" text-anchor="middle">Group with SaveFlowScope</text>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="684" y="568" width="374" height="88" rx="18" fill="#EDF3F7" stroke="#93B2C3" stroke-width="2"/>
+    <text x="871" y="603" fill="#16323A" font-family="Segoe UI, Arial, sans-serif" font-size="21" font-weight="720" text-anchor="middle">Shape is truly project-specific?</text>
+    <text x="871" y="631" fill="#2F6F7F" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="760" text-anchor="middle">Use SaveFlowDataSource</text>
+  </g>
+</svg>

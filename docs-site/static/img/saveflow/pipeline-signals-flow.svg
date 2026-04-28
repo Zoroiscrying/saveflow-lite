@@ -1,0 +1,47 @@
+<svg width="1280" height="560" viewBox="0 0 1280 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">SaveFlow pipeline signals flow</title>
+  <desc id="desc">Pipeline signals let UI and gameplay nodes react to save and load stages without subclassing Sources.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7FBFB"/>
+      <stop offset="1" stop-color="#E5F0F2"/>
+    </linearGradient>
+    <filter id="shadow" x="-25" y="-25" width="150" height="150" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="12" flood-color="#23444C" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="560" rx="36" fill="url(#bg)"/>
+  <text x="72" y="82" fill="#14272D" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="760">Pipeline signals</text>
+  <text x="72" y="122" fill="#4C6870" font-family="Segoe UI, Arial, sans-serif" font-size="20">Keep Sources focused on data. Bind presentation and side effects through scene-authored signals.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="86" y="206" width="230" height="132" rx="22" fill="#FFFFFF" stroke="#65B7D7" stroke-width="3"/>
+    <text x="201" y="250" fill="#16323A" font-family="Segoe UI, Arial, sans-serif" font-size="23" font-weight="740" text-anchor="middle">Source or Scope</text>
+    <text x="201" y="286" fill="#41606A" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">gather/apply data</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="432" y="176" width="416" height="192" rx="24" fill="#16323A"/>
+    <text x="640" y="224" fill="#F5FAFA" font-family="Segoe UI, Arial, sans-serif" font-size="25" font-weight="760" text-anchor="middle">SaveFlowPipelineSignals</text>
+    <text x="640" y="264" fill="#B9D3D8" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">before_save / after_gather / after_write</text>
+    <text x="640" y="294" fill="#B9D3D8" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">before_load / before_apply / after_load</text>
+    <rect x="518" y="320" width="244" height="34" rx="12" fill="#244A54"/>
+    <text x="640" y="343" fill="#9EDBE8" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">event carries slot, stage, source key</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="968" y="206" width="230" height="132" rx="22" fill="#FFFFFF" stroke="#9AD6B8" stroke-width="3"/>
+    <text x="1083" y="250" fill="#16323A" font-family="Segoe UI, Arial, sans-serif" font-size="23" font-weight="740" text-anchor="middle">Game/UI nodes</text>
+    <text x="1083" y="286" fill="#41606A" font-family="Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">toast, refresh, disable UI</text>
+  </g>
+
+  <g stroke="#709BA5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M316 272H422"/>
+    <path d="M410 260L422 272L410 284"/>
+    <path d="M848 272H958"/>
+    <path d="M946 260L958 272L946 284"/>
+  </g>
+
+  <rect x="324" y="434" width="632" height="54" rx="18" fill="#FFFFFF" stroke="#D1E3E7"/>
+  <text x="640" y="468" fill="#2F6F7F" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="720" text-anchor="middle">Example: after_write -> show "Data Saved" without subclassing the Source.</text>
+</svg>
