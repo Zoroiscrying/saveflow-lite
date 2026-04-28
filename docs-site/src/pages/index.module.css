@@ -1,19 +1,20 @@
 .heroBanner {
-  padding: 5rem 0;
+  padding: clamp(4rem, 8vw, 7rem) 0;
   text-align: left;
 }
 
 .heroInner {
   align-items: center;
   display: grid;
-  gap: 2rem;
-  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
-  max-width: 1160px;
+  gap: clamp(2rem, 3.5vw, 4.25rem);
+  grid-template-columns: minmax(360px, 0.58fr) minmax(760px, 1.42fr);
+  max-width: 1840px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 clamp(1.25rem, 4.5vw, 5rem);
 }
 
 .heroCopy {
+  max-width: 540px;
   min-width: 0;
 }
 
@@ -22,8 +23,10 @@
   border: 1px solid rgba(158, 219, 232, 0.35);
   border-radius: 24px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  justify-self: stretch;
   overflow: hidden;
   padding: 0.75rem;
+  width: 100%;
 }
 
 .heroImage {
@@ -50,7 +53,7 @@
 .summary {
   color: #d7e7e9;
   font-size: 1.25rem;
-  max-width: 720px;
+  max-width: 520px;
 }
 
 .actions {
@@ -83,7 +86,8 @@
   }
 
   .heroVisual {
-    max-width: 680px;
+    justify-self: center;
+    max-width: 860px;
   }
 
   .grid {
