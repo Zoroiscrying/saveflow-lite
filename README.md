@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.7.1`
+- Plugin version: `0.7.2`
 - Documentation: [SaveFlow Lite Docs](https://zoroiscrying.github.io/saveflow-lite/)
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
@@ -35,9 +35,14 @@ If your save must restore several domains in order, add `SaveFlowScope` as a dom
 
 ## Install
 
-1. Copy [`addons/saveflow_core`](addons/saveflow_core) and [`addons/saveflow_lite`](addons/saveflow_lite) into your project `addons/` folder.
-2. Enable `SaveFlow Lite` in the Godot plugin settings.
-3. Godot will register the `SaveFlow` autoload for you.
+For a normal project, install only the addon folders:
+
+1. Download `saveflow-lite-vX.Y.Z-addons.zip` from the latest release, or install the plugin from the Godot Asset Library.
+2. Extract or copy [`addons/saveflow_core`](addons/saveflow_core) and [`addons/saveflow_lite`](addons/saveflow_lite) into your project `addons/` folder.
+3. Enable `SaveFlow Lite` in `Project > Project Settings > Plugins`.
+4. Godot will register the `SaveFlow` autoload for you.
+
+Use `saveflow-lite-vX.Y.Z-addons-demo.zip` only when you want a runnable demo project with the recommended template and example scenes included.
 
 ## Project Save Settings
 

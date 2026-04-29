@@ -40,7 +40,7 @@ background saves belong to SaveFlow Pro.
 
 ## Recommended Reading Path
 
-1. Install the plugin and confirm the editor tools are visible.
+1. Install the plugin from the Asset Library or release zip and confirm the editor tools are visible.
 2. Build your first Save Graph.
 3. Copy the common API calls into your first save/load buttons.
 4. Learn the ownership model.

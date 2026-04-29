@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.2
+
+Updated in this release:
+- Clarified install guidance across the root README and public docs so users can choose between the Godot Asset Library path, addons-only release zip, demo zip, and repository clone
+- Documented the expected release package shapes, including the addons-only archive root and the demo archive contents
+- Added public docs guidance that `docs-site` is documentation source and should not be copied into a Godot game project
+- Added Quick Access ordering coverage so the recommended project workflow, pipeline notifications demo, and C# workflow stay first in the editor entry panel
+
 ## 0.7.1
 
 Updated in this release:

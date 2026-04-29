@@ -5,6 +5,19 @@ title: Install SaveFlow Lite
 
 SaveFlow Lite is distributed as a Godot addon.
 
+## Which Package Should I Use?
+
+| Package | Use it when | Includes |
+| --- | --- | --- |
+| Godot Asset Library install | You are adding SaveFlow Lite to an existing project from inside Godot. | `addons/saveflow_core` and `addons/saveflow_lite`. |
+| `saveflow-lite-vX.Y.Z-addons.zip` | You want the release zip for an existing project. | Only the addon folders required by a game project. |
+| `saveflow-lite-vX.Y.Z-addons-demo.zip` | You want to open the demo project directly or study the recommended template scenes. | Addons, `demo/saveflow_lite`, and `project.godot`. |
+| GitHub repository clone | You want docs source, release automation, or to inspect the public repository history. | The full public source mirror, including docs-site. |
+
+For a game project, start with the Asset Library install or the addons zip.
+Use the demo zip as a learning project, then copy only the scenes or patterns
+you need.
+
 ## Install From A Release Zip
 
 1. Download the latest `saveflow-lite-vX.Y.Z-addons.zip` release.
@@ -12,8 +25,12 @@ SaveFlow Lite is distributed as a Godot addon.
 3. Confirm these folders exist:
    - `res://addons/saveflow_core`
    - `res://addons/saveflow_lite`
-4. Open `Project > Project Settings > Plugins`.
-5. Enable `SaveFlow Lite`.
+4. Confirm you did not create a nested folder such as `res://saveflow-lite/addons`.
+5. Open `Project > Project Settings > Plugins`.
+6. Enable `SaveFlow Lite`.
+
+The addons zip is also the shape expected by Godot Asset Library style installs:
+the archive root is `addons/`, not a full demo project.
 
 ## Install The Demo Build
 
@@ -29,6 +46,9 @@ That package includes:
 For a real project, start from the addon zip and copy only the demo scenes you
 want to study.
 
+Do not copy `docs-site` into a game project. It is the Docusaurus source for
+the public documentation site, not a Godot addon folder.
+
 ## Open The Editor Tools
 
 After enabling the plugin, use these editor entry points:
@@ -37,6 +57,8 @@ After enabling the plugin, use these editor entry points:
 - the `SaveFlow` validator badge in the 2D/3D editor toolbar for current-scene warnings.
 - Source inspectors for local preview, ownership warnings, and quick fixes.
 - `DevSaveManager` for editor-time save/load testing while the game is running.
+- `SaveFlow Quick Access` from the editor tool menu for the recommended template,
+  pipeline notifications demo, C# workflow demo, and core editor panels.
 
 ## First Check
 
