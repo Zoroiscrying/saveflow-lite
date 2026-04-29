@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.1
+
+Updated in this release:
+- Expanded the public docs with real Godot screenshots for pipeline notifications, C# workflow, setup health, scene validator, and NodeSource warnings
+- Enlarged the SaveFlow scene validator badge popup and constrained header text so issue lists have room to breathe
+- Added a `docs-site/.gdignore` guard and cleaned generated import metadata so the Godot editor no longer scans the Docusaurus workspace
+- Clarified example navigation so the recommended project workflow and focused public demos are the first learning path, while older sandboxes are treated as QA and historical references
+- Updated SaveFlow Lite GitHub Actions workflows to opt into Node 24 actions behavior, and moved the docs build runtime from Node 20 to Node 24 ahead of GitHub Actions' Node 20 retirement
+
 ## 0.7.0
 
 Updated in this release:

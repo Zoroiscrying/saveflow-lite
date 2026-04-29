@@ -1,11 +1,16 @@
 # SaveFlow Lite Demo
 
-Open `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn` to try the current SaveFlow Lite sandbox.
-Open `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.tscn` to pressure SaveFlow with a more realistic mid-size save environment.
-Open `res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn` to run a room-switching Zelda-like sandbox with room physics, animation state, room tables, and runtime entity restore.
-Open `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn` to see the recommended integration template: one hub scene, authored subscenes, typed room data, node data, and runtime entity collections in one playable workflow.
-Open `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn` to see scene-authored pipeline signals drive source-level and final "Data Saved!" notifications.
-Open `res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn` to see the C# path: `SaveFlowTypedStateSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()`.
+Start with the public example path:
+
+- Open `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn` to see the recommended integration template: one hub scene, authored subscenes, typed room data, node data, and runtime entity collections in one playable workflow.
+- Open `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn` to see scene-authored pipeline signals drive source-level and final "Data Saved!" notifications.
+- Open `res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn` to see the C# path: `SaveFlowTypedStateSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()`.
+
+Use the older sandboxes as QA and historical references:
+
+- Open `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn` for a basic scene save/load smoke test.
+- Open `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.tscn` to pressure SaveFlow with a more realistic mid-size save environment.
+- Open `res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn` to run a room-switching Zelda-like sandbox with room physics, animation state, room tables, and runtime entity restore.
 
 The Zelda-like sample is further split into:
 - `zelda_like/scenes`
@@ -14,7 +19,7 @@ The Zelda-like sample is further split into:
 
 See [zelda_like/README.md](zelda_like/README.md) for the intent of each folder.
 
-The scene is meant to demonstrate the main Lite workflow:
+The plugin sandbox is meant to demonstrate the basic Lite workflow:
 - mutate local state
 - save a scene through `SaveFlow.save_scene()`
 - load the slot back through `SaveFlow.load_scene()`

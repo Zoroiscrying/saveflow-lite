@@ -14,11 +14,18 @@ The short version:
 
 ## Example Map
 
+Start from these public examples:
+
 | Example | Open this scene | Use it to learn |
 | --- | --- | --- |
 | Recommended Project Workflow | `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn` | Real project save menu, active slot, room data, player node state, runtime coins, manual save/load/delete, autosave, checkpoint. |
 | Pipeline Notifications | `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn` | `SaveFlowPipelineSignals`, source-level save feedback, final "Data Saved" feedback. |
 | C# Workflow | `res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn` | `SaveFlowTypedStateSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, `SaveFlowClient.SaveScope()`. |
+
+Keep these as QA and historical references:
+
+| Sandbox | Open this scene | Use it for |
+| --- | --- | --- |
 | Plugin Sandbox | `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn` | Basic scene save/load smoke test and simple authored graph behavior. |
 | Complex Sandbox | `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.tscn` | Mid-size graph pressure test with player/world/party/settings/enemy state. |
 | Zelda-Like Sandbox | `res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn` | Room switching, runtime entity restore, animation state, and more complex demo save roots. |
@@ -158,9 +165,11 @@ The key lesson:
 
 The C# wrapper is a language bridge, not a separate save system.
 
-## Older Sandboxes
+## QA And Historical Sandboxes
 
 The older sandboxes are still useful, but they are not the first learning path.
+Use them after the recommended template when you want to verify edge cases,
+regressions, or older integration shapes.
 
 ### Plugin Sandbox
 

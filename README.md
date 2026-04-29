@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.7.0`
+- Plugin version: `0.7.1`
 - Documentation: [SaveFlow Lite Docs](https://zoroiscrying.github.io/saveflow-lite/)
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
@@ -701,11 +701,28 @@ than just field persistence.
 
 ## Demo
 
-Open:
+Start with:
+- `res://demo/saveflow_lite/recommended_template/scenes/project_workflow/recommended_project_workflow_main.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn`
+- `res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn`
+
+Use the older sandboxes as QA and historical references:
 - `res://demo/saveflow_lite/plugin_sandbox/plugin_sandbox.tscn`
 - `res://demo/saveflow_lite/complex_sandbox/complex_sandbox.tscn`
+- `res://demo/saveflow_lite/zelda_like/scenes/zelda_like_sandbox.tscn`
 
-The sandbox demonstrates:
+The recommended project workflow demonstrates:
+- a project-style hub scene and authored room subscenes
+- active slot selection with manual save/load/delete
+- autosave and checkpoint writes
+- typed room data, player node state, and runtime entity collections
+- scene-authored UI that reads save state instead of owning gameplay data
+
+The focused public demos demonstrate:
+- pipeline signals for source-level and final save/load feedback
+- the C# path through `SaveFlowTypedStateSource`, `SaveFlowSlotWorkflow`, `SaveFlowSlotCard`, and `SaveFlowClient.SaveScope()`
+
+The plugin sandbox demonstrates:
 - mutate local state
 - save into a slot
 - load the slot back

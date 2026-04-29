@@ -72,6 +72,12 @@ Expected behavior:
 
 ## C# Demo
 
+Primary scene:
+
+```text
+res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn
+```
+
 Use the C# demo when you want to see:
 
 - `SaveFlowTypedStateSource`
@@ -98,13 +104,12 @@ Start from the scene tree:
 
 Then read scripts only where gameplay interaction needs to call SaveFlow.
 
-## What Will Change During 0.7
+## Public Example Shape
 
-The public examples are being cleaned up.
-
-The target shape is:
+The public examples now use this shape:
 
 - one recommended template for the main project workflow
 - a small number of focused scenes for distinct components
+- older sandboxes kept as QA and historical references, not the first learning path
 - no stale UI-only cases in public navigation
 - no marker-only scenes where the real save setup is invisible
