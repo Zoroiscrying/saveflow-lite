@@ -9,6 +9,12 @@ The C# layer should not create a second save system.
 It should call the same runtime model through typed wrappers and scene-authored
 Sources.
 
+The C# Workflow demo uses a scene-authored Save Graph with a C# typed state
+Source, active-slot helper, slot card, and `SaveFlowClient.SaveScope()` /
+`LoadScope()` calls.
+
+![C# Workflow demo after loading saved typed room state, with slot card and restored room state visible](/img/saveflow/screenshots/csharp-workflow-after-load.png)
+
 ## The Preferred C# Path
 
 Use `SaveFlowTypedStateSource` when the user story is:

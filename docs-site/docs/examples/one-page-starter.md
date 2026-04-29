@@ -105,6 +105,8 @@ It demonstrates:
 - final save feedback such as "Data Saved"
 - UI notifications that are rebuilt from events rather than serialized
 
+![Pipeline Notifications demo after save, showing source-level messages and final Data Saved feedback](/img/saveflow/screenshots/pipeline-notifications-after-save.png)
+
 ### What To Inspect
 
 Look for:
@@ -137,6 +139,8 @@ It demonstrates:
 - `SaveFlowSlotWorkflow`
 - `SaveFlowSlotCard`
 - `SaveFlowClient.SaveScope()`
+
+![C# Workflow demo after loading saved typed room state, with slot card and restored room state visible](/img/saveflow/screenshots/csharp-workflow-after-load.png)
 
 ### What To Inspect
 

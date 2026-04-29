@@ -6,8 +6,9 @@ const STATE_OK := "ok"
 const STATE_WARNING := "warning"
 const STATE_ERROR := "error"
 const REFRESH_INTERVAL_SECONDS := 0.75
-const POPUP_SIZE := Vector2i(520, 360)
+const POPUP_SIZE := Vector2i(640, 520)
 const POPUP_MARGIN := 8
+const ISSUE_LIST_MIN_HEIGHT := 320
 
 var _button: Button
 var _popup: PopupPanel
@@ -76,20 +77,23 @@ func _build_ui() -> void:
 
 	_summary_label = Label.new()
 	_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_summary_label.max_lines_visible = 2
 	root.add_child(_summary_label)
 
 	_breakdown_label = Label.new()
 	_breakdown_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_breakdown_label.max_lines_visible = 1
 	root.add_child(_breakdown_label)
 
 	_next_action_label = Label.new()
 	_next_action_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_next_action_label.max_lines_visible = 2
 	root.add_child(_next_action_label)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(POPUP_SIZE.x - 28, POPUP_SIZE.y - 130)
+	scroll.custom_minimum_size = Vector2(POPUP_SIZE.x - 28, ISSUE_LIST_MIN_HEIGHT)
 	root.add_child(scroll)
 
 	_issue_list = VBoxContainer.new()
@@ -183,12 +187,15 @@ func _rebuild_popup_content() -> void:
 	_clear_children(_issue_list)
 
 	_summary_label.text = String(_last_report.get("summary", "Open a scene to run SaveFlow scene validation."))
+	_summary_label.tooltip_text = _summary_label.text
 	_summary_label.modulate = _summary_color()
 	if _breakdown_label != null:
 		_breakdown_label.text = _build_breakdown_text(_last_report)
+		_breakdown_label.tooltip_text = _breakdown_label.text
 		_breakdown_label.modulate = get_theme_color("font_placeholder_color", "Editor")
 	if _next_action_label != null:
 		_next_action_label.text = "Next: %s" % String(_last_report.get("next_action", "Open a scene to run SaveFlow scene validation."))
+		_next_action_label.tooltip_text = _next_action_label.text
 		_next_action_label.modulate = _summary_color()
 
 	var issues: Array = Array(_last_report.get("issues", []))

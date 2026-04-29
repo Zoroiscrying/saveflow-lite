@@ -84,3 +84,9 @@ tree.
 These warnings are not noise.
 They usually mean the graph would load in a surprising order or save the same
 object twice.
+
+When a child Source is nested under the helper instead of the gameplay object,
+the inspector preview marks the Source invalid and explains where that child
+should move.
+
+![SaveFlowNodeSource inspector preview showing an included child ownership warning](/img/saveflow/screenshots/editor-node-source-warning.png)

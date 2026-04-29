@@ -68,6 +68,8 @@ Expected behavior:
 - each participating Source can emit source-level feedback
 - UI feedback is rebuilt from signals and is not itself part of saved gameplay data
 
+![Pipeline Notifications demo after save, showing source-level messages and final Data Saved feedback](/img/saveflow/screenshots/pipeline-notifications-after-save.png)
+
 ## C# Demo
 
 Use the C# demo when you want to see:
@@ -79,6 +81,8 @@ Use the C# demo when you want to see:
 
 The C# demo should still be scene-authored. The point is C# parity, not hiding
 the Save Graph in code.
+
+![C# Workflow demo after loading saved typed room state, with slot card and restored room state visible](/img/saveflow/screenshots/csharp-workflow-after-load.png)
 
 ## What To Ignore While Learning
 

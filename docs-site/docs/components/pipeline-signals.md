@@ -12,6 +12,11 @@ They are not saved as gameplay data.
 
 ![SaveFlow pipeline signals flow](/img/saveflow/pipeline-signals-flow.svg)
 
+The Pipeline Notifications demo shows the intended runtime shape: each Source
+emits its own feedback first, then the graph emits the final slot-write message.
+
+![Pipeline Notifications demo after save, showing source-level messages and final Data Saved feedback](/img/saveflow/screenshots/pipeline-notifications-after-save.png)
+
 ## Common Uses
 
 Use pipeline signals for:

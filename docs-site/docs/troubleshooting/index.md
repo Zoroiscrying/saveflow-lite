@@ -8,6 +8,8 @@ Most SaveFlow Lite setup problems fall into a few categories.
 Start with the scene validator badge.
 Then inspect the specific Source that owns the warning.
 
+![Scene Validator badge expanded with current-scene warnings](/img/saveflow/screenshots/editor-scene-validator-warnings.png)
+
 ## Duplicate Save Keys
 
 Each Source in the same active save graph needs a stable, unique key.
@@ -26,6 +28,8 @@ Fix:
 
 If a parent `SaveFlowNodeSource` recursively includes a child object that already
 has its own Source, the graph becomes ambiguous.
+
+![SaveFlowNodeSource inspector preview showing an included child ownership warning](/img/saveflow/screenshots/editor-node-source-warning.png)
 
 Fix it by including the child Source directly, or by removing the child Source
 if the parent truly owns that object.
