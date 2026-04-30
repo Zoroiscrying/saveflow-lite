@@ -7,6 +7,9 @@ The C# API is a thin wrapper over the same SaveFlow runtime.
 
 Use it for C# gameplay code, C# state Sources, and C# save-menu helpers.
 
+The `SaveFlowClient` methods on this page are the C# API-freeze surface for the
+0.8 beta line.
+
 ## SaveFlowClient
 
 Runtime access:
@@ -40,7 +43,7 @@ SaveFlowClient.InspectSlotCompatibility(string slotId)
 SaveFlowClient.ListSlots()
 SaveFlowClient.ReadSlotMetadata(string slotId)
 SaveFlowClient.ReadSlotMetadataAsObject(string slotId)
-SaveFlowClient.TryReadSlotMetadata<TMetadata>(string slotId, out TMetadata metadata)
+SaveFlowClient.TryReadSlotMetadata<TMetadata>(string slotId, out TMetadata metadata, out SaveFlowCallResult result)
 SaveFlowClient.ReadMeta(string slotId)
 SaveFlowClient.WriteMeta(string slotId, Dictionary metaPatch)
 SaveFlowClient.DeleteSlot(string slotId)
@@ -86,6 +89,10 @@ SaveFlowClient.UnregisterEntityFactory(Node factory)
 SaveFlowClient.ClearEntityFactories()
 SaveFlowClient.RestoreEntities(Godot.Collections.Array descriptors, Dictionary? context = null, bool strict = false, Dictionary? options = null)
 ```
+
+`RestoreEntities()` returns the same structured restore report as the GDScript
+runtime. Read `result.Data` for report-only success and `result.Meta` for strict
+failures.
 
 Dev helpers:
 

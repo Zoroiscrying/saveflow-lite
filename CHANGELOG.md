@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.3
+
+Updated in this release:
+- Added API-freeze smoke coverage for the public `SaveFlow` GDScript facade methods
+- Added C# wrapper surface coverage for key `SaveFlowClient` entry points and typed metadata readback
+- Added restore report schema coverage so `entity_restore_issues`, `first_issue`, and restore count fields stay stable through the 0.8 line
+- Clarified the C# reference around `TryReadSlotMetadata<TMetadata>()` and documented the 0.8 API-freeze surface
+
 ## 0.8.2
 
 Updated in this release:

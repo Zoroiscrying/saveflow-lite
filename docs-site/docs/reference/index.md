@@ -46,3 +46,19 @@ The exact payload lives in `result.data` when the call produces data.
 The GDScript API uses snake_case.
 
 The C# wrapper uses PascalCase while calling the same runtime model.
+
+## 0.8 API-Freeze Surface
+
+The 0.8 line treats these public entry points as the Lite API surface being
+prepared for freeze:
+
+- the `SaveFlow` runtime facade methods documented in GDScript Runtime API
+- the `SaveFlowClient` wrapper methods documented in C# API
+- Source contracts for `SaveFlowNodeSource`, `SaveFlowTypedDataSource`, and
+  `SaveFlowEntityCollectionSource`
+- slot metadata helpers and `SaveFlowSlotWorkflow`
+- runtime entity restore report fields: `restored_count`, `spawned_count`,
+  `created_count`, `reused_count`, `skipped_count`, `missing_types`,
+  `failed_ids`, `entity_restore_issues`, and `first_issue`
+
+Internal helper methods may still change while the 0.8 beta line closes.

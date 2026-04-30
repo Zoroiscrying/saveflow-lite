@@ -7,6 +7,9 @@ The `SaveFlow` autoload is the main GDScript runtime facade.
 
 Use these calls from gameplay code, menu code, tests, or editor utilities.
 
+The method names on this page are the GDScript API-freeze surface for the 0.8
+beta line.
+
 ## Configuration
 
 ```gdscript
@@ -173,6 +176,10 @@ logs, tests, and in-game recovery paths:
 - `EXISTING_ENTITY_NOT_FOUND`
 - `SPAWN_RETURNED_NULL`
 - `ENTITY_GRAPH_APPLY_FAILED`
+
+Each issue entry includes `descriptor_index`, `code`, `message`,
+`persistent_id`, and `type_key`. Entries that can report useful context also
+include `details`.
 
 ## Dev Save Helpers
 
