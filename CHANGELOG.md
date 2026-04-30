@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.6
+
+Updated in this release:
+- Added a clean install release-zip validation script that expands an addons-only package into a temporary Godot project and verifies first-enable behavior
+- Fixed clean first-enable loading by delaying SaveFlow Lite editor script loads until after the `SaveFlow` autoload path is registered
+- Kept the `SaveFlow` autoload registered across editor shutdown and accepted Godot 4.6 `uid://` autoload paths in setup health and repair checks
+- Relaxed C# project-file diagnostics so GDScript-only projects opened with .NET Godot do not see missing `.csproj` as a blocking setup issue
+
 ## 0.8.5
 
 Updated in this release:

@@ -103,7 +103,7 @@ static func inspect_setup(scene_root: Node = null) -> Dictionary:
 			"Autoload registration",
 			"The `SaveFlow` autoload is not registered yet. Enable the plugin to let SaveFlow install it automatically."
 		)
-	elif autoload_path.trim_prefix("*") != AUTOLOAD_PATH:
+	elif not _is_expected_resource_path(autoload_path, AUTOLOAD_PATH):
 		_add_error(
 			checks,
 			"Autoload registration",
@@ -181,6 +181,17 @@ static func _dir_exists(path: String) -> bool:
 	return DirAccess.open(path) != null
 
 
+static func _is_expected_resource_path(candidate_path: String, expected_path: String) -> bool:
+	var normalized_path := candidate_path.trim_prefix("*")
+	if normalized_path == expected_path:
+		return true
+	if not ResourceLoader.exists(normalized_path):
+		return false
+	var expected_resource := load(expected_path)
+	var candidate_resource := load(normalized_path)
+	return expected_resource != null and candidate_resource == expected_resource
+
+
 static func _append_csharp_checks(checks: Array[Dictionary]) -> void:
 	var assembly_name := String(ProjectSettings.get_setting("dotnet/project/assembly_name", "")).strip_edges()
 	if assembly_name.is_empty():
@@ -199,10 +210,10 @@ static func _append_csharp_checks(checks: Array[Dictionary]) -> void:
 			"`%s.csproj` is present for the main Godot C# assembly." % assembly_name
 		)
 	else:
-		_add_error(
+		_add_warning(
 			checks,
 			"C# project file",
-			"`%s.csproj` is missing. The C# workflow demo and any project-owned C# scripts need a main Godot C# project file." % assembly_name
+			"`%s.csproj` is missing. The C# workflow demo and project-owned C# scripts need a main Godot C# project file, but GDScript-only projects can ignore this." % assembly_name
 		)
 
 	var nuget_detail := _inspect_nuget_config()

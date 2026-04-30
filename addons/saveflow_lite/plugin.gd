@@ -8,12 +8,12 @@ const PROJECT_SETTINGS_SCRIPT_PATH := "res://addons/saveflow_core/runtime/core/s
 const PLUGIN_CONFIG_PATH := "res://addons/saveflow_lite/plugin.cfg"
 const QUICK_ACCESS_METADATA_SECTION := "saveflow_lite"
 const QUICK_ACCESS_METADATA_KEY := "quick_access_dismissed_version"
-const InspectorPluginScript := preload("res://addons/saveflow_lite/editor/saveflow_inspector_plugin.gd")
-const SettingsPanelScript := preload("res://addons/saveflow_lite/editor/saveflow_settings_panel.gd")
-const DevSaveManagerPanelScript := preload("res://addons/saveflow_lite/editor/saveflow_save_manager_panel.gd")
-const QuickAccessPanelScript := preload("res://addons/saveflow_lite/editor/saveflow_quick_access_panel.gd")
-const SetupHealthScript := preload("res://addons/saveflow_lite/editor/saveflow_setup_health.gd")
-const SceneValidatorBadgeScript := preload("res://addons/saveflow_lite/editor/saveflow_scene_validator_badge.gd")
+const INSPECTOR_PLUGIN_SCRIPT_PATH := "res://addons/saveflow_lite/editor/saveflow_inspector_plugin.gd"
+const SETTINGS_PANEL_SCRIPT_PATH := "res://addons/saveflow_lite/editor/saveflow_settings_panel.gd"
+const DEV_SAVE_MANAGER_PANEL_SCRIPT_PATH := "res://addons/saveflow_lite/editor/saveflow_save_manager_panel.gd"
+const QUICK_ACCESS_PANEL_SCRIPT_PATH := "res://addons/saveflow_lite/editor/saveflow_quick_access_panel.gd"
+const SETUP_HEALTH_SCRIPT_PATH := "res://addons/saveflow_lite/editor/saveflow_setup_health.gd"
+const SCENE_VALIDATOR_BADGE_SCRIPT_PATH := "res://addons/saveflow_lite/editor/saveflow_scene_validator_badge.gd"
 
 var _inspector_plugin: EditorInspectorPlugin
 var _settings_panel: Control
@@ -42,6 +42,14 @@ func _enter_tree() -> void:
 		call_deferred("_queue_quick_access_panel_show")
 
 
+func _enable_plugin() -> void:
+	var project_settings_script := _get_project_settings_script()
+	if project_settings_script != null:
+		project_settings_script.register_project_settings()
+	_remove_legacy_autoload_if_present()
+	_ensure_autoload()
+
+
 func _exit_tree() -> void:
 	remove_tool_menu_item("SaveFlow Quick Access")
 	_remove_scene_validator_badges_if_present()
@@ -49,41 +57,70 @@ func _exit_tree() -> void:
 	_remove_save_manager_panel_if_present()
 	_remove_settings_panel_if_present()
 	_remove_inspector_plugin_if_present()
-	_remove_autoload_if_present()
 
 
 func _ensure_autoload() -> void:
-	if ProjectSettings.has_setting("autoload/%s" % AUTOLOAD_NAME):
-		return
+	var setting_key := "autoload/%s" % AUTOLOAD_NAME
+	if ProjectSettings.has_setting(setting_key):
+		var current_path := String(ProjectSettings.get_setting(setting_key, ""))
+		if _is_expected_autoload_setting(current_path):
+			return
+		remove_autoload_singleton(AUTOLOAD_NAME)
 	if not ResourceLoader.exists(AUTOLOAD_PATH):
 		push_warning("SaveFlow Lite could not register the SaveFlow autoload because `%s` is missing. Check the Setup Health section in SaveFlow Settings." % AUTOLOAD_PATH)
 		return
 	add_autoload_singleton(AUTOLOAD_NAME, AUTOLOAD_PATH)
+	_save_project_settings()
 
 
 func _remove_autoload_if_present() -> void:
 	if not ProjectSettings.has_setting("autoload/%s" % AUTOLOAD_NAME):
 		return
 	remove_autoload_singleton(AUTOLOAD_NAME)
+	_save_project_settings()
 
 
 func _remove_legacy_autoload_if_present() -> void:
 	if not ProjectSettings.has_setting("autoload/%s" % LEGACY_AUTOLOAD_NAME):
 		return
 	remove_autoload_singleton(LEGACY_AUTOLOAD_NAME)
+	_save_project_settings()
+
+
+func _save_project_settings() -> void:
+	var error := ProjectSettings.save()
+	if error != OK:
+		push_warning("SaveFlow Lite could not save project settings after updating autoloads. Error code: %d." % error)
+
+
+func _is_expected_autoload_setting(candidate_path: String) -> bool:
+	var normalized_path := candidate_path.trim_prefix("*")
+	if normalized_path == AUTOLOAD_PATH:
+		return true
+	if not ResourceLoader.exists(normalized_path):
+		return false
+	var expected_resource := load(AUTOLOAD_PATH)
+	var candidate_resource := load(normalized_path)
+	return expected_resource != null and candidate_resource == expected_resource
 
 
 func _ensure_inspector_plugin() -> void:
 	if _inspector_plugin != null:
 		return
-	_inspector_plugin = InspectorPluginScript.new()
+	var inspector_plugin_script := _load_editor_script(INSPECTOR_PLUGIN_SCRIPT_PATH, "inspector plugin")
+	if inspector_plugin_script == null:
+		return
+	_inspector_plugin = inspector_plugin_script.new()
 	add_inspector_plugin(_inspector_plugin)
 
 
 func _ensure_settings_panel() -> void:
 	if _settings_panel != null:
 		return
-	_settings_panel = SettingsPanelScript.new()
+	var settings_panel_script := _load_editor_script(SETTINGS_PANEL_SCRIPT_PATH, "settings panel")
+	if settings_panel_script == null:
+		return
+	_settings_panel = settings_panel_script.new()
 	_settings_panel.name = "SaveFlow Settings"
 	if _settings_panel.has_signal("open_save_manager_requested"):
 		_settings_panel.connect("open_save_manager_requested", Callable(self, "_focus_save_manager_panel"))
@@ -101,7 +138,10 @@ func _ensure_settings_panel() -> void:
 func _ensure_save_manager_panel() -> void:
 	if _save_manager_panel != null:
 		return
-	_save_manager_panel = DevSaveManagerPanelScript.new()
+	var save_manager_panel_script := _load_editor_script(DEV_SAVE_MANAGER_PANEL_SCRIPT_PATH, "DevSaveManager panel")
+	if save_manager_panel_script == null:
+		return
+	_save_manager_panel = save_manager_panel_script.new()
 	_save_manager_panel.name = "SaveFlow DevSaveManager"
 	add_control_to_dock(DOCK_SLOT_RIGHT_BL, _save_manager_panel)
 
@@ -109,7 +149,10 @@ func _ensure_save_manager_panel() -> void:
 func _ensure_quick_access_panel() -> void:
 	if _quick_access_panel != null:
 		return
-	_quick_access_panel = QuickAccessPanelScript.new()
+	var quick_access_panel_script := _load_editor_script(QUICK_ACCESS_PANEL_SCRIPT_PATH, "Quick Access panel")
+	if quick_access_panel_script == null:
+		return
+	_quick_access_panel = quick_access_panel_script.new()
 	if _quick_access_panel.has_method("set_plugin_version"):
 		_quick_access_panel.call("set_plugin_version", _get_plugin_version())
 	if _quick_access_panel.has_signal("open_scene_requested"):
@@ -126,12 +169,15 @@ func _ensure_quick_access_panel() -> void:
 
 
 func _ensure_scene_validator_badges() -> void:
+	var scene_validator_badge_script := _load_editor_script(SCENE_VALIDATOR_BADGE_SCRIPT_PATH, "scene validator badge")
+	if scene_validator_badge_script == null:
+		return
 	if _scene_validator_badge_2d == null:
-		_scene_validator_badge_2d = SceneValidatorBadgeScript.new()
+		_scene_validator_badge_2d = scene_validator_badge_script.new()
 		_scene_validator_badge_2d.name = "SaveFlow Scene Validator"
 		add_control_to_container(CONTAINER_CANVAS_EDITOR_MENU, _scene_validator_badge_2d)
 	if _scene_validator_badge_3d == null:
-		_scene_validator_badge_3d = SceneValidatorBadgeScript.new()
+		_scene_validator_badge_3d = scene_validator_badge_script.new()
 		_scene_validator_badge_3d.name = "SaveFlow Scene Validator"
 		add_control_to_container(CONTAINER_SPATIAL_EDITOR_MENU, _scene_validator_badge_3d)
 
@@ -147,7 +193,7 @@ func _apply_project_settings_to_runtime() -> void:
 
 
 func _report_setup_health() -> void:
-	var report := SetupHealthScript.inspect_setup()
+	var report := _inspect_setup_health()
 	if int(report.get("error_count", 0)) == 0:
 		return
 	push_warning("SaveFlow Lite setup check: %s" % String(report.get("summary", "Setup needs attention.")))
@@ -160,6 +206,24 @@ func _get_project_settings_script() -> Script:
 			_missing_project_settings_script_reported = true
 		return null
 	return load(PROJECT_SETTINGS_SCRIPT_PATH)
+
+
+func _load_editor_script(script_path: String, label: String) -> Script:
+	if not ResourceLoader.exists(script_path):
+		push_warning("SaveFlow Lite could not load %s because `%s` is missing." % [label, script_path])
+		return null
+	var script := load(script_path)
+	if script == null:
+		push_warning("SaveFlow Lite could not load %s from `%s`." % [label, script_path])
+		return null
+	return script
+
+
+func _inspect_setup_health() -> Dictionary:
+	var setup_health_script := _load_editor_script(SETUP_HEALTH_SCRIPT_PATH, "setup health")
+	if setup_health_script == null:
+		return {}
+	return setup_health_script.inspect_setup()
 
 
 func _remove_inspector_plugin_if_present() -> void:
@@ -244,7 +308,7 @@ func _repair_setup() -> void:
 	_apply_project_settings_to_runtime()
 	_refresh_settings_panel_health()
 
-	var report := SetupHealthScript.inspect_setup()
+	var report := _inspect_setup_health()
 	if int(report.get("error_count", 0)) > 0:
 		_set_settings_panel_status("Repair finished, but setup still has blocking issues. Check Setup Health for the remaining fixes.")
 	elif int(report.get("warning_count", 0)) > 0:
@@ -254,11 +318,6 @@ func _repair_setup() -> void:
 
 
 func _reinstall_autoload_if_needed() -> void:
-	var setting_key := "autoload/%s" % AUTOLOAD_NAME
-	if ProjectSettings.has_setting(setting_key):
-		var current_path := String(ProjectSettings.get_setting(setting_key, "")).trim_prefix("*")
-		if current_path != AUTOLOAD_PATH:
-			remove_autoload_singleton(AUTOLOAD_NAME)
 	_ensure_autoload()
 
 
