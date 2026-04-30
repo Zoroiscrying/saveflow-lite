@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1
+
+Updated in this release:
+- Added structured runtime entity restore reports with `entity_restore_issues`, `first_issue`, `skipped_count`, `reused_count`, and `created_count`
+- Distinguished missing `type_key`, missing `persistent_id`, missing factory routes, disabled creation for missing existing entities, null factory spawns, and nested entity graph apply failures
+- Kept compatibility fields such as `missing_types`, `failed_ids`, `restored_count`, and `spawned_count` while giving report-only and strict restore modes the same report shape
+- Added regression coverage for report-only restore diagnostics, strict failure diagnostics, and Apply Existing missing entity reporting
+
 ## 0.8.0
 
 Updated in this release:

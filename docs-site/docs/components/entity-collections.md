@@ -83,6 +83,36 @@ Use `Report Only` while iterating or when partial recovery is acceptable.
 Use `Fail On Missing Or Invalid` when the collection must be consistent after
 load.
 
+## Restore Report
+
+Entity restore returns the same report shape in both failure policies.
+
+Read `entity_restore_issues` when a runtime object did not come back. Each issue
+includes a `code`, the descriptor `persistent_id` when available, the `type_key`
+when available, and a short message.
+
+The report also includes summary fields:
+
+- `restored_count`: total entities applied
+- `spawned_count` and `created_count`: missing entities created through a factory
+- `reused_count`: existing entities that were found and applied
+- `skipped_count`: descriptors that could not be restored
+- `missing_types`: type keys without a factory route
+- `failed_ids`: descriptor ids that could not be restored
+- `first_issue`: the first structured issue, useful for compact UI messages
+
+Common issue codes are:
+
+| Code | Meaning |
+| --- | --- |
+| `INVALID_DESCRIPTOR` | The restore input is not a dictionary or `SaveFlowEntityDescriptor`. |
+| `MISSING_TYPE_KEY` | The descriptor or identity does not provide a usable `type_key`. |
+| `MISSING_PERSISTENT_ID` | The descriptor or identity does not provide a usable `persistent_id`. |
+| `FACTORY_NOT_FOUND` | No registered factory can restore that `type_key`. |
+| `EXISTING_ENTITY_NOT_FOUND` | Restore policy is `Apply Existing`, but the matching node is absent. |
+| `SPAWN_RETURNED_NULL` | The factory route exists, but spawning did not return an entity node. |
+| `ENTITY_GRAPH_APPLY_FAILED` | The entity spawned or reused, but its nested save graph failed to apply. |
+
 ## Factory Choice
 
 Use `SaveFlowPrefabEntityFactory` when one prefab maps cleanly to one type key.

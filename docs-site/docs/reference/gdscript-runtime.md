@@ -157,6 +157,23 @@ standard scene-owned workflow.
 
 Use these directly only when your project owns factory registration manually.
 
+`restore_entities()` returns a structured report in `SaveResult.data` when it
+can continue, or in `SaveResult.meta` when strict restore fails. The report
+contains `restored_count`, `spawned_count`, `created_count`, `reused_count`,
+`skipped_count`, `missing_types`, `failed_ids`, `entity_restore_issues`, and
+`first_issue`.
+
+Each entry in `entity_restore_issues` has a stable `code`. Use these codes for
+logs, tests, and in-game recovery paths:
+
+- `INVALID_DESCRIPTOR`
+- `MISSING_TYPE_KEY`
+- `MISSING_PERSISTENT_ID`
+- `FACTORY_NOT_FOUND`
+- `EXISTING_ENTITY_NOT_FOUND`
+- `SPAWN_RETURNED_NULL`
+- `ENTITY_GRAPH_APPLY_FAILED`
+
 ## Dev Save Helpers
 
 ```gdscript
