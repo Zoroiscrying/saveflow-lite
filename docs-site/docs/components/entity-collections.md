@@ -107,17 +107,17 @@ shows a Last Restore row with restored, spawned, reused, and skipped counts. If
 the report has a `first_issue`, the preview shows its issue code and the same
 next-action language used by runtime entity troubleshooting.
 
-Common issue codes are:
+Common issue codes and next actions are:
 
-| Code | Meaning |
-| --- | --- |
-| `INVALID_DESCRIPTOR` | The restore input is not a dictionary or `SaveFlowEntityDescriptor`. |
-| `MISSING_TYPE_KEY` | The descriptor or identity does not provide a usable `type_key`. |
-| `MISSING_PERSISTENT_ID` | The descriptor or identity does not provide a usable `persistent_id`. |
-| `FACTORY_NOT_FOUND` | No registered factory can restore that `type_key`. |
-| `EXISTING_ENTITY_NOT_FOUND` | Restore policy is `Apply Existing`, but the matching node is absent. |
-| `SPAWN_RETURNED_NULL` | The factory route exists, but spawning did not return an entity node. |
-| `ENTITY_GRAPH_APPLY_FAILED` | The entity spawned or reused, but its nested save graph failed to apply. |
+| Code | Meaning | Next action |
+| --- | --- | --- |
+| `INVALID_DESCRIPTOR` | The restore input is not a dictionary or SaveFlowEntityDescriptor. | Check that saved entity descriptors are dictionaries or SaveFlowEntityDescriptor values. |
+| `MISSING_TYPE_KEY` | The descriptor or identity does not provide a usable type_key. | Set explicit type_key values that match entity factory routes. |
+| `MISSING_PERSISTENT_ID` | The descriptor or identity does not provide a usable persistent_id. | Set stable persistent_id values on SaveFlowIdentity nodes or descriptors. |
+| `FACTORY_NOT_FOUND` | No registered factory can restore that type_key. | Assign or register an entity factory that supports this type_key. |
+| `EXISTING_ENTITY_NOT_FOUND` | Restore policy is Apply Existing, but the matching node is absent. | Use Create Missing, or make sure the entity exists before loading. |
+| `SPAWN_RETURNED_NULL` | The factory route exists, but spawning did not return an entity node. | Check the factory prefab, target container, and spawn logic. |
+| `ENTITY_GRAPH_APPLY_FAILED` | The entity spawned or reused, but its nested save graph failed to apply. | Inspect the entity's nested Source payload and apply failure. |
 
 ## Factory Choice
 

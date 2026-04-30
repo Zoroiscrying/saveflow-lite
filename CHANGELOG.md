@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.5
+
+Updated in this release:
+- Added a shared runtime entity restore diagnostics table for stable issue meanings and next-action text
+- Updated the Entity Collection inspector preview to read restore issue next actions from the shared diagnostics table
+- Aligned entity restore troubleshooting and reference docs with the same issue-code wording used by the editor preview
+- Added editor-smoke coverage that locks the restore issue code, meaning, and next-action wording through the 0.8 line
+
 ## 0.8.4
 
 Updated in this release:

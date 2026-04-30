@@ -8,6 +8,7 @@ const META_OPTIONS_EXPANDED := "_saveflow_entity_collection_options_expanded"
 const META_MEMBERS_EXPANDED := "_saveflow_entity_collection_members_expanded"
 const META_CONTRACT_EXPANDED := "_saveflow_entity_collection_contract_expanded"
 const META_DETAILS_EXPANDED := "_saveflow_entity_collection_details_expanded"
+const EntityRestoreDiagnosticsScript := preload("res://addons/saveflow_core/runtime/entities/saveflow_entity_restore_diagnostics.gd")
 
 var _entity_collection_source: SaveFlowEntityCollectionSource
 var _last_signature: String = ""
@@ -430,23 +431,7 @@ func _format_restore_report(report: Dictionary) -> String:
 
 
 func _restore_issue_next_action(code: String) -> String:
-	match code:
-		"INVALID_DESCRIPTOR":
-			return "Check that saved entity descriptors are dictionaries or SaveFlowEntityDescriptor values."
-		"MISSING_TYPE_KEY":
-			return "Set explicit type_key values that match entity factory routes."
-		"MISSING_PERSISTENT_ID":
-			return "Set stable persistent_id values on SaveFlowIdentity nodes or descriptors."
-		"FACTORY_NOT_FOUND":
-			return "Assign or register an entity factory that supports this type_key."
-		"EXISTING_ENTITY_NOT_FOUND":
-			return "Use Create Missing, or make sure the entity exists before loading."
-		"SPAWN_RETURNED_NULL":
-			return "Check the factory prefab, target container, and spawn logic."
-		"ENTITY_GRAPH_APPLY_FAILED":
-			return "Inspect the entity's nested Source payload and apply failure."
-		_:
-			return "Inspect entity_restore_issues for details."
+	return EntityRestoreDiagnosticsScript.get_issue_next_action(code)
 
 
 func _describe_restore_contract(plan: Dictionary) -> String:

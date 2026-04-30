@@ -71,13 +71,13 @@ Fix by code:
 
 | Code | Fix |
 | --- | --- |
-| `INVALID_DESCRIPTOR` | Make sure the saved entity list contains dictionaries or `SaveFlowEntityDescriptor` values. |
-| `MISSING_TYPE_KEY` | Set the identity or descriptor `type_key` so it matches a factory route. |
-| `MISSING_PERSISTENT_ID` | Set a stable `persistent_id`; do not rely on blank runtime defaults. |
-| `FACTORY_NOT_FOUND` | Assign or register an entity factory that supports the saved `type_key`. |
-| `EXISTING_ENTITY_NOT_FOUND` | Use `Create Missing`, or make sure the entity already exists before loading. |
-| `SPAWN_RETURNED_NULL` | Check the factory prefab, spawn path, target container, and custom spawn logic. |
-| `ENTITY_GRAPH_APPLY_FAILED` | Inspect the nested entity Source payload and apply failure details. |
+| `INVALID_DESCRIPTOR` | Check that saved entity descriptors are dictionaries or SaveFlowEntityDescriptor values. |
+| `MISSING_TYPE_KEY` | Set explicit type_key values that match entity factory routes. |
+| `MISSING_PERSISTENT_ID` | Set stable persistent_id values on SaveFlowIdentity nodes or descriptors. |
+| `FACTORY_NOT_FOUND` | Assign or register an entity factory that supports this type_key. |
+| `EXISTING_ENTITY_NOT_FOUND` | Use Create Missing, or make sure the entity exists before loading. |
+| `SPAWN_RETURNED_NULL` | Check the factory prefab, target container, and spawn logic. |
+| `ENTITY_GRAPH_APPLY_FAILED` | Inspect the entity's nested Source payload and apply failure. |
 
 Use `skipped_count` to see how many descriptors were ignored, `missing_types`
 to list unsupported routes, and `failed_ids` to find the saved descriptors that

@@ -180,6 +180,8 @@ logs, tests, and in-game recovery paths:
 Each issue entry includes `descriptor_index`, `code`, `message`,
 `persistent_id`, and `type_key`. Entries that can report useful context also
 include `details`.
+The Entity Collection inspector and troubleshooting docs use the same stable
+next-action text for these codes through the 0.8 line.
 
 ## Dev Save Helpers
 
