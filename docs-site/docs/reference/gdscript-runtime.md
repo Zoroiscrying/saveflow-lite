@@ -64,6 +64,7 @@ SaveFlow.load_scene(slot_id: String, root: Node, strict: bool = false, group_nam
 SaveFlow.save_nodes(slot_id: String, root: Node, meta_patch: Dictionary = {}, group_name: String = "saveflow") -> SaveResult
 SaveFlow.load_nodes(slot_id: String, root: Node, strict: bool = false, group_name: String = "saveflow") -> SaveResult
 SaveFlow.inspect_scene(root: Node, group_name: String = "saveflow") -> SaveResult
+SaveFlow.collect_nodes(root: Node, group_name: String = "saveflow") -> SaveResult
 SaveFlow.apply_nodes(root: Node, saveables_data: Dictionary, strict: bool = false, group_name: String = "saveflow") -> SaveResult
 ```
 
@@ -114,6 +115,7 @@ SaveFlow.inspect_slot_storage(slot_id: String) -> SaveResult
 SaveFlow.inspect_slot_compatibility(slot_id: String) -> SaveResult
 SaveFlow.validate_slot(slot_id: String) -> SaveResult
 SaveFlow.get_slot_path(slot_id: String) -> SaveResult
+SaveFlow.slot_exists(slot_id: String) -> bool
 SaveFlow.get_index_path() -> String
 ```
 

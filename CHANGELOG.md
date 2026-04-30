@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.7
+
+Updated in this release:
+- Completed a public API freeze audit by aligning GDScript and C# reference pages with the shipped runtime/client helper methods
+- Expanded API-freeze smoke coverage for C# slot metadata patch, storage inspection, slot existence, and index-path helpers
+- Added automatic clean install validation to release creation so addons-only zip assets are tested before GitHub release upload
+
 ## 0.8.6
 
 Updated in this release:
