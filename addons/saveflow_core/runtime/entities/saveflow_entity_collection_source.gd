@@ -112,6 +112,10 @@ func describe_source() -> Dictionary:
 	return description
 
 
+func get_last_restore_report() -> Dictionary:
+	return _last_report.duplicate(true)
+
+
 func gather_save_data() -> Variant:
 	var descriptors: Array = []
 	var missing_identity_nodes: PackedStringArray = []

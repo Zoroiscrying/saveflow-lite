@@ -26,6 +26,7 @@ var _factory_value: Label
 var _restore_policy_value: Label
 var _entity_count_value: Label
 var _next_action_value: Label
+var _last_restore_value: Label
 var _options_toggle: Button
 var _options_box: VBoxContainer
 var _auto_register_checkbox: CheckBox
@@ -128,6 +129,7 @@ func _build_ui() -> void:
 	_restore_policy_value = _add_row(content, "Restore")
 	_entity_count_value = _add_row(content, "Entities")
 	_next_action_value = _add_row(content, "Next Action")
+	_last_restore_value = _add_row(content, "Last Restore")
 
 	_options_toggle = Button.new()
 	_options_toggle.flat = true
@@ -250,6 +252,7 @@ func _refresh() -> void:
 	_restore_policy_value.text = String(plan.get("restore_policy_name", "Create Missing"))
 	_entity_count_value.text = _describe_entity_count(plan)
 	_next_action_value.text = _format_next_actions(plan)
+	_last_restore_value.text = _format_restore_report(_read_restore_report())
 
 	_options_toggle.text = _foldout_text("Options", _options_expanded)
 	_options_box.visible = _options_expanded
@@ -322,7 +325,21 @@ func _compute_signature() -> String:
 		return "<null>"
 	if not _entity_collection_source.has_method("describe_entity_collection_plan"):
 		return "<placeholder>"
-	return JSON.stringify(_entity_collection_source.describe_entity_collection_plan())
+	return JSON.stringify({
+		"plan": _entity_collection_source.describe_entity_collection_plan(),
+		"last_restore_report": _read_restore_report(),
+	})
+
+
+func _read_restore_report() -> Dictionary:
+	if _entity_collection_source == null or not is_instance_valid(_entity_collection_source):
+		return {}
+	if _entity_collection_source.has_method("get_last_restore_report"):
+		var report_variant: Variant = _entity_collection_source.call("get_last_restore_report")
+		if report_variant is Dictionary:
+			return report_variant
+	var source_description: Dictionary = _entity_collection_source.describe_source()
+	return Dictionary(source_description.get("last_report", {}))
 
 
 func _best_name(name_text: String, path_text: String) -> String:
@@ -375,6 +392,61 @@ func _format_next_actions(plan: Dictionary) -> String:
 	if actions.is_empty():
 		return "<none>"
 	return "\n".join(actions)
+
+
+func _format_restore_report(report: Dictionary) -> String:
+	if report.is_empty():
+		return "No restore has run yet."
+	if report.has("descriptor_count") and not report.has("restored_count"):
+		var descriptor_count := int(report.get("descriptor_count", 0))
+		var missing_identities := PackedStringArray(report.get("missing_identity_nodes", PackedStringArray())).size()
+		if missing_identities > 0:
+			return "Last gather: %d descriptors, %d missing identity." % [descriptor_count, missing_identities]
+		return "Last gather: %d descriptors." % descriptor_count
+
+	var restored_count := int(report.get("restored_count", 0))
+	var spawned_count := int(report.get("spawned_count", report.get("created_count", 0)))
+	var reused_count := int(report.get("reused_count", 0))
+	var skipped_count := int(report.get("skipped_count", 0))
+	var text := "restored %d | spawned %d | reused %d | skipped %d" % [
+		restored_count,
+		spawned_count,
+		reused_count,
+		skipped_count,
+	]
+	var first_issue := Dictionary(report.get("first_issue", {}))
+	var code := String(first_issue.get("code", "")).strip_edges()
+	if code.is_empty():
+		return text
+	var message := String(first_issue.get("message", "")).strip_edges()
+	if message.is_empty():
+		message = "restore issue reported"
+	return "%s\n%s: %s\nNext: %s" % [
+		text,
+		code,
+		message,
+		_restore_issue_next_action(code),
+	]
+
+
+func _restore_issue_next_action(code: String) -> String:
+	match code:
+		"INVALID_DESCRIPTOR":
+			return "Check that saved entity descriptors are dictionaries or SaveFlowEntityDescriptor values."
+		"MISSING_TYPE_KEY":
+			return "Set explicit type_key values that match entity factory routes."
+		"MISSING_PERSISTENT_ID":
+			return "Set stable persistent_id values on SaveFlowIdentity nodes or descriptors."
+		"FACTORY_NOT_FOUND":
+			return "Assign or register an entity factory that supports this type_key."
+		"EXISTING_ENTITY_NOT_FOUND":
+			return "Use Create Missing, or make sure the entity exists before loading."
+		"SPAWN_RETURNED_NULL":
+			return "Check the factory prefab, target container, and spawn logic."
+		"ENTITY_GRAPH_APPLY_FAILED":
+			return "Inspect the entity's nested Source payload and apply failure."
+		_:
+			return "Inspect entity_restore_issues for details."
 
 
 func _describe_restore_contract(plan: Dictionary) -> String:

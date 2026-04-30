@@ -47,6 +47,9 @@ behavior.
 | `entity_factory` | `null` | Required for create/restore workflows. |
 | `auto_register_factory` | `true` | Standard scene-owned workflow. |
 
+The Entity Collection inspector preview includes a Last Restore row after a
+gather or restore has produced a report.
+
 ## SaveFlowPrefabEntityFactory
 
 | Property | Default | Notes |

@@ -32,18 +32,19 @@ Pro owns:
 - reference repair
 - seamless/background save performance workflows
 
-## Current 0.7 Focus
+## Current 0.8 Focus
 
-0.7.x is not a new save model release.
+0.8.x is the API-freeze beta line.
 
 The current focus is:
 
-- public English documentation site
-- template and demo cleanup
-- clearer example navigation
-- docs/content freeze preparation before 0.8
-- release wording alignment across README, Asset Library, releases, and docs
+- make runtime entity authoring and restore diagnostics stable
+- keep editor preview wording aligned with runtime restore issue codes
+- preserve compatibility for the public `SaveFlow` and Source APIs
+- finish small documentation and naming corrections before release candidates
+- avoid adding broad Lite-only orchestration features that belong to Pro
 
-This work matters because 0.8 is the API-freeze beta.
-If a workflow is still hard to explain in 0.7, it probably needs naming,
-example, or documentation work before 0.8.
+This work matters because 0.9 should be mostly bug fixing, testing, and
+packaging validation.
+If a Lite workflow still needs a public name or a clearer diagnostic, it should
+be handled in 0.8 before the release-candidate line begins.

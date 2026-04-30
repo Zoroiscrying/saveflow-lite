@@ -149,6 +149,16 @@ FailurePolicy.REPORT_ONLY
 FailurePolicy.FAIL_ON_MISSING_OR_INVALID
 ```
 
+Restore report access:
+
+```gdscript
+get_last_restore_report() -> Dictionary
+```
+
+The returned dictionary is a defensive copy of the latest gather or restore
+report. After restore, it uses the same structure as `SaveFlow.restore_entities()`,
+including `entity_restore_issues`, `first_issue`, and restore count fields.
+
 ## SaveFlowPrefabEntityFactory
 
 Use when one prefab maps cleanly to one entity type.

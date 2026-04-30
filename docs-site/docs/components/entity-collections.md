@@ -101,6 +101,12 @@ The report also includes summary fields:
 - `failed_ids`: descriptor ids that could not be restored
 - `first_issue`: the first structured issue, useful for compact UI messages
 
+After a gather or restore, `SaveFlowEntityCollectionSource.get_last_restore_report()`
+returns the latest report copy. The Entity Collection inspector preview also
+shows a Last Restore row with restored, spawned, reused, and skipped counts. If
+the report has a `first_issue`, the preview shows its issue code and the same
+next-action language used by runtime entity troubleshooting.
+
 Common issue codes are:
 
 | Code | Meaning |

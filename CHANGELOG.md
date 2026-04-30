@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.2
+
+Updated in this release:
+- Added `SaveFlowEntityCollectionSource.get_last_restore_report()` so project code, tests, and tools can read the latest runtime entity restore report directly
+- Updated the Entity Collection inspector preview with a Last Restore row that summarizes restored, spawned, reused, and skipped entity counts
+- Surfaced the first structured restore issue code and a matching next action in the Entity Collection preview
+- Refreshed the public roadmap around the current 0.8.x API-freeze beta focus
+
 ## 0.8.1
 
 Updated in this release:
