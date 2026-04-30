@@ -1,6 +1,8 @@
 # SaveFlow Lite
 
-SaveFlow Lite is a comfort-first save workflow plugin for Godot 4.
+SaveFlow Lite is a comfort-first save workflow plugin for Godot 4. It keeps
+save ownership in the scene tree instead of hiding everything inside one large
+save script.
 
 Main paths:
 - `SaveFlowNodeSource` for object-owned state
@@ -25,6 +27,10 @@ Advanced runtime entity path:
 
 Project repository:
 - <https://github.com/Zoroiscrying/saveflow-lite>
+
+Package rule:
+- a normal install should contain `addons/saveflow_core` and `addons/saveflow_lite`
+- `docs-site`, `tmp`, `.github`, `tests`, and release tooling are repository-only paths
 
 Useful docs:
 - `addons/saveflow_lite/docs/saveflow-recommended-integration.md`

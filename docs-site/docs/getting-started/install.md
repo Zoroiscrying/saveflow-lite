@@ -17,6 +17,8 @@ SaveFlow Lite is distributed as a Godot addon.
 For a game project, start with the Asset Library install or the addons zip.
 Use the demo zip as a learning project, then copy only the scenes or patterns
 you need.
+Do not copy repository-only paths such as `docs-site`, `tmp`, `.github`, tests,
+or release tooling into your game project.
 
 ## Install From A Release Zip
 

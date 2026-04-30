@@ -7,7 +7,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `0.8.3`
+- Plugin version: `0.8.4`
 - Documentation: [SaveFlow Lite Docs](https://zoroiscrying.github.io/saveflow-lite/)
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
@@ -43,6 +43,18 @@ For a normal project, install only the addon folders:
 4. Godot will register the `SaveFlow` autoload for you.
 
 Use `saveflow-lite-vX.Y.Z-addons-demo.zip` only when you want a runnable demo project with the recommended template and example scenes included.
+
+Release package shapes are intentionally narrow:
+
+| Package | Intended use | Archive root |
+| --- | --- | --- |
+| Godot Asset Library / `saveflow-lite-vX.Y.Z-addons.zip` | Install into an existing game project. | `addons/` only. |
+| `saveflow-lite-vX.Y.Z-addons-demo.zip` | Open the demo project directly or study example scenes. | `addons/`, `demo/`, `project.godot`, and this README. |
+| GitHub repository clone | Inspect docs source, release automation, or public history. | Full source mirror, including `docs-site`. |
+
+Do not copy `docs-site`, `tmp`, `.github`, `tests`, or release tooling into a
+game project. Those paths are for the public repository and automation, not the
+runtime addon package.
 
 ## Project Save Settings
 

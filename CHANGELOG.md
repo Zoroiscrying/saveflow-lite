@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.4
+
+Updated in this release:
+- Added release asset allowlist validation so addons-only and demo zip packages fail if repository-only roots such as `docs-site`, `tmp`, `.github`, tests, tools, or unrelated addons appear
+- Aligned the Asset Library/plugin description with the README and public docs positioning for the Lite baseline save model
+- Clarified install/package wording across the README, addon README, and docs site so users know which paths belong in a Godot game project
+
 ## 0.8.3
 
 Updated in this release:

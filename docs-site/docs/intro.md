@@ -9,6 +9,11 @@ SaveFlow Lite is a comfort-first save workflow plugin for Godot 4.
 It helps you build a project-ready save system by putting save ownership in the
 scene tree instead of hiding everything inside one large save script.
 
+For a game project, install from the Godot Asset Library or the
+`saveflow-lite-vX.Y.Z-addons.zip` release package. Repository-only paths such as
+`docs-site`, `tmp`, `.github`, tests, and release tooling should stay out of
+your Godot project.
+
 ![SaveFlow save graph overview](/img/saveflow/savegraph-overview.svg)
 
 Use this documentation to answer three questions:
