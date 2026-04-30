@@ -193,17 +193,31 @@ func describe_entity_collection_plan() -> Dictionary:
 
 	var duplicate_persistent_id_conflicts := _detect_duplicate_persistent_id_conflicts(entity_candidates)
 	var default_identity_persistent_id_nodes := _detect_default_identity_persistent_id_nodes(entity_candidates)
+	var default_identity_type_key_nodes := _detect_default_identity_type_key_nodes(entity_candidates)
 	var unsupported_entity_type_nodes := _detect_unsupported_entity_type_nodes(entity_candidates, factory)
+	var double_collection_conflicts := _detect_ancestor_node_source_conflicts(target)
+	var recommended_next_actions := _build_recommended_next_actions(
+		target,
+		factory,
+		missing_identity_nodes,
+		duplicate_persistent_id_conflicts,
+		default_identity_persistent_id_nodes,
+		default_identity_type_key_nodes,
+		unsupported_entity_type_nodes,
+		double_collection_conflicts,
+		saveflow_autoload_available
+	)
 	return {
 		"valid": target != null and _is_entity_collection_plan_factory_valid(factory, saveflow_autoload_available),
 		"reason": _resolve_plan_reason(target, factory, saveflow_autoload_available),
+		"recommended_next_actions": recommended_next_actions,
 		"source_key": get_source_key(),
 		"entity_container_name": _describe_node_name(target),
 		"entity_container_path": _describe_node_path(target),
 		"target_name": _describe_node_name(target),
 		"target_path": _describe_node_path(target),
 		"target_resolution": _describe_target_resolution(target, factory, factory_plan),
-		"double_collection_conflicts": _detect_ancestor_node_source_conflicts(target),
+		"double_collection_conflicts": double_collection_conflicts,
 		"entity_factory_name": _describe_node_name(factory),
 		"entity_factory_path": _describe_node_path(factory),
 		"entity_factory_plan": factory_plan,
@@ -220,6 +234,7 @@ func describe_entity_collection_plan() -> Dictionary:
 		"missing_identity_nodes": missing_identity_nodes,
 		"duplicate_persistent_id_conflicts": duplicate_persistent_id_conflicts,
 		"default_identity_persistent_id_nodes": default_identity_persistent_id_nodes,
+		"default_identity_type_key_nodes": default_identity_type_key_nodes,
 		"unsupported_entity_type_nodes": unsupported_entity_type_nodes,
 		"entity_candidates": entity_candidates,
 	}
@@ -248,6 +263,7 @@ func discover_entity_candidates() -> Array:
 				"persistent_id": identity.get_persistent_id() if identity != null else "",
 				"type_key": identity.get_type_key() if identity != null else "",
 				"uses_default_identity_name_id": _uses_default_identity_name_id(identity),
+				"uses_default_identity_type_key": _uses_default_identity_type_key(identity),
 				"descriptor_extra_keys": PackedStringArray(_dictionary_key_names(descriptor_extra)),
 				"has_local_scope": entity_scope != null,
 			}
@@ -266,6 +282,8 @@ func _get_configuration_warnings() -> PackedStringArray:
 		warnings.append("Duplicate runtime entity persistent_id: %s" % conflict_text)
 	for path_text in PackedStringArray(plan.get("default_identity_persistent_id_nodes", PackedStringArray())):
 		warnings.append("SaveFlowIdentity is using its helper node name as persistent_id: %s. Set a stable persistent_id on the Identity node." % path_text)
+	for path_text in PackedStringArray(plan.get("default_identity_type_key_nodes", PackedStringArray())):
+		warnings.append("SaveFlowIdentity is using its parent node name as type_key: %s. Set an explicit type_key that matches an entity factory route." % path_text)
 	for warning_text in PackedStringArray(plan.get("unsupported_entity_type_nodes", PackedStringArray())):
 		warnings.append(warning_text)
 	for conflict_text in PackedStringArray(plan.get("double_collection_conflicts", PackedStringArray())):
@@ -356,6 +374,17 @@ func _uses_default_identity_name_id(identity: Node) -> bool:
 	if not String(identity.get("persistent_id")).is_empty():
 		return false
 	return String(identity.name).to_snake_case() == String(identity.call("get_persistent_id"))
+
+
+func _uses_default_identity_type_key(identity: Node) -> bool:
+	if not (identity is SaveFlowIdentity):
+		return false
+	if not String(identity.get("type_key")).is_empty():
+		return false
+	var parent := identity.get_parent()
+	if parent == null:
+		return false
+	return String(parent.name).to_snake_case() == String(identity.call("get_type_key"))
 
 
 func _collect_entity_payload(entity: Node) -> Dictionary:
@@ -751,6 +780,16 @@ func _detect_default_identity_persistent_id_nodes(entity_candidates: Array) -> P
 	return paths
 
 
+func _detect_default_identity_type_key_nodes(entity_candidates: Array) -> PackedStringArray:
+	var paths: PackedStringArray = []
+	for candidate_variant in entity_candidates:
+		var candidate := Dictionary(candidate_variant)
+		if not bool(candidate.get("uses_default_identity_type_key", false)):
+			continue
+		_append_unique_string(paths, String(candidate.get("identity_path", "")))
+	return paths
+
+
 func _detect_unsupported_entity_type_nodes(entity_candidates: Array, factory: Node) -> PackedStringArray:
 	var warnings: PackedStringArray = []
 	if factory == null or not factory.has_method("can_handle_type"):
@@ -770,6 +809,47 @@ func _detect_unsupported_entity_type_nodes(entity_candidates: Array, factory: No
 			[String(candidate.get("path", "")), type_key, _describe_node_name(factory)]
 		)
 	return warnings
+
+
+func _build_recommended_next_actions(
+	target: Node,
+	factory: Node,
+	missing_identity_nodes: PackedStringArray,
+	duplicate_persistent_id_conflicts: PackedStringArray,
+	default_identity_persistent_id_nodes: PackedStringArray,
+	default_identity_type_key_nodes: PackedStringArray,
+	unsupported_entity_type_nodes: PackedStringArray,
+	double_collection_conflicts: PackedStringArray,
+	saveflow_autoload_available: bool
+) -> PackedStringArray:
+	var actions: PackedStringArray = []
+	if target == null:
+		actions.append("Assign target_container, place this source under the runtime container, or use a factory that can provide a target container.")
+	if auto_register_factory and factory == null:
+		actions.append("Assign entity_factory, or disable auto_register_factory only when project code registers the factory manually.")
+	if auto_register_factory and not saveflow_autoload_available:
+		actions.append("Enable the SaveFlow autoload before relying on automatic entity factory registration.")
+	if not missing_identity_nodes.is_empty():
+		actions.append("Add SaveFlowIdentity to every runtime entity prefab or authored runtime entity.")
+	if not duplicate_persistent_id_conflicts.is_empty():
+		actions.append("Give each runtime entity a unique explicit persistent_id.")
+	if not default_identity_persistent_id_nodes.is_empty():
+		actions.append("Replace default persistent_id values with stable explicit ids that survive node renames and duplicated prefabs.")
+	if not default_identity_type_key_nodes.is_empty():
+		actions.append("Set explicit type_key values that match entity factory routes.")
+	if not unsupported_entity_type_nodes.is_empty():
+		actions.append("Update the entity factory routes or fix the entity type_key values so every saved type can be restored.")
+	if not double_collection_conflicts.is_empty():
+		actions.append("Remove the runtime container from parent NodeSource subtree saves and let this EntityCollectionSource own it.")
+	if actions.is_empty():
+		var target_name := _describe_node_name(target)
+		var factory_name := _describe_node_name(factory)
+		if target_name.is_empty():
+			target_name = "the resolved runtime container"
+		if factory_name.is_empty():
+			factory_name = "the registered entity factory"
+		actions.append("Ready: gather descriptors from `%s` and restore them through `%s`." % [target_name, factory_name])
+	return actions
 
 
 func _detect_ancestor_node_source_conflicts(target: Node) -> PackedStringArray:

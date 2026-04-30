@@ -36,6 +36,34 @@ created.
 Do not rely on a generic fallback id such as `Identity` for duplicated runtime
 objects.
 
+Set both identity fields intentionally:
+
+- `persistent_id` should be unique within the runtime collection and stable
+  across saves.
+- `type_key` should match the route owned by the entity factory.
+
+If either value is left to a node-name fallback, the Entity Collection preview
+will report it before you test restore.
+
+## Authoring Diagnostics
+
+Select a `SaveFlowEntityCollectionSource` to read its preview.
+
+The first screen now includes a Next Action row. It tells you the most likely
+thing to fix next, such as:
+
+- assign a target container
+- assign or manually register an entity factory
+- add missing `SaveFlowIdentity` nodes
+- replace duplicate or fallback `persistent_id` values
+- set explicit `type_key` values
+- update factory routes for unsupported entity types
+- remove runtime containers from parent `SaveFlowNodeSource` subtree saves
+
+Use this preview before running the game. Runtime entity restore problems are
+much easier to fix while the scene tree still shows the container, factory, and
+identity nodes together.
+
 ## Restore Policy
 
 Pick restore policy before writing factory code:

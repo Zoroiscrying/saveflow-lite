@@ -25,6 +25,7 @@ var _target_value: Label
 var _factory_value: Label
 var _restore_policy_value: Label
 var _entity_count_value: Label
+var _next_action_value: Label
 var _options_toggle: Button
 var _options_box: VBoxContainer
 var _auto_register_checkbox: CheckBox
@@ -126,6 +127,7 @@ func _build_ui() -> void:
 	_factory_value = _add_row(content, "Entity Factory")
 	_restore_policy_value = _add_row(content, "Restore")
 	_entity_count_value = _add_row(content, "Entities")
+	_next_action_value = _add_row(content, "Next Action")
 
 	_options_toggle = Button.new()
 	_options_toggle.flat = true
@@ -247,6 +249,7 @@ func _refresh() -> void:
 	_factory_value.text = _best_name(String(plan.get("entity_factory_name", "")), String(plan.get("entity_factory_path", "")))
 	_restore_policy_value.text = String(plan.get("restore_policy_name", "Create Missing"))
 	_entity_count_value.text = _describe_entity_count(plan)
+	_next_action_value.text = _format_next_actions(plan)
 
 	_options_toggle.text = _foldout_text("Options", _options_expanded)
 	_options_box.visible = _options_expanded
@@ -365,6 +368,13 @@ func _describe_entity_count(plan: Dictionary) -> String:
 	if missing_count == 0:
 		return str(entity_count)
 	return "%d (%d missing identity)" % [entity_count, missing_count]
+
+
+func _format_next_actions(plan: Dictionary) -> String:
+	var actions := PackedStringArray(plan.get("recommended_next_actions", PackedStringArray()))
+	if actions.is_empty():
+		return "<none>"
+	return "\n".join(actions)
 
 
 func _describe_restore_contract(plan: Dictionary) -> String:

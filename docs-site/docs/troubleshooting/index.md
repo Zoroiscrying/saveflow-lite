@@ -51,8 +51,13 @@ Fix:
 
 1. Put `SaveFlowEntityCollectionSource` under or near the runtime container.
 2. Add `SaveFlowIdentity` to runtime entity prefabs.
-3. Configure a prefab factory or custom entity factory.
-4. Exclude the runtime container from parent `SaveFlowNodeSource` subtree saves.
+3. Set explicit `persistent_id` values for authored runtime entities.
+4. Set explicit `type_key` values that match factory routes.
+5. Configure a prefab factory or custom entity factory.
+6. Exclude the runtime container from parent `SaveFlowNodeSource` subtree saves.
+
+If the Entity Collection preview shows a Next Action, fix that item first. It
+is built from the same plan data used by scene validator warnings.
 
 ## Slot Looks Wrong After Load
 

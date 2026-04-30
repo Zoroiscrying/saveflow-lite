@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0
+
+Updated in this release:
+- Started the 0.8.x runtime entity ergonomics pass with clearer `SaveFlowEntityCollectionSource` authoring diagnostics
+- Added collection-level recommended next actions so the inspector can explain whether to assign a container, configure a factory, add identities, fix duplicate ids, set explicit type keys, or repair factory routes
+- Added warnings for `SaveFlowIdentity` nodes that fall back to parent-node-derived `type_key` values, making factory route drift easier to catch before runtime restore
+- Updated the Entity Collection inspector preview with a first-screen Next Action row
+- Added regression coverage for entity collection next actions and default `type_key` warnings
+
 ## 0.7.2
 
 Updated in this release:
