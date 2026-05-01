@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2
+
+Updated in this release:
+- Added automatic SHA-256 checksum manifest generation for SaveFlow Lite release zip assets
+- Uploaded `saveflow-lite-v{version}-SHA256SUMS.txt` alongside the addons and addons-demo release zips
+- Updated release validation docs so 0.9.x packages include checksum verification as part of the RC release checklist
+
 ## 0.9.1
 
 Updated in this release:

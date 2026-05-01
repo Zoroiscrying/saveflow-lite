@@ -65,6 +65,7 @@ npm run build
 - demo zip allowed roots
 - forbidden repository roots are absent from release zips
 - Asset Library archive exports only `addons/`
+- SHA-256 checksum manifest exists for the zip assets
 - clean install validation passes for the generated addons-only zip
 - 0.8.7-to-current upgrade validation passes for the generated addons-only zip
 
@@ -76,6 +77,10 @@ The upgrade validation expands the 0.8.7 addons zip into a temporary Godot
 project, enables SaveFlow Lite, overwrites the addon folders with the current
 addons zip, confirms the `SaveFlow` autoload and project settings persist, runs
 a runtime smoke script, and runs Godot `--check-only`.
+
+The checksum manifest is uploaded as
+`saveflow-lite-v{version}-SHA256SUMS.txt` and includes one SHA-256 entry for the
+addons zip and one for the addons-demo zip.
 
 ## Release Notes
 
