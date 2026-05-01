@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+
+Updated in this release:
+- Started the 0.9.x release-candidate line with public docs updated from API-freeze beta wording to RC hardening wording
+- Added a 0.9 RC release checklist covering install paths, upgrade matrix, release assets, docs build, runtime tests, and clean install validation
+- Kept the 0.9.0 scope focused on bug fixing, testing, packaging validation, and documentation consistency rather than new public API
+
 ## 0.8.7
 
 Updated in this release:

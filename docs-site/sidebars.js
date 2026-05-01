@@ -90,6 +90,7 @@ const sidebars = {
       collapsed: false,
       items: [
         'roadmap/index',
+        'roadmap/release-checklist',
       ],
     },
   ],

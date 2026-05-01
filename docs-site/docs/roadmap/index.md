@@ -8,7 +8,7 @@ SaveFlow Lite is moving toward a stable 1.0 baseline.
 ## Lite Roadmap
 
 - `0.7.x`: template/demo cleanup and documentation-site foundation.
-- `0.8.x`: API freeze beta.
+- `0.8.x`: API freeze beta, now closed.
 - `0.9.x`: release-candidate bug fixing, testing, and packaging validation.
 - `1.0.0`: stable Lite release.
 
@@ -32,19 +32,18 @@ Pro owns:
 - reference repair
 - seamless/background save performance workflows
 
-## Current 0.8 Focus
+## Current 0.9 Focus
 
-0.8.x is the API-freeze beta line.
+0.9.x is the release-candidate hardening line.
 
 The current focus is:
 
-- make runtime entity authoring and restore diagnostics stable
-- keep editor preview wording aligned with runtime restore issue codes
-- preserve compatibility for the public `SaveFlow` and Source APIs
-- finish small documentation and naming corrections before release candidates
+- preserve compatibility for the public `SaveFlow`, Source, and C# wrapper APIs
+- keep runtime diagnostics, editor preview wording, and reference docs aligned
+- validate install, upgrade, and release package shapes before each release
+- fix bugs and documentation mismatches found during RC testing
 - avoid adding broad Lite-only orchestration features that belong to Pro
 
-This work matters because 0.9 should be mostly bug fixing, testing, and
-packaging validation.
-If a Lite workflow still needs a public name or a clearer diagnostic, it should
-be handled in 0.8 before the release-candidate line begins.
+This work matters because 1.0 should be a confidence release, not a surprise
+feature release. If a public API issue is found in 0.9, it should be fixed only
+when the compatibility tradeoff is smaller than shipping the mistake.

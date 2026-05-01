@@ -7,8 +7,8 @@ The C# API is a thin wrapper over the same SaveFlow runtime.
 
 Use it for C# gameplay code, C# state Sources, and C# save-menu helpers.
 
-The `SaveFlowClient` methods on this page are the C# API-freeze surface for the
-0.8 beta line.
+The `SaveFlowClient` methods on this page are the C# release-candidate surface
+for the 0.9 line.
 
 ## SaveFlowClient
 

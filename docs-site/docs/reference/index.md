@@ -47,10 +47,10 @@ The GDScript API uses snake_case.
 
 The C# wrapper uses PascalCase while calling the same runtime model.
 
-## 0.8 API-Freeze Surface
+## 0.9 Release-Candidate Surface
 
-The 0.8 line treats these public entry points as the Lite API surface being
-prepared for freeze:
+The 0.9 line treats these public entry points as the Lite release-candidate
+surface:
 
 - the `SaveFlow` runtime facade methods documented in GDScript Runtime API
 - the `SaveFlowClient` wrapper methods documented in C# API
@@ -61,4 +61,5 @@ prepared for freeze:
   `created_count`, `reused_count`, `skipped_count`, `missing_types`,
   `failed_ids`, `entity_restore_issues`, and `first_issue`
 
-Internal helper methods may still change while the 0.8 beta line closes.
+Internal helper methods may still change during RC hardening, but public API
+changes should be limited to clear bug fixes or documentation corrections.
