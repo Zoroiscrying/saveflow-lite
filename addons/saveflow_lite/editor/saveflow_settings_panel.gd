@@ -46,25 +46,31 @@ var _health_section_toggle_button: Button
 var _save_button: Button
 var _reload_button: Button
 var _reset_button: Button
+var _health_has_report := false
 
 
 func _ready() -> void:
 	_build_ui()
-	reload_from_project_settings()
-	refresh_setup_health()
+	reload_from_project_settings(false)
 
 
 ## Reload the current project defaults from ProjectSettings into the dock UI.
-func reload_from_project_settings() -> void:
+func reload_from_project_settings(refresh_health := true) -> void:
 	var project_settings_script := _get_project_settings_script()
 	if project_settings_script == null:
 		_set_status("SaveFlow core is missing. Cannot load project defaults.")
-		refresh_setup_health()
+		if refresh_health:
+			refresh_setup_health()
+		else:
+			_set_setup_health_pending()
 		return
 	var settings: SaveSettings = project_settings_script.load_settings()
 	_apply_settings_to_fields(settings)
 	_set_status("Loaded project defaults.")
-	refresh_setup_health()
+	if refresh_health:
+		refresh_setup_health()
+	else:
+		_set_setup_health_pending()
 
 
 ## Persist the dock values back into ProjectSettings and immediately reconfigure
@@ -98,6 +104,7 @@ func reset_to_defaults() -> void:
 
 ## Re-run the lightweight setup diagnostics shown in the Settings dock.
 func refresh_setup_health() -> void:
+	_health_has_report = true
 	var report := SetupHealthScript.inspect_setup()
 	if _health_summary_label != null:
 		_health_summary_label.text = String(report.get("summary", ""))
@@ -139,6 +146,18 @@ func refresh_setup_health() -> void:
 		_reload_button.disabled = not can_edit_project_settings
 	if _reset_button != null:
 		_reset_button.disabled = not can_edit_project_settings
+
+
+func _set_setup_health_pending() -> void:
+	_health_has_report = false
+	if _health_summary_label != null:
+		_health_summary_label.text = "Setup health has not been checked yet."
+		_health_summary_label.modulate = get_theme_color("font_placeholder_color", "Editor")
+	if _health_hint_label != null:
+		_health_hint_label.text = "Open this section or press Recheck Setup to run diagnostics."
+		_health_hint_label.modulate = get_theme_color("font_placeholder_color", "Editor")
+	if _health_details != null:
+		_health_details.clear()
 
 
 ## Show a status message from the plugin when a quick action finishes.
@@ -650,6 +669,8 @@ func _on_health_section_toggled(expanded: bool) -> void:
 		_health_section_content.visible = expanded
 	if _health_section_toggle_button != null:
 		_health_section_toggle_button.text = "Hide" if expanded else "Show"
+	if expanded and not _health_has_report:
+		refresh_setup_health()
 
 
 func _on_repair_setup_pressed() -> void:

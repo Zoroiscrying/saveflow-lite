@@ -47,9 +47,9 @@ The GDScript API uses snake_case.
 
 The C# wrapper uses PascalCase while calling the same runtime model.
 
-## 0.9 Release-Candidate Surface
+## 1.0 Stable Surface
 
-The 0.9 line treats these public entry points as the Lite release-candidate
+The 1.0 line treats these public entry points as the Lite stable
 surface:
 
 - the `SaveFlow` runtime facade methods documented in GDScript Runtime API
@@ -61,5 +61,5 @@ surface:
   `created_count`, `reused_count`, `skipped_count`, `missing_types`,
   `failed_ids`, `entity_restore_issues`, and `first_issue`
 
-Internal helper methods may still change during RC hardening, but public API
-changes should be limited to clear bug fixes or documentation corrections.
+Internal helper methods may still change, but public API changes should be
+limited to compatible bug fixes or documentation corrections.

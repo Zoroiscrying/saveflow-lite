@@ -22,11 +22,15 @@ var _last_report: Dictionary = {}
 
 func _ready() -> void:
 	_build_ui()
-	set_process(true)
-	call_deferred("refresh_now")
+	_last_report = _build_idle_report()
+	_refresh_button()
+	set_process(false)
 
 
 func _process(delta: float) -> void:
+	if _popup == null or not _popup.visible:
+		set_process(false)
+		return
 	_refresh_timer += delta
 	if _refresh_timer < REFRESH_INTERVAL_SECONDS:
 		return
@@ -62,6 +66,7 @@ func _build_ui() -> void:
 	_popup.min_size = POPUP_SIZE
 	_popup.max_size = POPUP_SIZE
 	_popup.size = POPUP_SIZE
+	_popup.popup_hide.connect(_on_popup_hide)
 	add_child(_popup)
 
 	var margin := MarginContainer.new()
@@ -105,6 +110,11 @@ func _build_ui() -> void:
 func _refresh_button() -> void:
 	if _button == null:
 		return
+	if bool(_last_report.get("idle", false)):
+		_button.text = "SaveFlow"
+		_button.tooltip_text = String(_last_report.get("summary", "Click to run SaveFlow scene validation."))
+		_button.add_theme_color_override("font_color", get_theme_color("font_color", "Button"))
+		return
 	var has_scene := bool(_last_report.get("has_scene", false))
 	var component_count := int(_last_report.get("component_count", 0))
 	var error_count := int(_last_report.get("error_count", 0))
@@ -138,7 +148,25 @@ func _on_button_pressed() -> void:
 	var popup_rect := Rect2i(_resolve_popup_position(), POPUP_SIZE)
 	_apply_popup_rect(popup_rect)
 	_popup.popup(popup_rect)
+	set_process(true)
 	call_deferred("_apply_popup_rect", popup_rect)
+
+
+func _on_popup_hide() -> void:
+	set_process(false)
+
+
+func _build_idle_report() -> Dictionary:
+	return {
+		"idle": true,
+		"has_scene": false,
+		"component_count": 0,
+		"error_count": 0,
+		"warning_count": 0,
+		"summary": "Click to run SaveFlow scene validation.",
+		"next_action": "Open the validator when you want to inspect the current scene.",
+		"issues": [],
+	}
 
 
 func _apply_popup_rect(popup_rect: Rect2i) -> void:

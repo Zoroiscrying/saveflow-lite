@@ -36,16 +36,31 @@ func _init() -> void:
 func _ready() -> void:
 	_settings = SaveFlowProjectSettingsScript.load_settings()
 	_sync_runtime_services()
-	set_process(true)
+	set_process(_is_save_manager_bus_enabled())
 
 
 func _process(delta: float) -> void:
+	if not _is_save_manager_bus_enabled():
+		set_process(false)
+		return
 	_save_manager_status_timer += delta
 	if _save_manager_status_timer < 0.5:
 		return
 	_save_manager_status_timer = 0.0
 	_dev_save_manager_service.write_status(self, _save_manager_bridge)
 	_dev_save_manager_service.process_requests(self, _save_manager_bridge)
+
+
+func _is_save_manager_bus_enabled() -> bool:
+	return Engine.is_editor_hint() or OS.has_feature("editor")
+
+
+func _save_manager_editor_only_result(method_name: String) -> SaveResult:
+	return _error_result(
+		SaveError.INVALID_SAVEABLE,
+		"SAVE_MANAGER_EDITOR_ONLY",
+		"%s is only available while running from the Godot editor." % method_name
+	)
 
 
 func configure(settings: SaveSettings) -> SaveResult:
@@ -627,6 +642,12 @@ func register_save_manager_bridge(bridge: Node) -> SaveResult:
 			"INVALID_ARGUMENT",
 			"save manager bridge cannot be null"
 		)
+	if not _is_save_manager_bus_enabled():
+		return _ok_result({
+			"bridge_name": "",
+			"enabled": false,
+			"reason": "Save manager bridge is editor-only.",
+		})
 	if not bridge.has_method("save_named_entry") or not bridge.has_method("load_named_entry"):
 		return _error_result(
 			SaveError.INVALID_ARGUMENT,
@@ -634,7 +655,9 @@ func register_save_manager_bridge(bridge: Node) -> SaveResult:
 			"save manager bridge must implement save_named_entry() and load_named_entry()"
 		)
 	_save_manager_bridge = bridge
-	_dev_save_manager_service.write_status(self, _save_manager_bridge)
+	if _is_save_manager_bus_enabled():
+		set_process(true)
+		_dev_save_manager_service.write_status(self, _save_manager_bridge)
 	return _ok_result({"bridge_name": _dev_save_manager_service.get_bridge_name(_save_manager_bridge)})
 
 
@@ -645,9 +668,12 @@ func unregister_save_manager_bridge(bridge: Node) -> SaveResult:
 			"INVALID_ARGUMENT",
 			"save manager bridge cannot be null"
 		)
+	if not _is_save_manager_bus_enabled():
+		return _ok_result()
 	if _save_manager_bridge == bridge:
 		_save_manager_bridge = null
-	_dev_save_manager_service.write_status(self, _save_manager_bridge)
+	if _is_save_manager_bus_enabled():
+		_dev_save_manager_service.write_status(self, _save_manager_bridge)
 	return _ok_result()
 
 
@@ -932,11 +958,15 @@ func load_current(slot_id: String) -> SaveResult:
 ## This uses a derived dev-save settings profile and prefers scope-root
 ## restoration when a SaveFlowScope is present in the active scene.
 func save_dev_named_entry(entry_name: String) -> SaveResult:
+	if not _is_save_manager_bus_enabled():
+		return _save_manager_editor_only_result("save_dev_named_entry")
 	return _dev_save_manager_service.run_named_entry_with_dev_settings(self, "save", entry_name)
 
 
 ## Load one named dev entry for editor-driven runtime testing.
 func load_dev_named_entry(entry_name: String) -> SaveResult:
+	if not _is_save_manager_bus_enabled():
+		return _save_manager_editor_only_result("load_dev_named_entry")
 	return _dev_save_manager_service.run_named_entry_with_dev_settings(self, "load", entry_name)
 
 

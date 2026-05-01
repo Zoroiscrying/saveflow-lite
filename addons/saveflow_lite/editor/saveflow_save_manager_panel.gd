@@ -43,15 +43,20 @@ var _refresh_timer := 0.0
 var _request_status_hold_until_unix := 0
 var _fallback_runtime: Node
 var _expanded_entry_keys: Dictionary = {}
+var _has_refreshed_once := false
 
 
 func _ready() -> void:
 	_build_ui()
-	_refresh_all()
-	set_process(true)
+	_set_initial_status()
+	set_process(false)
+	visibility_changed.connect(_on_visibility_changed)
 
 
 func _process(delta: float) -> void:
+	if not _should_auto_refresh():
+		set_process(false)
+		return
 	_refresh_timer += delta
 	if _refresh_timer < REFRESH_INTERVAL:
 		return
@@ -60,13 +65,35 @@ func _process(delta: float) -> void:
 
 
 func refresh_now() -> void:
+	_has_refreshed_once = true
+	_refresh_timer = 0.0
 	_refresh_all()
+	_update_process_state()
 
 
 func focus_primary_input() -> void:
 	if _search_edit == null or not is_instance_valid(_search_edit):
 		return
 	_search_edit.grab_focus()
+
+
+func _set_initial_status() -> void:
+	if _runtime_status_label != null:
+		_runtime_status_label.text = "Open or refresh DevSaveManager to inspect runtime save state."
+	if _request_status_label != null:
+		_request_status_label.text = "Save/load requests are idle until the panel is refreshed."
+
+
+func _should_auto_refresh() -> bool:
+	return _has_refreshed_once and is_visible_in_tree()
+
+
+func _update_process_state() -> void:
+	set_process(_should_auto_refresh())
+
+
+func _on_visibility_changed() -> void:
+	_update_process_state()
 
 
 func _build_ui() -> void:
@@ -120,7 +147,7 @@ func _build_ui() -> void:
 
 	var refresh_button := Button.new()
 	refresh_button.text = "Refresh"
-	refresh_button.pressed.connect(_refresh_all)
+	refresh_button.pressed.connect(refresh_now)
 	toolbar.add_child(refresh_button)
 
 	var folder_bar := HBoxContainer.new()

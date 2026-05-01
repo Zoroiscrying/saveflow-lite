@@ -7,8 +7,7 @@ The `SaveFlow` autoload is the main GDScript runtime facade.
 
 Use these calls from gameplay code, menu code, tests, or editor utilities.
 
-The method names on this page are the GDScript release-candidate surface for
-the 0.9 line.
+The method names on this page are the stable GDScript surface for the 1.0 line.
 
 ## Configuration
 
@@ -183,7 +182,7 @@ Each issue entry includes `descriptor_index`, `code`, `message`,
 `persistent_id`, and `type_key`. Entries that can report useful context also
 include `details`.
 The Entity Collection inspector and troubleshooting docs use the same stable
-next-action text for these codes through the 0.9 line.
+next-action text for these codes through the 1.0 line.
 
 ## Dev Save Helpers
 
@@ -193,4 +192,5 @@ SaveFlow.load_dev_named_entry(entry_name: String) -> SaveResult
 ```
 
 These are for editor/development workflows.
-Do not build shipped save menus around dev named entries.
+They return `SAVE_MANAGER_EDITOR_ONLY` in exported builds. Do not build shipped
+save menus around dev named entries.

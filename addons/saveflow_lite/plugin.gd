@@ -32,12 +32,10 @@ func _enter_tree() -> void:
 	_ensure_autoload()
 	_ensure_inspector_plugin()
 	_ensure_settings_panel()
-	_ensure_save_manager_panel()
 	_ensure_quick_access_panel()
 	_ensure_scene_validator_badges()
 	add_tool_menu_item("SaveFlow Quick Access", Callable(self, "_show_quick_access_panel"))
 	_apply_project_settings_to_runtime()
-	_report_setup_health()
 	if _should_auto_show_quick_access():
 		call_deferred("_queue_quick_access_panel_show")
 
@@ -192,13 +190,6 @@ func _apply_project_settings_to_runtime() -> void:
 	runtime.configure(project_settings_script.load_settings())
 
 
-func _report_setup_health() -> void:
-	var report := _inspect_setup_health()
-	if int(report.get("error_count", 0)) == 0:
-		return
-	push_warning("SaveFlow Lite setup check: %s" % String(report.get("summary", "Setup needs attention.")))
-
-
 func _get_project_settings_script() -> Script:
 	if not ResourceLoader.exists(PROJECT_SETTINGS_SCRIPT_PATH):
 		if not _missing_project_settings_script_reported:
@@ -279,6 +270,8 @@ func _queue_quick_access_panel_show() -> void:
 
 
 func _focus_save_manager_panel() -> void:
+	if _save_manager_panel == null:
+		_ensure_save_manager_panel()
 	if _save_manager_panel == null:
 		return
 	_make_host_dock_visible(_save_manager_panel)

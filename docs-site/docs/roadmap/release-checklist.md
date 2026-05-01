@@ -1,11 +1,11 @@
 ---
 sidebar_position: 2
-title: 0.9 RC Release Checklist
+title: 1.0 Release Checklist
 ---
 
-0.9.x is the SaveFlow Lite release-candidate line.
+1.0.x is the SaveFlow Lite stable line.
 
-Use this checklist before publishing any 0.9.x build.
+Use this checklist before publishing any 1.0.x build.
 
 ## Release Scope
 
@@ -36,7 +36,7 @@ Validate these paths:
 | Fresh addons zip install | `addons/saveflow_core` and `addons/saveflow_lite` copy cleanly into an empty project. |
 | Fresh Godot Asset Library style install | Archive root contains only `addons/`. |
 | Demo zip open | Demo project opens with `addons/`, `demo/saveflow_lite`, `project.godot`, and README. |
-| Existing 0.8.7 project overwrite | Replacing the addon folders keeps the `SaveFlow` autoload and project settings usable. |
+| Existing 0.9.4 project overwrite | Replacing the addon folders keeps the `SaveFlow` autoload and project settings usable. |
 | Docs-site/repository clone | Repository-only paths stay outside install guidance and release addon zips. |
 
 ## Local Verification
@@ -68,7 +68,7 @@ npm run build
 - Asset Library archive exports only `addons/`
 - SHA-256 checksum manifest exists for the zip assets
 - clean install validation passes for the generated addons-only zip
-- 0.8.7-to-current upgrade validation passes for the generated addons-only zip
+- 0.9.4-to-current upgrade validation passes for the generated addons-only zip
 - Mono clean install validation passes for the generated addons-only zip
 - published release validation passes after GitHub release upload
 
@@ -76,7 +76,7 @@ The clean install validation expands the addons zip into a temporary Godot
 project, enables SaveFlow Lite, confirms the `SaveFlow` autoload persists, runs
 a runtime smoke script, and runs Godot `--check-only`.
 
-The upgrade validation expands the 0.8.7 addons zip into a temporary Godot
+The upgrade validation expands the 0.9.4 addons zip into a temporary Godot
 project, enables SaveFlow Lite, overwrites the addon folders with the current
 addons zip, confirms the `SaveFlow` autoload and project settings persist, runs
 a runtime smoke script, and runs Godot `--check-only`.
@@ -102,11 +102,12 @@ After release upload, the same published release validation can be rerun with:
 
 ## Release Notes
 
-For 0.9.x, release notes should emphasize:
+For 1.0.x, release notes should emphasize:
 
-- RC hardening
+- stable baseline polish
 - fixed regressions
 - install/package validation
 - docs/API consistency
 
-Do not present 0.9.x as a new feature line.
+Do not introduce broad new public APIs in a 1.0.x patch release unless the
+compatibility tradeoff is clearly smaller than shipping the mistake.

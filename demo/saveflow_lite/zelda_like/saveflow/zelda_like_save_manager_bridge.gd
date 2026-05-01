@@ -6,13 +6,13 @@ extends "res://addons/saveflow_core/runtime/core/saveflow_save_manager_bridge.gd
 
 func _ready() -> void:
 	_hydrate_sandbox_from_ref_path()
-	if Engine.is_editor_hint():
+	if Engine.is_editor_hint() or not OS.has_feature("editor"):
 		return
 	SaveFlow.register_save_manager_bridge(self)
 
 
 func _exit_tree() -> void:
-	if Engine.is_editor_hint():
+	if Engine.is_editor_hint() or not OS.has_feature("editor"):
 		return
 	SaveFlow.unregister_save_manager_bridge(self)
 

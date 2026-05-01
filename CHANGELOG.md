@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0
+
+Updated in this release:
+- Prepared the stable SaveFlow Lite 1.0 baseline
+- Removed release-blocking editor cold-start work by lazily creating `DevSaveManager`, pausing hidden save-manager refreshes, and making scene validation explicit instead of continuously polling from startup
+- Gated the runtime save-manager bridge bus to editor builds so exported games do not keep writing editor coordination status files
+- Updated public documentation and package metadata from the 0.9 RC line to the 1.0 stable line
+
 ## 0.9.4
 
 Updated in this release:

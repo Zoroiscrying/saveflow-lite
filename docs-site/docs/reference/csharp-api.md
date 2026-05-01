@@ -7,8 +7,8 @@ The C# API is a thin wrapper over the same SaveFlow runtime.
 
 Use it for C# gameplay code, C# state Sources, and C# save-menu helpers.
 
-The `SaveFlowClient` methods on this page are the C# release-candidate surface
-for the 0.9 line.
+The `SaveFlowClient` methods on this page are the stable C# surface for the
+1.0 line.
 
 ## SaveFlowClient
 
@@ -101,6 +101,9 @@ Dev helpers:
 SaveFlowClient.SaveDevNamedEntry(string entryName)
 SaveFlowClient.LoadDevNamedEntry(string entryName)
 ```
+
+These helpers are editor-only and return `SAVE_MANAGER_EDITOR_ONLY` in exported
+builds.
 
 ## SaveFlowCallResult
 

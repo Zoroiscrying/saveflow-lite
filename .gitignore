@@ -44,6 +44,8 @@ CLAUDE.md
 /feature_profiles/
 /text_editor_themes/
 /export_templates/
+/script_templates/
+/$coreRoot/
 
 # Non-release workspace content outside SaveFlow Lite
 /addons/control_center/
