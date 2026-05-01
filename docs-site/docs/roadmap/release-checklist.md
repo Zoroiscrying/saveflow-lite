@@ -47,6 +47,7 @@ Run:
 .\tools\import_project.ps1
 .\tools\run_gdunit.ps1 -ContinueOnFailure
 .\tools\release\validate_saveflow_lite_upgrade.ps1
+.\tools\release\validate_saveflow_lite_mono_clean_install.ps1 -ZipPath <addons-zip>
 ```
 
 Build the docs site:
@@ -68,6 +69,7 @@ npm run build
 - SHA-256 checksum manifest exists for the zip assets
 - clean install validation passes for the generated addons-only zip
 - 0.8.7-to-current upgrade validation passes for the generated addons-only zip
+- Mono clean install validation passes for the generated addons-only zip
 
 The clean install validation expands the addons zip into a temporary Godot
 project, enables SaveFlow Lite, confirms the `SaveFlow` autoload persists, runs
@@ -81,6 +83,10 @@ a runtime smoke script, and runs Godot `--check-only`.
 The checksum manifest is uploaded as
 `saveflow-lite-v{version}-SHA256SUMS.txt` and includes one SHA-256 entry for the
 addons zip and one for the addons-demo zip.
+
+The Mono clean install validation expands the addons zip into a temporary Godot
+C# project, enables SaveFlow Lite, builds a minimal `SaveFlowClient` smoke
+project, runs the smoke scene, and runs Godot `--check-only`.
 
 ## Release Notes
 

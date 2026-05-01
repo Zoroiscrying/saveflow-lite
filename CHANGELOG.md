@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.3
+
+Updated in this release:
+- Added a Mono clean install release validator that expands the addons zip into a temporary Godot C# project and builds a minimal `SaveFlowClient` smoke project
+- Added Mono clean install validation to release creation so the C# wrapper is checked before GitHub release upload
+- Updated the 0.9 RC release checklist and release tool notes to include the C# / Mono clean install gate
+
 ## 0.9.2
 
 Updated in this release:
