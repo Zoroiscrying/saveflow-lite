@@ -70,6 +70,7 @@ npm run build
 - clean install validation passes for the generated addons-only zip
 - 0.8.7-to-current upgrade validation passes for the generated addons-only zip
 - Mono clean install validation passes for the generated addons-only zip
+- published release validation passes after GitHub release upload
 
 The clean install validation expands the addons zip into a temporary Godot
 project, enables SaveFlow Lite, confirms the `SaveFlow` autoload persists, runs
@@ -87,6 +88,17 @@ addons zip and one for the addons-demo zip.
 The Mono clean install validation expands the addons zip into a temporary Godot
 C# project, enables SaveFlow Lite, builds a minimal `SaveFlowClient` smoke
 project, runs the smoke scene, and runs Godot `--check-only`.
+
+The published release validation downloads the GitHub Release assets for the
+tag, verifies the checksum manifest against the downloaded zip files, checks the
+release zip shape again, and reruns clean install plus Mono clean install against
+the downloaded addons zip.
+
+After release upload, the same published release validation can be rerun with:
+
+```powershell
+.\tools\release\validate_saveflow_lite_published_release.ps1 -Version <version>
+```
 
 ## Release Notes
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.4
+
+Updated in this release:
+- Added a published release validator that downloads GitHub Release assets, verifies the checksum manifest against the downloaded zip files, and rechecks release zip shape
+- Added published clean install and Mono clean install validation after GitHub release upload so the shipped addons zip is tested, not only the local build output
+- Updated the 0.9 RC release checklist and release tool notes to include the published-release verification gate
+
 ## 0.9.3
 
 Updated in this release:
