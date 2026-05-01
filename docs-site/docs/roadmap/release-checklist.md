@@ -46,6 +46,7 @@ Run:
 ```powershell
 .\tools\import_project.ps1
 .\tools\run_gdunit.ps1 -ContinueOnFailure
+.\tools\release\validate_saveflow_lite_upgrade.ps1
 ```
 
 Build the docs site:
@@ -65,9 +66,15 @@ npm run build
 - forbidden repository roots are absent from release zips
 - Asset Library archive exports only `addons/`
 - clean install validation passes for the generated addons-only zip
+- 0.8.7-to-current upgrade validation passes for the generated addons-only zip
 
 The clean install validation expands the addons zip into a temporary Godot
 project, enables SaveFlow Lite, confirms the `SaveFlow` autoload persists, runs
+a runtime smoke script, and runs Godot `--check-only`.
+
+The upgrade validation expands the 0.8.7 addons zip into a temporary Godot
+project, enables SaveFlow Lite, overwrites the addon folders with the current
+addons zip, confirms the `SaveFlow` autoload and project settings persist, runs
 a runtime smoke script, and runs Godot `--check-only`.
 
 ## Release Notes

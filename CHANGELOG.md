@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1
+
+Updated in this release:
+- Added an upgrade validation script that installs the 0.8.7 addons zip, enables SaveFlow Lite, overwrites it with the current addon package, and verifies the upgraded project still keeps the `SaveFlow` autoload and project settings usable
+- Added upgrade validation to release creation so addons-only zip assets are tested against the 0.8.7 upgrade path before GitHub release upload
+- Updated the 0.9 RC release checklist and release tool notes to include automated upgrade validation
+
 ## 0.9.0
 
 Updated in this release:

@@ -57,6 +57,8 @@ CLAUDE.md
 /tools/release/*
 !/tools/release/README.md
 !/tools/release/publish_saveflow_lite.ps1
+!/tools/release/validate_saveflow_lite_clean_install.ps1
+!/tools/release/validate_saveflow_lite_upgrade.ps1
 /addons/gdUnit4/test/
 /addons/gdUnit4/runtest.cmd
 /addons/gdUnit4/runtest.sh
