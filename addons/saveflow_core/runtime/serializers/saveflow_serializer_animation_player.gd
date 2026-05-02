@@ -18,10 +18,15 @@ func gather_from_node(node: Node) -> Variant:
 	var target := node as AnimationPlayer
 	if target == null:
 		return {}
+	var current_animation := String(target.current_animation)
+	var assigned_animation := String(target.assigned_animation)
+	var position := 0.0
+	if not current_animation.is_empty() or not assigned_animation.is_empty():
+		position = float(target.current_animation_position)
 	return {
-		"current_animation": String(target.current_animation),
-		"assigned_animation": String(target.assigned_animation),
-		"position": float(target.current_animation_position),
+		"current_animation": current_animation,
+		"assigned_animation": assigned_animation,
+		"position": position,
 		"speed_scale": float(target.speed_scale),
 		"is_playing": bool(target.is_playing()),
 	}
