@@ -102,7 +102,7 @@ func execute_named_entry_action(runtime: Node, action: String, slot_id: String) 
 			"no runtime scene is available for SaveFlow dev save/load"
 		)
 
-	var scope_root := find_first_scope_in_tree(scene_root)
+	var scope_root := resolve_dev_scope_root(scene_root)
 	if scope_root != null:
 		if action == "save":
 			return _call_saveflow_result(runtime, "save_scope", [slot_id, scope_root, {"display_name": slot_id}])
@@ -165,6 +165,40 @@ func find_first_scope_in_tree(node: Node) -> SaveFlowScope:
 		if found != null:
 			return found
 	return null
+
+
+func resolve_dev_scope_root(scene_root: Node) -> SaveFlowScope:
+	if scene_root == null:
+		return null
+	if scene_root is SaveFlowScope:
+		return scene_root as SaveFlowScope
+	var scope_root := find_first_scope_in_tree(scene_root)
+	if scope_root == null:
+		return null
+	if _has_graph_source_outside_scope(scene_root, scope_root):
+		return null
+	return scope_root
+
+
+func _has_graph_source_outside_scope(current: Node, scope_root: SaveFlowScope) -> bool:
+	if current == null:
+		return false
+	if current == scope_root:
+		return false
+	if _is_graph_source_node(current):
+		return true
+	for child in current.get_children():
+		if child is Node and _has_graph_source_outside_scope(child, scope_root):
+			return true
+	return false
+
+
+func _is_graph_source_node(node: Node) -> bool:
+	if node == null:
+		return false
+	if node is SaveFlowSource:
+		return (node as SaveFlowSource).is_source_enabled()
+	return node.has_method("gather_save_data") and node.has_method("apply_save_data")
 
 
 func build_builtin_dev_settings(settings_source: SaveSettings = null) -> SaveSettings:

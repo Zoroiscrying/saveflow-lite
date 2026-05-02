@@ -955,8 +955,8 @@ func load_current(slot_id: String) -> SaveResult:
 
 
 ## Save one named dev entry for editor-driven runtime testing.
-## This uses a derived dev-save settings profile and prefers scope-root
-## restoration when a SaveFlowScope is present in the active scene.
+## This uses a derived dev-save settings profile. Scope-root restoration is used
+## only when the active scene is scope-shaped; mixed scene graphs use scene save.
 func save_dev_named_entry(entry_name: String) -> SaveResult:
 	if not _is_save_manager_bus_enabled():
 		return _save_manager_editor_only_result("save_dev_named_entry")
