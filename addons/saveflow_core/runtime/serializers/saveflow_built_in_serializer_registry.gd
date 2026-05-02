@@ -11,6 +11,9 @@ const _SERIALIZER_RAY_CAST_2D := preload(
 const _SERIALIZER_RAY_CAST_3D := preload(
 	"res://addons/saveflow_core/runtime/serializers/saveflow_serializer_ray_cast_3d.gd"
 )
+const _SERIALIZER_CANVAS_ITEM := preload(
+	"res://addons/saveflow_core/runtime/serializers/saveflow_serializer_canvas_item.gd"
+)
 
 static var _serializer_cache: Array = []
 static var _display_name_cache: Dictionary = {}
@@ -22,6 +25,7 @@ static func all_serializers() -> Array:
 
 static func _serializer_types() -> Array:
 	return [
+		_SERIALIZER_CANVAS_ITEM,
 		SaveFlowSerializerNode2D,
 		SaveFlowSerializerNode3D,
 		SaveFlowSerializerControl,
