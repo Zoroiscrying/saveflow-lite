@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1
+
+Updated in this release:
+- Fixed DevSaveManager fallback saves for scenes that mix a nested `SaveFlowScope` with graph sources outside that scope
+- Added built-in `visible` state persistence for `CanvasItem` and `Node3D` targets selected by `SaveFlowNodeSource`
+- Guarded `AnimationPlayer` serialization when no current animation is assigned so saving idle animation players no longer emits engine errors
+- Reduced .NET project glob scanning by compiling only the repository's intended C# source roots
+
 ## 1.0.0
 
 Updated in this release:
