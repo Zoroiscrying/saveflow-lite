@@ -13,10 +13,10 @@ const PROJECT_WORKFLOW_SCENE := "res://demo/saveflow_lite/recommended_template/s
 const PIPELINE_NOTIFICATION_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/pipeline_notifications/pipeline_notification_demo.tscn"
 const CSHARP_WORKFLOW_SCENE := "res://demo/saveflow_lite/recommended_template/scenes/csharp_workflow/csharp_workflow_demo.tscn"
 
-const SaveFlowIcon := preload("res://addons/saveflow_lite/icons/saveflow_icon.svg")
-const EntityFactoryIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_entity_factory_icon.svg")
-const PipelineSignalsIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_pipeline_signals_icon.svg")
-const ScopeIcon := preload("res://addons/saveflow_lite/icons/components/saveflow_scope_icon.svg")
+const SAVEFLOW_ICON_PATH := "res://addons/saveflow_lite/icons/saveflow_icon.png"
+const ENTITY_FACTORY_ICON_PATH := "res://addons/saveflow_lite/icons/components/saveflow_entity_factory_icon.svg"
+const PIPELINE_SIGNALS_ICON_PATH := "res://addons/saveflow_lite/icons/components/saveflow_pipeline_signals_icon.svg"
+const SCOPE_ICON_PATH := "res://addons/saveflow_lite/icons/components/saveflow_scope_icon.svg"
 
 signal open_scene_requested(scene_path: String)
 signal focus_settings_requested
@@ -29,6 +29,10 @@ var _plugin_version := ""
 var _dismiss_sent := false
 var _version_label: Label
 var _suppress_check: CheckBox
+var _saveflow_icon: Texture2D
+var _entity_factory_icon: Texture2D
+var _pipeline_signals_icon: Texture2D
+var _scope_icon: Texture2D
 
 
 func _ready() -> void:
@@ -97,19 +101,19 @@ func _build_ui() -> void:
 		"Start Here",
 		[
 			{
-				"icon": SaveFlowIcon,
+				"icon": _get_saveflow_icon(),
 				"title": "Open Recommended Template",
 				"description": "Open the main project workflow: one hub scene, authored subscenes, scene data, node data, and runtime entity collection data in one playable flow.",
 				"action": func() -> void: _emit_scene(PROJECT_WORKFLOW_SCENE),
 			},
 			{
-				"icon": PipelineSignalsIcon,
+				"icon": _get_pipeline_signals_icon(),
 				"title": "Open Pipeline Signals Demo",
 				"description": "Open a small scene-authored pipeline demo: SaveFlowPipelineSignals nodes drive source-level and final Data Saved notifications without subclassing sources.",
 				"action": func() -> void: _emit_scene(PIPELINE_NOTIFICATION_SCENE),
 			},
 			{
-				"icon": SaveFlowIcon,
+				"icon": _get_saveflow_icon(),
 				"title": "Open C# Workflow Demo",
 				"description": "Open the C# path: SaveFlowTypedStateSource, SaveFlowSlotWorkflow, SaveFlowSlotCard, and SaveFlowClient.SaveScope in one small scene.",
 				"action": func() -> void: _emit_scene(CSHARP_WORKFLOW_SCENE),
@@ -121,7 +125,7 @@ func _build_ui() -> void:
 		"Editor Panels",
 		[
 			{
-				"icon": SaveFlowIcon,
+				"icon": _get_saveflow_icon(),
 				"title": "Open SaveFlow Settings",
 				"description": "Jump to project-wide save format, setup health, and defaults.",
 				"action": func() -> void:
@@ -130,7 +134,7 @@ func _build_ui() -> void:
 					focus_settings_requested.emit(),
 			},
 			{
-				"icon": EntityFactoryIcon,
+				"icon": _get_entity_factory_icon(),
 				"title": "Open DevSaveManager",
 				"description": "Jump to runtime save testing, dev saves, and formal slot save inspection.",
 				"action": func() -> void:
@@ -139,7 +143,7 @@ func _build_ui() -> void:
 					focus_save_manager_requested.emit(),
 			},
 			{
-				"icon": ScopeIcon,
+				"icon": _get_scope_icon(),
 				"title": "Open Lite Docs",
 				"description": "Open the plugin docs folder for screenshots, maps, and integration notes.",
 				"action": func() -> void:
@@ -169,7 +173,7 @@ func _build_header() -> Control:
 	padding.add_child(row)
 
 	var icon := TextureRect.new()
-	icon.texture = SaveFlowIcon
+	icon.texture = _get_saveflow_icon()
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size = Vector2(52, 52)
@@ -234,13 +238,37 @@ func _build_section(section_title: String, actions: Array) -> Control:
 	for action_variant in actions:
 		var action: Dictionary = action_variant
 		content.add_child(_build_action_row(
-			action.get("icon", SaveFlowIcon),
+			action.get("icon", _get_saveflow_icon()),
 			String(action.get("title", "")),
 			String(action.get("description", "")),
 			Callable(action.get("action", Callable()))
 		))
 
 	return panel
+
+
+func _get_saveflow_icon() -> Texture2D:
+	if _saveflow_icon == null:
+		_saveflow_icon = load(SAVEFLOW_ICON_PATH) as Texture2D
+	return _saveflow_icon
+
+
+func _get_entity_factory_icon() -> Texture2D:
+	if _entity_factory_icon == null:
+		_entity_factory_icon = load(ENTITY_FACTORY_ICON_PATH) as Texture2D
+	return _entity_factory_icon
+
+
+func _get_pipeline_signals_icon() -> Texture2D:
+	if _pipeline_signals_icon == null:
+		_pipeline_signals_icon = load(PIPELINE_SIGNALS_ICON_PATH) as Texture2D
+	return _pipeline_signals_icon
+
+
+func _get_scope_icon() -> Texture2D:
+	if _scope_icon == null:
+		_scope_icon = load(SCOPE_ICON_PATH) as Texture2D
+	return _scope_icon
 
 
 func _build_action_row(icon_texture: Texture2D, action_title: String, description: String, action: Callable) -> Control:
