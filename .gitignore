@@ -27,6 +27,7 @@
 *.tmp
 *.temp
 *.import
+!addons/saveflow_lite/icons/saveflow_icon.png.import
 
 # Docs site generated files
 /docs-site/node_modules/
