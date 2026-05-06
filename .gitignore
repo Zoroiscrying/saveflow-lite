@@ -29,6 +29,15 @@
 *.import
 !addons/saveflow_lite/icons/saveflow_icon.png.import
 
+# Design source files
+*.psd
+*.psb
+*.kra
+*.xcf
+*.aseprite
+*.blend
+*.ai
+
 # Docs site generated files
 /docs-site/node_modules/
 /docs-site/.docusaurus/

@@ -1,165 +1,158 @@
-[gd_scene format=3 uid="uid://dskad1ocg6akk"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://cmdk8who658jo" path="res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_project_room.gd" id="1_room"]
-[ext_resource type="Script" uid="uid://brnbsk6v18vsj" path="res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_room_save_data.gd" id="2_data"]
-[ext_resource type="Script" uid="uid://bn3t3lqblninp" path="res://addons/saveflow_core/runtime/sources/saveflow_typed_data_source.gd" id="3_source"]
-[ext_resource type="Script" uid="uid://ccaq441lera4w" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="5_node_source"]
-[ext_resource type="Script" uid="uid://c4hk6u8omj6ut" path="res://addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd" id="6_collection"]
-[ext_resource type="Script" uid="uid://cps3v5yfrcd8h" path="res://addons/saveflow_core/runtime/entities/saveflow_prefab_entity_factory.gd" id="7_factory"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_project_room.gd" id="1_room"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_room_save_data.gd" id="2_data"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_typed_data_source.gd" id="3_source"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="5_node_source"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd" id="6_collection"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/entities/saveflow_prefab_entity_factory.gd" id="7_factory"]
 [ext_resource type="PackedScene" path="res://demo/saveflow_lite/recommended_template/scenes/prefabs/template_runtime_coin.tscn" id="8_coin"]
 
 [sub_resource type="Resource" id="Resource_forest_room_data"]
-resource_local_to_scene = true
 script = ExtResource("2_data")
+resource_local_to_scene = true
 room_id = "forest"
 display_name = "Forest Room"
-collected_coins = PackedStringArray()
 
-[node name="ForestRoom" type="Node2D" unique_id=562761523]
+[node name="ForestRoom" type="Node2D"]
 script = ExtResource("1_room")
+room_id = "forest"
+display_name = "Forest Room"
+slot_index = 1
 room_bounds = Rect2(140, 140, 1010, 500)
+spawn_position = Vector2(315, 500)
 room_data = SubResource("Resource_forest_room_data")
 
-[node name="RoomFloor" type="Polygon2D" parent="." unique_id=1299235531]
+[node name="RoomFloor" type="Polygon2D" parent="."]
 color = Color(0.16, 0.28, 0.22, 1)
 polygon = PackedVector2Array(100, 100, 1190, 100, 1190, 670, 100, 670)
 
-[node name="NorthWall" type="Polygon2D" parent="." unique_id=1408011004]
+[node name="NorthWall" type="Polygon2D" parent="."]
 color = Color(0.28, 0.44, 0.34, 1)
 polygon = PackedVector2Array(100, 100, 1190, 100, 1190, 140, 100, 140)
 
-[node name="SouthWall" type="Polygon2D" parent="." unique_id=788240431]
+[node name="SouthWall" type="Polygon2D" parent="."]
 color = Color(0.28, 0.44, 0.34, 1)
 polygon = PackedVector2Array(100, 630, 1190, 630, 1190, 670, 100, 670)
 
-[node name="WestWall" type="Polygon2D" parent="." unique_id=1706428524]
+[node name="WestWall" type="Polygon2D" parent="."]
 color = Color(0.28, 0.44, 0.34, 1)
 polygon = PackedVector2Array(100, 100, 140, 100, 140, 670, 100, 670)
 
-[node name="EastWall" type="Polygon2D" parent="." unique_id=832748120]
+[node name="EastWall" type="Polygon2D" parent="."]
 color = Color(0.28, 0.44, 0.34, 1)
 polygon = PackedVector2Array(1150, 100, 1190, 100, 1190, 670, 1150, 670)
 
-[node name="SaveZoneFloor" type="Polygon2D" parent="." unique_id=2091741243]
+[node name="SaveZoneFloor" type="Polygon2D" parent="."]
 color = Color(0.18, 0.44, 0.62, 0.45)
 polygon = PackedVector2Array(190, 230, 440, 230, 440, 560, 190, 560)
 
-[node name="LoadZoneFloor" type="Polygon2D" parent="." unique_id=1075970802]
+[node name="LoadZoneFloor" type="Polygon2D" parent="."]
 color = Color(0.22, 0.58, 0.36, 0.45)
 polygon = PackedVector2Array(520, 230, 770, 230, 770, 560, 520, 560)
 
-[node name="MutateZoneFloor" type="Polygon2D" parent="." unique_id=980653720]
+[node name="MutateZoneFloor" type="Polygon2D" parent="."]
 color = Color(0.62, 0.52, 0.16, 0.45)
 polygon = PackedVector2Array(850, 230, 1100, 230, 1100, 560, 850, 560)
 
-[node name="SaveGraph" type="Node" parent="." unique_id=2108775159]
+[node name="SaveGraph" type="Node" parent="."]
 
-[node name="PlayerSource" type="Node" parent="SaveGraph" unique_id=2007151100 node_paths=PackedStringArray("target")]
-script = ExtResource("5_node_source")
-save_key = "player"
-target = NodePath("../../RoomPlayer")
-_target_ref_path = NodePath("../../RoomPlayer")
-additional_properties = PackedStringArray()
-ignored_properties = PackedStringArray()
-included_target_builtin_ids = PackedStringArray()
-included_paths = PackedStringArray("Footprints", "Shadow", "LeftFoot", "RightFoot", "Body", "AnimationPlayer")
-excluded_paths = PackedStringArray()
-metadata/_saveflow_node_source_preview_expanded = true
-metadata/_saveflow_node_source_details_expanded = false
-metadata/_saveflow_node_source_advanced_expanded = false
-metadata/_saveflow_node_source_built_ins_expanded = false
-metadata/_saveflow_node_source_participants_expanded = true
-metadata/_saveflow_node_source_paths_expanded = false
-metadata/_saveflow_node_source_diagnostics_expanded = false
-
-[node name="WorldSource" type="Node" parent="SaveGraph" unique_id=1983680051]
+[node name="WorldSource" type="Node" parent="SaveGraph"]
 script = ExtResource("3_source")
+source_key = "room_state"
 data = SubResource("Resource_forest_room_data")
 
-[node name="RuntimeCoinCollectionSource" type="Node" parent="SaveGraph" unique_id=807114014 node_paths=PackedStringArray("target_container", "entity_factory")]
+[node name="PlayerSource" type="Node" parent="SaveGraph"]
+script = ExtResource("5_node_source")
+save_key = "player"
+_target_ref_path = NodePath("../../RoomPlayer")
+included_paths = PackedStringArray("AnimationPlayer", "Body", "LeftFoot", "RightFoot")
+
+[node name="RuntimeCoinCollectionSource" type="Node" parent="SaveGraph" node_paths=PackedStringArray("target_container", "entity_factory")]
 script = ExtResource("6_collection")
+source_key = "runtime_coins"
 target_container = NodePath("../../RuntimeCoins")
-_target_container_ref_path = NodePath("../../RuntimeCoins")
 restore_policy = 2
+_target_container_ref_path = NodePath("../../RuntimeCoins")
 entity_factory = NodePath("../../RuntimeCoinFactory")
 _entity_factory_ref_path = NodePath("../../RuntimeCoinFactory")
 
-[node name="RoomPlayer" type="Node2D" parent="." unique_id=1541168957]
+[node name="RoomPlayer" type="Node2D" parent="."]
 z_index = 50
 position = Vector2(315, 500)
 
-[node name="Footprints" type="Node2D" parent="RoomPlayer" unique_id=490008085]
+[node name="Footprints" type="Node2D" parent="RoomPlayer"]
 z_index = -1
 
-[node name="Shadow" type="Polygon2D" parent="RoomPlayer" unique_id=1090622250]
+[node name="Shadow" type="Polygon2D" parent="RoomPlayer"]
 color = Color(0, 0, 0, 0.22)
 polygon = PackedVector2Array(-16, 12, 16, 12, 0, 22)
 
-[node name="LeftFoot" type="Polygon2D" parent="RoomPlayer" unique_id=1124754493]
+[node name="LeftFoot" type="Polygon2D" parent="RoomPlayer"]
 position = Vector2(-9, 12)
 color = Color(0.35, 0.55, 0.85, 1)
 polygon = PackedVector2Array(-5, -8, 5, -8, 5, 8, -5, 8)
 
-[node name="RightFoot" type="Polygon2D" parent="RoomPlayer" unique_id=657239669]
+[node name="RightFoot" type="Polygon2D" parent="RoomPlayer"]
 position = Vector2(9, 12)
 color = Color(0.35, 0.55, 0.85, 1)
 polygon = PackedVector2Array(-5, -8, 5, -8, 5, 8, -5, 8)
 
-[node name="Body" type="Polygon2D" parent="RoomPlayer" unique_id=676185577]
+[node name="Body" type="Polygon2D" parent="RoomPlayer"]
 color = Color(0.55, 0.82, 1, 1)
 polygon = PackedVector2Array(0, -22, 17, 0, 0, 20, -17, 0)
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="RoomPlayer" unique_id=977387701]
+[node name="AnimationPlayer" type="AnimationPlayer" parent="RoomPlayer"]
 
-[node name="AuthoredCoins" type="Node2D" parent="." unique_id=1967143299]
+[node name="AuthoredCoins" type="Node2D" parent="."]
 
-[node name="Coin0" type="Polygon2D" parent="AuthoredCoins" unique_id=368100416]
+[node name="Coin0" type="Polygon2D" parent="AuthoredCoins"]
 position = Vector2(615, 430)
 color = Color(1, 0.82, 0.22, 1)
 polygon = PackedVector2Array(0, -13, 11, 0, 0, 13, -11, 0)
 
-[node name="Coin1" type="Polygon2D" parent="AuthoredCoins" unique_id=1954815595]
+[node name="Coin1" type="Polygon2D" parent="AuthoredCoins"]
 position = Vector2(700, 360)
 color = Color(1, 0.82, 0.22, 1)
 polygon = PackedVector2Array(0, -13, 11, 0, 0, 13, -11, 0)
 
-[node name="RuntimeCoins" type="Node2D" parent="." unique_id=726216878]
+[node name="RuntimeCoins" type="Node2D" parent="."]
 
-[node name="RuntimeCoinFactory" type="Node" parent="." unique_id=826135669 node_paths=PackedStringArray("target_container")]
+[node name="RuntimeCoinFactory" type="Node" parent="." node_paths=PackedStringArray("target_container")]
 script = ExtResource("7_factory")
 target_container = NodePath("../RuntimeCoins")
 _target_container_ref_path = NodePath("../RuntimeCoins")
 type_key = "runtime_coin"
 entity_scene = ExtResource("8_coin")
 
-[node name="Door" type="Polygon2D" parent="." unique_id=1855575124]
+[node name="Door" type="Polygon2D" parent="."]
 position = Vector2(1000, 395)
 color = Color(0.8, 0.36, 0.34, 0.85)
 polygon = PackedVector2Array(-22, -70, 22, -70, 22, 70, -22, 70)
 
-[node name="InteractionPads" type="Node2D" parent="." unique_id=139856388]
+[node name="InteractionPads" type="Node2D" parent="."]
 
-[node name="SavePad" type="Polygon2D" parent="InteractionPads" unique_id=1643148679]
+[node name="SavePad" type="Polygon2D" parent="InteractionPads"]
 position = Vector2(315, 405)
 color = Color(0.42, 0.75, 1, 1)
 polygon = PackedVector2Array(-30, -20, 30, -20, 30, 20, -30, 20)
 
-[node name="LoadPad" type="Polygon2D" parent="InteractionPads" unique_id=1544391675]
+[node name="LoadPad" type="Polygon2D" parent="InteractionPads"]
 position = Vector2(645, 405)
 color = Color(0.45, 0.95, 0.6, 1)
 polygon = PackedVector2Array(-30, -20, 30, -20, 30, 20, -30, 20)
 
-[node name="MutatePad" type="Polygon2D" parent="InteractionPads" unique_id=735508361]
+[node name="MutatePad" type="Polygon2D" parent="InteractionPads"]
 position = Vector2(970, 405)
 color = Color(1, 0.7, 0.35, 1)
 polygon = PackedVector2Array(-30, -20, 30, -20, 30, 20, -30, 20)
 
-[node name="ExitPad" type="Polygon2D" parent="InteractionPads" unique_id=1678295656]
+[node name="ExitPad" type="Polygon2D" parent="InteractionPads"]
 position = Vector2(645, 610)
 color = Color(0.85, 0.85, 0.95, 1)
 polygon = PackedVector2Array(0, -24, 24, 0, 0, 24, -24, 0)
 
-[node name="SaveLabel" type="Label" parent="." unique_id=608114319]
+[node name="SaveLabel" type="Label" parent="."]
 offset_left = 245.0
 offset_top = 300.0
 offset_right = 385.0
@@ -168,7 +161,7 @@ text = "Save
 Room Slot #1"
 horizontal_alignment = 1
 
-[node name="LoadLabel" type="Label" parent="." unique_id=2029452868]
+[node name="LoadLabel" type="Label" parent="."]
 offset_left = 575.0
 offset_top = 300.0
 offset_right = 715.0
@@ -177,7 +170,7 @@ text = "Load
 Room Slot #1"
 horizontal_alignment = 1
 
-[node name="MutateLabel" type="Label" parent="." unique_id=1152489161]
+[node name="MutateLabel" type="Label" parent="."]
 offset_left = 900.0
 offset_top = 300.0
 offset_right = 1040.0
@@ -186,7 +179,7 @@ text = "Coin Forge
 runtime entity"
 horizontal_alignment = 1
 
-[node name="ExitLabel" type="Label" parent="." unique_id=385282500]
+[node name="ExitLabel" type="Label" parent="."]
 offset_left = 585.0
 offset_top = 575.0
 offset_right = 705.0
