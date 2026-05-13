@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+Updated in this release:
+- Fixed Project Workflow demo movement hints so the UI says `Arrow keys move`, matching the shipped input map
+- Rebuilt release assets so users downloading the demo package see the corrected controls during first-run evaluation
+
 ## 1.0.1
 
 Updated in this release:
