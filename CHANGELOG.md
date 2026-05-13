@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3
+
+Updated in this release:
+- Rebuilt the demo project package with a Lite-only `project.godot` so it no longer references local development addons such as Control Center, SaveFlow Pro, or gdUnit4
+- Updated release automation to generate the sanitized Lite demo project file instead of copying the shared development workspace settings
+
 ## 1.0.2
 
 Updated in this release:
