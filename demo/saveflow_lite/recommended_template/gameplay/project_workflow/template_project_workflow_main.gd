@@ -190,7 +190,7 @@ func _refresh_ui() -> void:
 		title = String(_room_ui_context.get("title", _room_display_name(_location_id)))
 		area = String(_room_ui_context.get("area", _room_display_name(_location_id)))
 		stats = String(_room_ui_context.get("stats", "subscene data"))
-		hint = String(_room_ui_context.get("hint", "WASD move | Enter interact | Esc main save menu"))
+		hint = String(_room_ui_context.get("hint", "Arrow keys move | Enter interact | Esc main save menu"))
 		status = String(_room_ui_context.get("status", _last_status))
 	_top_left_label.text = "%s\nlocation=%s" % [title, _location_id]
 	_top_center_label.text = area
@@ -240,7 +240,7 @@ func _current_hub_hint() -> String:
 			return "Enter: travel to Forest Room"
 		"dungeon":
 			return "Enter: travel to Dungeon Room"
-	return "WASD move | stand on a portal and press Enter | Esc main save menu"
+	return "Arrow keys move | stand on a portal and press Enter | Esc main save menu"
 
 
 func _clear_current_room() -> void:

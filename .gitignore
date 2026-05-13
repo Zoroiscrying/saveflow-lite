@@ -59,7 +59,6 @@ CLAUDE.md
 
 # Non-release workspace content outside SaveFlow Lite
 /addons/control_center/
-/addons/saveflow_pro/
 /demo/control_center_demo/
 /personalDocs/
 /docs/private/
@@ -69,6 +68,7 @@ CLAUDE.md
 /tools/release/*
 !/tools/release/README.md
 !/tools/release/publish_saveflow_lite.ps1
+!/tools/release/sync_saveflow_pro.ps1
 !/tools/release/validate_saveflow_lite_clean_install.ps1
 !/tools/release/validate_saveflow_lite_mono_clean_install.ps1
 !/tools/release/validate_saveflow_lite_published_release.ps1

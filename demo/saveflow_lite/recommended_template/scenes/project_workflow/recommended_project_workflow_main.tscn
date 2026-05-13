@@ -162,7 +162,7 @@ grow_vertical = 0
 
 [node name="BottomHintLabel" type="Label" parent="HUD/BottomHintPanel"]
 layout_mode = 2
-text = "WASD move | Esc menu"
+text = "Arrow keys move | Esc menu"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3

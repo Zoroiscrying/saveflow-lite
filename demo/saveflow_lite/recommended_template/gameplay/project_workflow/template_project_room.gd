@@ -261,7 +261,7 @@ func _current_interaction_hint() -> String:
 			return "Enter: spawn coin and open door"
 		"exit":
 			return "Enter: return to main scene"
-	return "WASD move | Enter interact | S/L/M/R room hotkeys | Esc main save menu"
+	return "Arrow keys move | Enter interact | S/L/M/R room hotkeys | Esc main save menu"
 
 
 func _run_interaction(interaction: String) -> void:
