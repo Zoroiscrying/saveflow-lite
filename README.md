@@ -1,5 +1,9 @@
 # SaveFlow Lite
 
+<p>
+  <img src="addons/saveflow_lite/icons/saveflow_icon.png" alt="SaveFlow Lite icon" width="128" />
+</p>
+
 SaveFlow Lite is a comfort-first save workflow plugin for Godot 4.
 
 It is built for developers who do not just need to write save files, but need a cleaner way to organize save logic as projects grow.
@@ -11,6 +15,12 @@ It is built for developers who do not just need to write save files, but need a 
 - Documentation: [SaveFlow Lite Docs](https://zoroiscrying.github.io/saveflow-lite/)
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally
+
+## Development Transparency
+
+SaveFlow Lite is developed with AI assistance for implementation, review, docs,
+and release preparation. Product direction, design tradeoffs, testing decisions,
+and published releases are maintained by the project owner.
 
 ## Plugin Preview
 
