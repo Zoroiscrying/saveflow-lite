@@ -383,9 +383,40 @@ func _format_entity_candidates(candidates: Array) -> String:
 func _describe_entity_count(plan: Dictionary) -> String:
 	var entity_count := int(plan.get("entity_count", 0))
 	var missing_count := PackedStringArray(plan.get("missing_identity_nodes", PackedStringArray())).size()
+	var entity_names := _entity_candidate_names(Array(plan.get("entity_candidates", [])))
+	var base := _format_count_preview(entity_count, entity_names, "entity", "entities")
 	if missing_count == 0:
-		return str(entity_count)
-	return "%d (%d missing identity)" % [entity_count, missing_count]
+		return base
+	return "%s | %d missing identity" % [base, missing_count]
+
+
+func _entity_candidate_names(candidates: Array) -> PackedStringArray:
+	var names: PackedStringArray = []
+	for candidate_variant in candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate: Dictionary = candidate_variant
+		var path_text := String(candidate.get("path", ""))
+		if path_text.is_empty():
+			continue
+		names.append(path_text)
+	return names
+
+
+func _format_count_preview(count: int, names: PackedStringArray, singular: String, plural: String) -> String:
+	var unit := singular if count == 1 else plural
+	if count <= 0:
+		return "0 %s" % plural
+	if names.is_empty():
+		return "%d %s" % [count, unit]
+	var visible: PackedStringArray = []
+	var limit := mini(names.size(), 3)
+	for index in range(limit):
+		visible.append(names[index])
+	var suffix := ""
+	if count > visible.size():
+		suffix = " (+%d more)" % (count - visible.size())
+	return "%d %s: %s%s" % [count, unit, ", ".join(visible), suffix]
 
 
 func _format_next_actions(plan: Dictionary) -> String:

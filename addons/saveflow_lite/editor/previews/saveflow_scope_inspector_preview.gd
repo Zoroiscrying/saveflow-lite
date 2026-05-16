@@ -213,8 +213,18 @@ func _refresh() -> void:
 
 	_scope_key_value.text = String(plan.get("scope_key", ""))
 	_restore_policy_value.text = String(plan.get("restore_policy_name", "Inherit"))
-	_child_scopes_value.text = str(int(plan.get("child_scope_count", 0)))
-	_child_sources_value.text = str(int(plan.get("child_source_count", 0)))
+	_child_scopes_value.text = _format_count_preview(
+		int(plan.get("child_scope_count", 0)),
+		PackedStringArray(plan.get("child_scope_keys", PackedStringArray())),
+		"domain",
+		"domains"
+	)
+	_child_sources_value.text = _format_count_preview(
+		int(plan.get("child_source_count", 0)),
+		PackedStringArray(plan.get("child_source_keys", PackedStringArray())),
+		"source",
+		"sources"
+	)
 
 	_contract_toggle.text = _foldout_text("Contract", _contract_expanded)
 	_contract_box.visible = _contract_expanded
@@ -302,6 +312,22 @@ func _format_list(values: Variant) -> String:
 	if items.is_empty():
 		return "<none>"
 	return "\n".join(items)
+
+
+func _format_count_preview(count: int, names: PackedStringArray, singular: String, plural: String) -> String:
+	var unit := singular if count == 1 else plural
+	if count <= 0:
+		return "0 %s" % plural
+	if names.is_empty():
+		return "%d %s" % [count, unit]
+	var visible: PackedStringArray = []
+	var limit := mini(names.size(), 3)
+	for index in range(limit):
+		visible.append(names[index])
+	var suffix := ""
+	if count > visible.size():
+		suffix = " (+%d more)" % (count - visible.size())
+	return "%d %s: %s%s" % [count, unit, ", ".join(visible), suffix]
 
 
 func _format_reason(plan: Dictionary) -> String:

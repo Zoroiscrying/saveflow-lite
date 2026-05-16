@@ -21,6 +21,7 @@
 /artifacts/
 /reports/
 /tmp/
+/release-manifests/
 
 # Logs and temp files
 *.log
@@ -67,6 +68,8 @@ CLAUDE.md
 /tools/packaging/
 /tools/release/*
 !/tools/release/README.md
+!/tools/release/manifests/
+!/tools/release/manifests/*.json
 !/tools/release/publish_saveflow_lite.ps1
 !/tools/release/sync_saveflow_pro.ps1
 !/tools/release/validate_saveflow_lite_clean_install.ps1

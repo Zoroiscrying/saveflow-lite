@@ -5,7 +5,7 @@ const LABEL_WIDTH := 112
 const PADDING := 10
 const META_PREVIEW_EXPANDED := "_saveflow_node_source_preview_expanded"
 const META_DETAILS_EXPANDED := "_saveflow_node_source_details_expanded"
-const META_ADVANCED_EXPANDED := "_saveflow_node_source_advanced_expanded"
+const META_ADVANCED_EXPANDED := "_saveflow_node_source_built_in_fields_expanded"
 const META_BUILT_INS_EXPANDED := "_saveflow_node_source_built_ins_expanded"
 const META_PARTICIPANTS_EXPANDED := "_saveflow_node_source_participants_expanded"
 const META_PATHS_EXPANDED := "_saveflow_node_source_paths_expanded"
@@ -31,6 +31,7 @@ var _children_value: Label
 var _target_fields_value: Label
 var _built_ins_toggle: Button
 var _built_ins_box: VBoxContainer
+var _script_fields_box: VBoxContainer
 var _include_target_checkbox: CheckBox
 var _target_built_ins_box: VBoxContainer
 var _built_in_advanced_toggle: Button
@@ -56,7 +57,7 @@ var _diagnostics_toggle: Button
 var _diagnostics_box: VBoxContainer
 var _supported_value: Label
 
-var _built_in_advanced_expanded := false
+var _built_in_advanced_expanded := true
 
 
 func _ready() -> void:
@@ -149,8 +150,18 @@ func _build_ui() -> void:
 	_built_ins_box.add_theme_constant_override("separation", 6)
 	content.add_child(_built_ins_box)
 
+	var script_fields_title := Label.new()
+	script_fields_title.text = "Script Fields"
+	script_fields_title.modulate = get_theme_color("font_placeholder_color", "Editor")
+	_built_ins_box.add_child(script_fields_title)
+
+	_script_fields_box = VBoxContainer.new()
+	_script_fields_box.add_theme_constant_override("separation", 4)
+	_built_ins_box.add_child(_script_fields_box)
+
 	var built_in_title := Label.new()
-	built_in_title.text = "Built-In State"
+	built_in_title.text = "Built-In"
+	built_in_title.modulate = get_theme_color("font_placeholder_color", "Editor")
 	_built_ins_box.add_child(built_in_title)
 
 	_include_target_checkbox = CheckBox.new()
@@ -181,10 +192,6 @@ func _build_ui() -> void:
 	_participants_box = VBoxContainer.new()
 	_participants_box.add_theme_constant_override("separation", 6)
 	content.add_child(_participants_box)
-
-	var participant_title := Label.new()
-	participant_title.text = "Included Children"
-	_participants_box.add_child(participant_title)
 
 	var discovery_row := HBoxContainer.new()
 	discovery_row.add_theme_constant_override("separation", 10)
@@ -309,9 +316,10 @@ func _refresh() -> void:
 	_save_key_value.text = String(plan.get("save_key", ""))
 	_ownership_value.text = _describe_ownership_summary(plan)
 	_children_value.text = _describe_children_summary(plan)
-	_target_fields_value.text = _format_field_summary(PackedStringArray(plan.get("target_properties", PackedStringArray())))
-	_built_ins_toggle.text = _foldout_text("Built-In State", _built_ins_expanded)
+	_target_fields_value.text = _format_field_summary_from_plan(plan)
+	_built_ins_toggle.text = _foldout_text("Saved States", _built_ins_expanded)
 	_built_ins_box.visible = _built_ins_expanded
+	_rebuild_script_field_controls(plan)
 	_include_target_checkbox.set_block_signals(true)
 	_include_target_checkbox.button_pressed = bool(_node_source != null and _node_source.include_target_built_ins)
 	_include_target_checkbox.set_block_signals(false)
@@ -320,7 +328,7 @@ func _refresh() -> void:
 	_discovery_mode_option.set_block_signals(false)
 
 	_rebuild_target_built_in_controls(target_options)
-	_built_in_advanced_toggle.text = _foldout_text("Advanced Built-Ins", _built_in_advanced_expanded)
+	_built_in_advanced_toggle.text = _foldout_text("Built-In Fields", _built_in_advanced_expanded)
 	_built_in_advanced_box.visible = _built_in_advanced_expanded
 	_rebuild_built_in_advanced_controls(target_options)
 	_participants_toggle.text = _foldout_text("Included Children", _participants_expanded)
@@ -341,7 +349,7 @@ func _refresh() -> void:
 	_paths_toggle.text = _foldout_text("Paths", _paths_expanded)
 	_paths_box.visible = _paths_expanded
 	_target_path_value.text = String(plan.get("target_path", ""))
-	_saved_fields_detail_value.text = _format_list(plan.get("target_properties", PackedStringArray()))
+	_saved_fields_detail_value.text = _format_field_detail_from_plan(plan)
 	_included_paths_value.text = _format_list(plan.get("included_paths", PackedStringArray()))
 	_excluded_paths_value.text = _format_list(plan.get("excluded_paths", PackedStringArray()))
 	_diagnostics_toggle.text = _foldout_text("Diagnostics", _diagnostics_expanded)
@@ -449,6 +457,40 @@ func _rebuild_target_built_in_controls(options: Array) -> void:
 		_target_built_ins_box.add_child(checkbox)
 
 
+func _rebuild_script_field_controls(plan: Dictionary) -> void:
+	_clear_children(_script_fields_box)
+	var entries: Array = Array(plan.get("target_property_entries", []))
+	if entries.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "No exported script fields or additional properties are saved from the target."
+		empty_label.modulate = get_theme_color("font_placeholder_color", "Editor")
+		_script_fields_box.add_child(empty_label)
+		return
+
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		var field_name := String(entry.get("name", ""))
+		if field_name.is_empty():
+			continue
+		var checkbox := CheckBox.new()
+		checkbox.text = _format_script_field_label(entry)
+		checkbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		checkbox.button_pressed = bool(entry.get("saved", true))
+		checkbox.disabled = bool(entry.get("missing", false))
+		if bool(entry.get("missing", false)):
+			checkbox.modulate = _warning_color()
+			checkbox.tooltip_text = "This field is configured, but the target does not currently expose it."
+		else:
+			checkbox.tooltip_text = String(entry.get("source", "target property"))
+		checkbox.toggled.connect(
+			func(pressed: bool) -> void:
+				_on_script_field_toggled(field_name, pressed)
+		)
+		_script_fields_box.add_child(checkbox)
+
+
 func _rebuild_built_in_advanced_controls(options: Array) -> void:
 	_clear_children(_built_in_advanced_box)
 	if options.is_empty():
@@ -504,11 +546,22 @@ func _rebuild_built_in_advanced_controls(options: Array) -> void:
 			box.add_child(field_checkbox)
 
 
+func _format_script_field_label(entry: Dictionary) -> String:
+	var label := String(entry.get("name", ""))
+	var source := String(entry.get("source", ""))
+	if source.is_empty():
+		return label
+	return "%s (%s)" % [label, source]
+
+
 func _rebuild_participant_controls(candidates: Array, plan: Dictionary) -> void:
 	_clear_children(_participant_candidates_box)
 	if candidates.is_empty():
 		var empty_label := Label.new()
-		empty_label.text = "No child nodes with SaveFlow behavior or built-in state were discovered."
+		empty_label.text = "No child nodes with SaveFlow behavior or built-in state."
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty_label.custom_minimum_size.x = 0
+		empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		empty_label.modulate = get_theme_color("font_placeholder_color", "Editor")
 		_participant_candidates_box.add_child(empty_label)
 		return
@@ -536,6 +589,7 @@ func _rebuild_participant_controls(candidates: Array, plan: Dictionary) -> void:
 		row.add_child(indent)
 
 		var include_checkbox := CheckBox.new()
+		include_checkbox.custom_minimum_size.x = 0
 		include_checkbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		include_checkbox.text = _format_candidate_label(candidate)
 		include_checkbox.icon = _resolve_candidate_icon(candidate)
@@ -627,6 +681,75 @@ func _format_field_summary(values: PackedStringArray) -> String:
 	if values.size() == 1:
 		return values[0]
 	return "%d fields" % values.size()
+
+
+func _format_field_summary_from_plan(plan: Dictionary) -> String:
+	var names := _saved_field_names_from_plan(plan)
+	if names.is_empty():
+		return "<none>"
+	if names.size() <= 3:
+		return ", ".join(names)
+	var visible: PackedStringArray = []
+	for index in range(3):
+		visible.append(names[index])
+	return "%s (+%d more)" % [", ".join(visible), names.size() - visible.size()]
+
+
+func _format_field_detail_from_plan(plan: Dictionary) -> String:
+	var entries: Array = Array(plan.get("target_property_entries", []))
+	if entries.is_empty():
+		return _format_list(plan.get("saved_target_properties", plan.get("target_properties", PackedStringArray())))
+	var grouped: Dictionary = {}
+	var ignored: PackedStringArray = []
+	var missing: PackedStringArray = []
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		var name := String(entry.get("name", ""))
+		if name.is_empty():
+			continue
+		var source := String(entry.get("source", "target property"))
+		var saved := bool(entry.get("saved", true))
+		if bool(entry.get("ignored", false)) or not saved:
+			ignored.append("%s (%s)" % [name, source])
+			continue
+		if not grouped.has(source):
+			grouped[source] = PackedStringArray()
+		var names: PackedStringArray = PackedStringArray(grouped[source])
+		names.append(name)
+		grouped[source] = names
+		if bool(entry.get("missing", false)):
+			missing.append(name)
+	var lines: PackedStringArray = []
+	for source in grouped.keys():
+		lines.append("%s: %s" % [String(source).capitalize(), ", ".join(PackedStringArray(grouped[source]))])
+	if not ignored.is_empty():
+		lines.append("Ignored: %s" % ", ".join(ignored))
+	if not missing.is_empty():
+		lines.append("Missing on target: %s" % ", ".join(missing))
+	if lines.is_empty():
+		return "<none>"
+	return "\n".join(lines)
+
+
+func _saved_field_names_from_plan(plan: Dictionary) -> PackedStringArray:
+	var explicit_names := PackedStringArray(plan.get("saved_target_properties", PackedStringArray()))
+	if not explicit_names.is_empty():
+		return explicit_names
+	var entries: Array = Array(plan.get("target_property_entries", []))
+	var names: PackedStringArray = []
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		if not bool(entry.get("saved", true)):
+			continue
+		var name := String(entry.get("name", ""))
+		if name.is_empty():
+			continue
+		names.append(name)
+	return names
 
 
 func _format_target_display(plan: Dictionary) -> String:
@@ -843,6 +966,22 @@ func _on_include_target_toggled(pressed: bool) -> void:
 	if _node_source == null or not is_instance_valid(_node_source):
 		return
 	_node_source.include_target_built_ins = pressed
+	_mark_source_dirty()
+	_refresh()
+
+
+func _on_script_field_toggled(field_name: String, pressed: bool) -> void:
+	if _node_source == null or not is_instance_valid(_node_source):
+		return
+	var next_ignored: PackedStringArray = _node_source.ignored_properties.duplicate()
+	var index := next_ignored.find(field_name)
+	if pressed:
+		if index >= 0:
+			next_ignored.remove_at(index)
+	else:
+		if index < 0:
+			next_ignored.append(field_name)
+	_node_source.ignored_properties = next_ignored
 	_mark_source_dirty()
 	_refresh()
 

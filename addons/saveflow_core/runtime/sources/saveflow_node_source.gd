@@ -322,6 +322,8 @@ func describe_node_plan() -> Dictionary:
 			"target_path": "",
 			"exported_fields": PackedStringArray(),
 			"target_properties": PackedStringArray(),
+			"saved_target_properties": PackedStringArray(),
+			"target_property_entries": [],
 			"supported_target_built_ins": PackedStringArray(),
 			"active_target_built_ins": PackedStringArray(),
 			"included_paths": included_paths.duplicate(),
@@ -343,6 +345,7 @@ func describe_node_plan() -> Dictionary:
 	var target_is_source_helper := target_node is SaveFlowSource
 	var exported_fields: PackedStringArray = _stored_script_properties_for(target_node)
 	var target_properties: PackedStringArray = _resolve_target_property_names(target_node)
+	var saved_target_properties: PackedStringArray = _filter_saved_property_names(target_properties)
 	var supported_ids: PackedStringArray = SaveFlowBuiltInSerializerRegistry.supported_ids_for_node(target_node)
 	var active_ids: PackedStringArray = _resolve_active_target_builtin_ids(target_node)
 	var built_in_selection_warnings: PackedStringArray = _collect_target_builtin_selection_warnings(target_node)
@@ -400,6 +403,8 @@ func describe_node_plan() -> Dictionary:
 		"target_is_source_helper": target_is_source_helper,
 		"exported_fields": exported_fields,
 		"target_properties": target_properties,
+		"saved_target_properties": saved_target_properties,
+		"target_property_entries": _describe_target_property_entries(target_node, exported_fields, target_properties),
 		"supported_target_built_ins": supported_ids,
 		"active_target_built_ins": active_ids,
 		"included_paths": included_paths.duplicate(),
@@ -540,6 +545,47 @@ func _resolve_target_property_names(target_node: Node) -> PackedStringArray:
 		for property_name in additional_properties:
 			_append_unique(property_names, String(property_name))
 	return property_names
+
+
+func _filter_saved_property_names(property_names: PackedStringArray) -> PackedStringArray:
+	var saved_names: PackedStringArray = []
+	for property_name in property_names:
+		var key := String(property_name)
+		if key.is_empty() or _is_ignored(key):
+			continue
+		_append_unique(saved_names, key)
+	return saved_names
+
+
+func _describe_target_property_entries(target_node: Node, exported_fields: PackedStringArray, target_properties: PackedStringArray) -> Array:
+	var entries: Array = []
+	for property_name in target_properties:
+		var key := String(property_name)
+		if key.is_empty():
+			continue
+		var exported := exported_fields.has(key)
+		var additional := additional_properties.has(key)
+		var ignored := _is_ignored(key)
+		entries.append(
+			{
+				"name": key,
+				"source": _describe_target_property_source(exported, additional),
+				"saved": not ignored,
+				"ignored": ignored,
+				"missing": not _has_property(target_node, key),
+			}
+		)
+	return entries
+
+
+func _describe_target_property_source(exported: bool, additional: bool) -> String:
+	if exported and additional:
+		return "exported field + additional property"
+	if exported:
+		return "exported script field"
+	if additional:
+		return "additional property"
+	return "target property"
 
 
 func _stored_script_properties_for(target_node: Node) -> PackedStringArray:
