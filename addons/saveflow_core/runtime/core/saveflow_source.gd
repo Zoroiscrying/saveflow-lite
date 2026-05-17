@@ -5,7 +5,7 @@
 class_name SaveFlowSource
 extends Node
 
-var source_key: String = ""
+@export var source_key: String = ""
 @export var enabled: bool = true
 @export var save_enabled: bool = true
 @export var load_enabled: bool = true

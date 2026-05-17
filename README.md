@@ -11,7 +11,7 @@ It is built for developers who do not just need to write save files, but need a 
 ## Status
 
 - Godot: `4.6`
-- Plugin version: `1.0.3`
+- Plugin version: `1.0.4`
 - Documentation: [SaveFlow Lite Docs](https://zoroiscrying.github.io/saveflow-lite/)
 - License: [MIT](LICENSE)
 - Tests: runtime suite passing locally

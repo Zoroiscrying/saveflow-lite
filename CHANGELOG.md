@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.4
+
+Updated in this release:
+- Fixed `SaveFlowSource.source_key` persistence by exporting the property, so explicit source keys survive Godot scene saves and public demo packages keep stable save contracts
+- Restored the recommended project workflow demo's explicit `room_state` and `runtime_coins` source keys after Godot scene rewrites changed them back to node-name-derived keys
+- Added regression coverage that locks the recommended workflow demo to those stable source keys
+
 ## 1.0.3
 
 Updated in this release:
