@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://cmdk8who658jo" path="res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_project_room.gd" id="1_room"]
 [ext_resource type="Script" uid="uid://brnbsk6v18vsj" path="res://demo/saveflow_lite/recommended_template/gameplay/project_workflow/template_room_save_data.gd" id="2_data"]
 [ext_resource type="Script" uid="uid://bn3t3lqblninp" path="res://addons/saveflow_core/runtime/sources/saveflow_typed_data_source.gd" id="3_source"]
+[ext_resource type="Script" uid="uid://dmvmckws1mw8t" path="res://addons/saveflow_core/runtime/core/saveflow_scope.gd" id="3_u1obj"]
 [ext_resource type="Script" uid="uid://ccaq441lera4w" path="res://addons/saveflow_core/runtime/sources/saveflow_node_source.gd" id="5_node_source"]
 [ext_resource type="Script" uid="uid://c4hk6u8omj6ut" path="res://addons/saveflow_core/runtime/entities/saveflow_entity_collection_source.gd" id="6_collection"]
 [ext_resource type="Script" uid="uid://cps3v5yfrcd8h" path="res://addons/saveflow_core/runtime/entities/saveflow_prefab_entity_factory.gd" id="7_factory"]
@@ -53,6 +54,7 @@ color = Color(0.62, 0.52, 0.16, 0.45)
 polygon = PackedVector2Array(850, 230, 1100, 230, 1100, 560, 850, 560)
 
 [node name="SaveGraph" type="Node" parent="." unique_id=2108775159]
+script = ExtResource("3_u1obj")
 
 [node name="PlayerSource" type="Node" parent="SaveGraph" unique_id=2007151100 node_paths=PackedStringArray("target")]
 script = ExtResource("5_node_source")
@@ -64,6 +66,7 @@ ignored_properties = PackedStringArray()
 included_target_builtin_ids = PackedStringArray()
 included_paths = PackedStringArray("Footprints", "Shadow", "LeftFoot", "RightFoot", "Body", "AnimationPlayer")
 excluded_paths = PackedStringArray()
+source_key = "player"
 metadata/_saveflow_node_source_preview_expanded = true
 metadata/_saveflow_node_source_details_expanded = false
 metadata/_saveflow_node_source_advanced_expanded = false
@@ -74,17 +77,17 @@ metadata/_saveflow_node_source_diagnostics_expanded = false
 
 [node name="WorldSource" type="Node" parent="SaveGraph" unique_id=1983680051]
 script = ExtResource("3_source")
-source_key = "room_state"
 data = SubResource("Resource_forest_room_data")
+source_key = "room_state"
 
 [node name="RuntimeCoinCollectionSource" type="Node" parent="SaveGraph" unique_id=807114014 node_paths=PackedStringArray("target_container", "entity_factory")]
 script = ExtResource("6_collection")
-source_key = "runtime_coins"
 target_container = NodePath("../../RuntimeCoins")
 _target_container_ref_path = NodePath("../../RuntimeCoins")
 restore_policy = 2
 entity_factory = NodePath("../../RuntimeCoinFactory")
 _entity_factory_ref_path = NodePath("../../RuntimeCoinFactory")
+source_key = "runtime_coins"
 
 [node name="RoomPlayer" type="Node2D" parent="." unique_id=1541168957]
 z_index = 50
