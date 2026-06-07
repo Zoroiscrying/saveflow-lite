@@ -11,7 +11,11 @@ const SCOPE_FORMAL := "formal"
 const BACKUP_FILE_SUFFIX := ".bak"
 
 const REFRESH_INTERVAL := 1.0
-const STATUS_TIMEOUT_SECONDS := 3
+const STATUS_ACTIVE_SECONDS := 3
+const STATUS_STALE_SECONDS := 30
+const RUNTIME_STATUS_ACTIVE := "active"
+const RUNTIME_STATUS_STALE := "stale"
+const RUNTIME_STATUS_UNAVAILABLE := "unavailable"
 
 enum SortMode {
 	NAME_ASC,
@@ -257,14 +261,15 @@ func _refresh_all() -> void:
 
 func _refresh_runtime_status() -> void:
 	var status := _read_runtime_status()
-	var heartbeat_age := int(Time.get_unix_time_from_system()) - int(status.get("updated_at_unix", 0))
-	var active := bool(status.get("runtime_available", false)) and heartbeat_age <= STATUS_TIMEOUT_SECONDS
-	var bridge_name := String(status.get("bridge_name", "SaveFlow"))
-	if active:
-		_runtime_status_label.text = "Runtime bridge active: %s" % bridge_name
+	var state := _get_runtime_status_state(status)
+	if state == RUNTIME_STATUS_ACTIVE:
+		_runtime_status_label.text = _format_runtime_status_text(status)
 		_runtime_status_label.modulate = Color(0.35, 0.8, 0.45, 1.0)
+	elif state == RUNTIME_STATUS_STALE:
+		_runtime_status_label.text = _format_runtime_status_text(status)
+		_runtime_status_label.modulate = Color(0.85, 0.6, 0.3, 1.0)
 	else:
-		_runtime_status_label.text = "Runtime handler inactive. Save/load requests require a running game with SaveFlow available."
+		_runtime_status_label.text = _format_runtime_status_text(status)
 		_runtime_status_label.modulate = Color(0.85, 0.6, 0.3, 1.0)
 
 
@@ -1416,7 +1421,64 @@ func _is_runtime_available() -> bool:
 
 
 func _is_runtime_status_active(status: Dictionary) -> bool:
-	return bool(status.get("runtime_available", false)) and int(Time.get_unix_time_from_system()) - int(status.get("updated_at_unix", 0)) <= STATUS_TIMEOUT_SECONDS
+	return _get_runtime_status_state(status) == RUNTIME_STATUS_ACTIVE
+
+
+func _get_runtime_status_state(status: Dictionary) -> String:
+	if not bool(status.get("runtime_available", false)):
+		return RUNTIME_STATUS_UNAVAILABLE
+	var heartbeat_age := _get_runtime_status_age_seconds(status)
+	if heartbeat_age < 0:
+		return RUNTIME_STATUS_UNAVAILABLE
+	if heartbeat_age <= STATUS_ACTIVE_SECONDS:
+		return RUNTIME_STATUS_ACTIVE
+	if heartbeat_age <= STATUS_STALE_SECONDS:
+		return RUNTIME_STATUS_STALE
+	return RUNTIME_STATUS_UNAVAILABLE
+
+
+func _format_runtime_status_text(status: Dictionary) -> String:
+	var state := _get_runtime_status_state(status)
+	var bridge_name := String(status.get("bridge_name", "SaveFlow"))
+	if bridge_name.is_empty():
+		bridge_name = "SaveFlow"
+	var target_text := _format_runtime_target_text(status)
+	if state == RUNTIME_STATUS_ACTIVE:
+		return "Runtime bridge active: %s%s" % [bridge_name, target_text]
+	if state == RUNTIME_STATUS_STALE:
+		return "Runtime bridge stale: %s%s. Last seen %s ago. File inspection remains available; runtime Save/Load requests are paused." % [
+			bridge_name,
+			target_text,
+			_format_duration_seconds(_get_runtime_status_age_seconds(status)),
+		]
+	return "Runtime handler inactive. Save/load requests require a running game with SaveFlow available."
+
+
+func _format_runtime_target_text(status: Dictionary) -> String:
+	var record_key := String(status.get("current_record_key", "")).strip_edges()
+	if record_key.is_empty():
+		return ""
+	var record_kind := String(status.get("current_record_kind", "")).strip_edges()
+	if record_kind.is_empty():
+		record_kind = "record"
+	return ". Current target: %s %s" % [record_kind, record_key]
+
+
+func _get_runtime_status_age_seconds(status: Dictionary) -> int:
+	var updated_at := int(status.get("updated_at_unix", 0))
+	if updated_at <= 0:
+		return -1
+	return max(0, int(Time.get_unix_time_from_system()) - updated_at)
+
+
+func _format_duration_seconds(seconds: int) -> String:
+	if seconds < 60:
+		return "%ds" % max(0, seconds)
+	var minutes := int(float(seconds) / 60.0)
+	var remainder := seconds % 60
+	if remainder == 0:
+		return "%dm" % minutes
+	return "%dm %ds" % [minutes, remainder]
 
 
 func _set_operation_status(message: String, is_error: bool) -> void:

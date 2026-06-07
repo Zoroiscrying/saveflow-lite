@@ -207,6 +207,17 @@ func save_data(
 	)
 
 
+func save_record(
+	slot_id: String,
+	record_key: String,
+	data: Variant,
+	meta_or_display_name: Variant = {},
+	record_kind: String = "custom",
+	extra_meta: Dictionary = {}
+) -> SaveResult:
+	return _slot_service.save_record(slot_id, record_key, data, meta_or_display_name, record_kind, extra_meta)
+
+
 func save_scene(
 	slot_id: String,
 	root: Node,
@@ -293,6 +304,9 @@ func save_scope(
 	)
 	if not final_meta.has("scene_path") and is_instance_valid(scope_root):
 		final_meta["scene_path"] = _resolve_scene_path_for_node(scope_root)
+	var record_key := _resolve_scope_record_key(scope_root)
+	final_meta["record_key"] = record_key
+	final_meta["record_kind"] = "scope"
 	var before_write_result := _notify_pipeline_stage(
 		pipeline_control,
 		"before_write",
@@ -307,7 +321,7 @@ func save_scope(
 	if not before_write_result.ok:
 		return _attach_pipeline_trace(before_write_result, pipeline_control.context)
 
-	var save_result := save_slot(slot_id, {"graph": gather_result.data}, final_meta)
+	var save_result := save_record(slot_id, record_key, {"graph": gather_result.data}, final_meta, "scope")
 	if gather_result.meta.has("pipeline_trace"):
 		save_result.meta["pipeline_trace"] = gather_result.meta["pipeline_trace"]
 	if not save_result.ok:
@@ -351,6 +365,22 @@ func load_data(slot_id: String) -> SaveResult:
 	return _slot_service.load_slot_data(slot_id)
 
 
+func load_record(slot_id: String, record_key: String) -> SaveResult:
+	return _slot_service.load_record(slot_id, record_key)
+
+
+func load_record_data(slot_id: String, record_key: String) -> SaveResult:
+	return _slot_service.load_record_data(slot_id, record_key)
+
+
+func record_exists(slot_id: String, record_key: String) -> bool:
+	return _slot_service.record_exists(slot_id, record_key)
+
+
+func list_slot_records(slot_id: String) -> SaveResult:
+	return _slot_service.list_slot_records(slot_id)
+
+
 func load_scene(slot_id: String, root: Node, strict := false, group_name := "saveflow") -> SaveResult:
 	return load_nodes(slot_id, root, strict, group_name)
 
@@ -376,7 +406,16 @@ func load_scope(
 	if not before_load_result.ok:
 		return _attach_pipeline_trace(before_load_result, pipeline_control.context)
 
-	var load_result: SaveResult = load_slot(slot_id)
+	var record_key := _resolve_scope_record_key(scope_root)
+	var load_result: SaveResult = load_record(slot_id, record_key)
+	if not load_result.ok and _is_record_not_found_result(load_result):
+		var legacy_record_key := _resolve_legacy_scope_record_key(scope_root)
+		if legacy_record_key != record_key:
+			var legacy_load_result: SaveResult = load_record(slot_id, legacy_record_key)
+			if legacy_load_result.ok or not _is_record_not_found_result(legacy_load_result):
+				load_result = legacy_load_result
+	if not load_result.ok and _is_record_not_found_result(load_result):
+		load_result = load_slot(slot_id)
 	if not load_result.ok:
 		return _finish_pipeline_error(
 			pipeline_control,
@@ -713,11 +752,16 @@ func save_nodes(
 	)
 	if not final_meta.has("scene_path") and is_instance_valid(root):
 		final_meta["scene_path"] = _resolve_scene_path_for_node(root)
-	return save_slot(slot_id, payload, final_meta)
+	var record_key := _resolve_scene_record_key(root)
+	final_meta["record_key"] = record_key
+	final_meta["record_kind"] = "scene"
+	return save_record(slot_id, record_key, payload, final_meta, "scene")
 
 
 func load_nodes(slot_id: String, root: Node, strict := false, group_name := "saveflow") -> SaveResult:
-	var load_result: SaveResult = load_slot(slot_id)
+	var load_result: SaveResult = load_record(slot_id, _resolve_scene_record_key(root))
+	if not load_result.ok and _is_record_not_found_result(load_result):
+		load_result = load_slot(slot_id)
 	if not load_result.ok:
 		return load_result
 	if not (load_result.data is Dictionary):
@@ -1045,6 +1089,11 @@ func _resolve_scene_path_for_node(node: Node) -> String:
 		return ""
 	if not node.scene_file_path.is_empty():
 		return node.scene_file_path
+	var parent := node.get_parent()
+	while parent != null:
+		if not parent.scene_file_path.is_empty():
+			return parent.scene_file_path
+		parent = parent.get_parent()
 	var tree := node.get_tree()
 	if tree != null and tree.current_scene != null and (node == tree.current_scene or tree.current_scene.is_ancestor_of(node)):
 		return tree.current_scene.scene_file_path
@@ -1083,6 +1132,110 @@ func _resolve_scope_key_or_empty(scope_root: SaveFlowScope) -> String:
 	if not is_instance_valid(scope_root):
 		return ""
 	return scope_root.get_scope_key()
+
+
+func _resolve_scene_record_key(root: Node) -> String:
+	if is_instance_valid(root):
+		if root.has_meta("saveflow_record_key"):
+			var explicit_key := String(root.get_meta("saveflow_record_key")).strip_edges()
+			if not explicit_key.is_empty():
+				return explicit_key
+		var scene_key := _resolve_scene_key_for_node(root)
+		if not scene_key.is_empty():
+			var record_key := "scene:%s" % scene_key
+			_warn_fallback_record_key("scene", record_key, root, "scene path")
+			return record_key
+		var node_path_key := _node_path_record_fragment(root)
+		if not node_path_key.is_empty():
+			var record_key := "scene:%s" % node_path_key
+			_warn_fallback_record_key("scene", record_key, root, "node path")
+			return record_key
+	var unknown_key := "scene:unknown"
+	_warn_fallback_record_key("scene", unknown_key, root, "unknown node")
+	return unknown_key
+
+
+func _resolve_scope_record_key(scope_root: SaveFlowScope) -> String:
+	var scope_key := _resolve_scope_key_or_empty(scope_root).strip_edges()
+	if not scope_key.is_empty():
+		var scene_key := _resolve_scene_key_for_node(scope_root)
+		if not scene_key.is_empty():
+			return "scene:%s/scope:%s" % [scene_key, scope_key]
+		return "scope:%s" % scope_key
+	if is_instance_valid(scope_root):
+		var node_path_key := _node_path_record_fragment(scope_root)
+		if not node_path_key.is_empty():
+			var scene_key := _resolve_scene_key_for_node(scope_root)
+			if not scene_key.is_empty():
+				var scene_record_key := "scene:%s/scope:%s" % [scene_key, node_path_key]
+				_warn_fallback_record_key("scope", scene_record_key, scope_root, "node path")
+				return scene_record_key
+			var record_key := "scope:%s" % node_path_key
+			_warn_fallback_record_key("scope", record_key, scope_root, "node path")
+			return record_key
+	var unknown_key := "scope:unknown"
+	_warn_fallback_record_key("scope", unknown_key, scope_root, "unknown node")
+	return unknown_key
+
+
+func _resolve_legacy_scope_record_key(scope_root: SaveFlowScope) -> String:
+	var scope_key := _resolve_scope_key_or_empty(scope_root).strip_edges()
+	if not scope_key.is_empty():
+		return "scope:%s" % scope_key
+	if is_instance_valid(scope_root):
+		var node_path_key := _node_path_record_fragment(scope_root)
+		if not node_path_key.is_empty():
+			return "scope:%s" % node_path_key
+	return "scope:unknown"
+
+
+func _resolve_scene_key_for_node(node: Node) -> String:
+	var scene_path := _resolve_scene_path_for_node(node).strip_edges()
+	if scene_path.is_empty():
+		return ""
+	return _scene_key_from_path(scene_path)
+
+
+func _scene_key_from_path(scene_path: String) -> String:
+	var scene_key_path := scene_path.replace("\\", "/")
+	if scene_key_path.begins_with("res://"):
+		scene_key_path = scene_key_path.trim_prefix("res://")
+	elif scene_key_path.begins_with("user://"):
+		scene_key_path = scene_key_path.trim_prefix("user://")
+	return scene_key_path.get_basename().strip_edges()
+
+
+func _node_path_record_fragment(node: Node) -> String:
+	if node == null or not is_instance_valid(node):
+		return ""
+	return String(node.get_path()).replace("/", "_").strip_edges()
+
+
+func _warn_fallback_record_key(record_kind: String, record_key: String, root: Node, fallback_source: String) -> void:
+	if not _uses_record_key_warnings():
+		return
+
+	var root_path := "<invalid>"
+	if is_instance_valid(root):
+		root_path = String(root.get_path())
+	push_warning(
+		"SaveFlow derived %s record key `%s` from %s for `%s`; set explicit stable metadata (`saveflow_record_key` for scenes or `scope_key` for scopes) to avoid save identity drift." % [
+			record_kind,
+			record_key,
+			fallback_source,
+			root_path,
+		]
+	)
+
+
+func _uses_record_key_warnings() -> bool:
+	return Engine.is_editor_hint() or OS.has_feature("debug") or OS.has_feature("editor")
+
+
+func _is_record_not_found_result(result: SaveResult) -> bool:
+	if result == null or result.ok:
+		return false
+	return result.error_code == SaveError.SLOT_NOT_FOUND or result.error_key == "RECORD_NOT_FOUND"
 
 
 func _sync_runtime_services() -> void:

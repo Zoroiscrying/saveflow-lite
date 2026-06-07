@@ -47,8 +47,58 @@ func save_slot(
 	return save_payload(slot_id, payload, _storage_service.resolve_storage_format())
 
 
+func save_record(
+	slot_id: String,
+	record_key: String,
+	data: Variant,
+	meta_or_display_name: Variant = {},
+	record_kind: String = "custom",
+	extra_meta: Dictionary = {}
+) -> SaveResult:
+	if slot_id.is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"slot_id cannot be empty"
+		)
+	if record_key.strip_edges().is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"record_key cannot be empty",
+			{"slot_id": slot_id}
+		)
+
+	var meta_patch: Dictionary = _slot_metadata_service.resolve_slot_meta_patch(
+		meta_or_display_name,
+		"manual",
+		"",
+		"",
+		0,
+		"",
+		"",
+		extra_meta
+	)
+	for key in extra_meta.keys():
+		meta_patch[key] = extra_meta[key]
+	meta_patch["record_key"] = record_key
+	meta_patch["record_kind"] = record_kind
+	var conflict_result := _validate_record_kind_conflict(slot_id, record_key, String(meta_patch.get("record_kind", "")))
+	if not conflict_result.ok:
+		return conflict_result
+	var payload: Dictionary = {
+		"meta": _slot_metadata_service.build_meta(slot_id, meta_patch),
+		"data": data,
+	}
+	return _storage_service.save_record_payload(slot_id, record_key, payload, _storage_service.resolve_storage_format())
+
+
 func load_slot(slot_id: String) -> SaveResult:
-	var locate_result: SaveResult = _storage_service.locate_slot(slot_id)
+	return load_record(slot_id, "main")
+
+
+func load_record(slot_id: String, record_key: String) -> SaveResult:
+	var locate_result: SaveResult = _storage_service.locate_record(slot_id, record_key)
 	if not locate_result.ok:
 		return locate_result
 
@@ -68,11 +118,18 @@ func load_slot(slot_id: String) -> SaveResult:
 				SaveError.INVALID_FORMAT,
 				"INVALID_FORMAT",
 				"save payload must contain meta and data",
-				{"slot_id": slot_id, "path": path}
+				{"slot_id": slot_id, "record_key": record_key, "path": path}
 			)
 
 	var payload_dict := Dictionary(payload)
 	var slot_meta := Dictionary(payload_dict.get("meta", {}))
+	if String(slot_meta.get("slot_id", "")).is_empty():
+		slot_meta["slot_id"] = slot_id
+	if String(slot_meta.get("record_key", "")).is_empty():
+		slot_meta["record_key"] = record_key
+	if String(slot_meta.get("record_kind", "")).is_empty():
+		slot_meta["record_kind"] = "main" if record_key == "main" else "custom"
+	payload_dict["meta"] = slot_meta
 	var compatibility_report: Dictionary = _slot_metadata_service.build_compatibility_report(slot_meta)
 	if not bool(compatibility_report.get("compatible", true)):
 		return _error_result(
@@ -81,6 +138,7 @@ func load_slot(slot_id: String) -> SaveResult:
 			_slot_metadata_service.build_compatibility_error_message(compatibility_report),
 			{
 				"slot_id": slot_id,
+				"record_key": record_key,
 				"path": path,
 				"format": format,
 				"compatibility_report": compatibility_report,
@@ -91,6 +149,7 @@ func load_slot(slot_id: String) -> SaveResult:
 		payload_dict,
 		{
 			"slot_id": slot_id,
+			"record_key": record_key,
 			"path": path,
 			"format": format,
 			"compatibility_report": compatibility_report,
@@ -100,6 +159,13 @@ func load_slot(slot_id: String) -> SaveResult:
 
 func load_slot_data(slot_id: String) -> SaveResult:
 	var result: SaveResult = load_slot(slot_id)
+	if not result.ok:
+		return result
+	return _ok_result(result.data["data"], result.meta)
+
+
+func load_record_data(slot_id: String, record_key: String) -> SaveResult:
+	var result: SaveResult = load_record(slot_id, record_key)
 	if not result.ok:
 		return result
 	return _ok_result(result.data["data"], result.meta)
@@ -224,6 +290,21 @@ func rename_slot(old_id: String, new_id: String, overwrite := false) -> SaveResu
 func slot_exists(slot_id: String) -> bool:
 	var locate_result: SaveResult = _storage_service.locate_slot(slot_id)
 	return locate_result.ok
+
+
+func record_exists(slot_id: String, record_key: String) -> bool:
+	var locate_result: SaveResult = _storage_service.locate_record(slot_id, record_key)
+	return locate_result.ok
+
+
+func list_slot_records(slot_id: String) -> SaveResult:
+	if slot_id.is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"slot_id cannot be empty"
+		)
+	return _ok_result(_storage_service.list_record_entries(slot_id), {"slot_id": slot_id})
 
 
 func list_slots() -> SaveResult:
@@ -429,6 +510,64 @@ func get_slot_path(slot_id: String) -> SaveResult:
 
 func get_index_path() -> String:
 	return _storage_service.get_index_path()
+
+
+func _validate_record_kind_conflict(slot_id: String, record_key: String, new_kind: String) -> SaveResult:
+	if not _uses_strict_record_conflicts():
+		return _ok_result()
+
+	var locate_result: SaveResult = _storage_service.locate_record(slot_id, record_key, false)
+	if not locate_result.ok:
+		return _ok_result()
+
+	var existing_kind := _resolve_existing_record_kind(locate_result)
+	if existing_kind.is_empty() or existing_kind == new_kind:
+		return _ok_result()
+
+	return _error_result(
+		SaveError.INVALID_ARGUMENT,
+		"RECORD_CONFLICT",
+		"record key `%s` is already used for `%s` data and cannot be overwritten as `%s`" % [
+			record_key,
+			existing_kind,
+			new_kind,
+		],
+		{
+			"slot_id": slot_id,
+			"record_key": record_key,
+			"existing_record_kind": existing_kind,
+			"new_record_kind": new_kind,
+		}
+	)
+
+
+func _resolve_existing_record_kind(locate_result: SaveResult) -> String:
+	var locate_data := Dictionary(locate_result.data)
+	var entry := Dictionary(locate_data.get("entry", {}))
+	var top_level_kind := String(entry.get("record_kind", "")).strip_edges()
+	if not top_level_kind.is_empty():
+		return top_level_kind
+
+	var entry_meta := Dictionary(entry.get("meta", {}))
+	var entry_kind := String(entry_meta.get("record_kind", "")).strip_edges()
+	if not entry_kind.is_empty():
+		return entry_kind
+
+	var path := String(locate_data.get("path", ""))
+	if path.is_empty():
+		return ""
+	var format := int(locate_data.get("format", _storage_service.resolve_storage_format()))
+	var read_result: SaveResult = _storage_service.read_payload_file(path, format)
+	if not read_result.ok or not _storage_service.is_valid_payload(read_result.data):
+		return ""
+
+	var payload := Dictionary(read_result.data)
+	var payload_meta := Dictionary(payload.get("meta", {}))
+	return String(payload_meta.get("record_kind", "")).strip_edges()
+
+
+func _uses_strict_record_conflicts() -> bool:
+	return Engine.is_editor_hint() or OS.has_feature("debug") or OS.has_feature("editor")
 
 
 func save_payload(slot_id: String, payload: Dictionary, format: int) -> SaveResult:

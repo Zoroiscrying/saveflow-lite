@@ -84,6 +84,10 @@ func resolve_slot_meta_patch(
 func build_meta(slot_id: String, meta_patch: Dictionary = {}) -> Dictionary:
 	var metadata := SaveFlowSlotMetadataScript.from_dictionary(build_slot_metadata_patch(meta_patch))
 	metadata.slot_id = slot_id
+	if metadata.record_key.is_empty():
+		metadata.record_key = "main"
+	if metadata.record_kind.is_empty():
+		metadata.record_kind = "main"
 	var now_unix := int(Time.get_unix_time_from_system())
 	var now_iso := Time.get_datetime_string_from_system(true, true)
 	if metadata.created_at_unix == 0:
@@ -116,6 +120,9 @@ func build_slot_summary(slot_id: String, slot_meta: Dictionary) -> Dictionary:
 
 	return {
 		"slot_id": metadata.slot_id if not metadata.slot_id.is_empty() else slot_id,
+		"record_key": metadata.record_key if not metadata.record_key.is_empty() else "main",
+		"record_kind": metadata.record_kind if not metadata.record_kind.is_empty() else "main",
+		"scope_key": metadata.scope_key,
 		"display_name": metadata.display_name if not metadata.display_name.is_empty() else slot_id,
 		"save_type": metadata.save_type,
 		"chapter_name": metadata.chapter_name,

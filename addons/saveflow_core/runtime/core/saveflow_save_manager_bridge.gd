@@ -15,9 +15,10 @@ func get_bridge_name() -> String:
 	return name if not name.is_empty() else "SaveFlowSaveManagerBridge"
 
 
-## Optional dedicated settings for DevSaveManager entries. Return an empty
-## dictionary to let the editor fall back to the runtime's normal save root.
-func get_dev_save_settings() -> Dictionary:
+## Optional dedicated settings for DevSaveManager entries. Return a SaveSettings
+## resource or a Dictionary. Return an empty dictionary to let the editor fall
+## back to the runtime's normal save root.
+func get_dev_save_settings() -> Variant:
 	return {}
 
 

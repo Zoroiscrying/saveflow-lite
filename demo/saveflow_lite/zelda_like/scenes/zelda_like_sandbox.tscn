@@ -226,15 +226,12 @@ _target_ref_path = NodePath("../../../../World/RoomStage/Player")
 additional_properties = PackedStringArray()
 ignored_properties = PackedStringArray()
 included_target_builtin_ids = PackedStringArray()
-included_paths = PackedStringArray("AnimationPlayer", "InteractionArea", "InteractionArea/CollisionShape2D", "CollisionShape2D")
+included_paths = PackedStringArray("AnimationPlayer", "CollisionShape2D", "InteractionArea", "InteractionArea/CollisionShape2D")
 excluded_paths = PackedStringArray()
+source_key = "player"
 metadata/_saveflow_node_source_preview_expanded = true
 metadata/_saveflow_node_source_details_expanded = false
 metadata/_saveflow_node_source_advanced_expanded = false
-metadata/_saveflow_node_source_built_ins_expanded = false
-metadata/_saveflow_node_source_participants_expanded = true
-metadata/_saveflow_node_source_paths_expanded = false
-metadata/_saveflow_node_source_diagnostics_expanded = false
 
 [node name="WorldScope" type="Node" parent="StateRoot/SaveGraphRoot" unique_id=442439261]
 script = ExtResource("8_scope")

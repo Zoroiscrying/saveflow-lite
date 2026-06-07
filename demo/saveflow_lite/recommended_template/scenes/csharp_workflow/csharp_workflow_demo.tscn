@@ -1,11 +1,11 @@
-[gd_scene format=3 uid="uid://bkwponi7kf5ib"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://ygp26obelwfq" path="res://demo/saveflow_lite/recommended_template/gameplay/csharp_workflow/TemplateCSharpWorkflowDemo.cs" id="1_demo"]
-[ext_resource type="Script" uid="uid://cticfn6cawrlo" path="res://demo/saveflow_lite/recommended_template/saveflow/template_saveflow_configurator.gd" id="2_configurator"]
-[ext_resource type="Script" uid="uid://dmvmckws1mw8t" path="res://addons/saveflow_core/runtime/core/saveflow_scope.gd" id="3_scope"]
-[ext_resource type="Script" uid="uid://h0ght6q57h3p" path="res://demo/saveflow_lite/recommended_template/gameplay/csharp_workflow/TemplateCSharpRoomStateSource.cs" id="4_source"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/csharp_workflow/TemplateCSharpWorkflowDemo.cs" id="1_demo"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/saveflow/template_saveflow_configurator.gd" id="2_configurator"]
+[ext_resource type="Script" path="res://addons/saveflow_core/runtime/core/saveflow_scope.gd" id="3_scope"]
+[ext_resource type="Script" path="res://demo/saveflow_lite/recommended_template/gameplay/csharp_workflow/TemplateCSharpRoomStateSource.cs" id="4_source"]
 
-[node name="CSharpWorkflowDemo" type="Control" unique_id=914939479]
+[node name="CSharpWorkflowDemo" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -14,73 +14,74 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_demo")
 
-[node name="SaveFlowConfigurator" type="Node" parent="." unique_id=434211675]
+[node name="SaveFlowConfigurator" type="Node" parent="."]
 script = ExtResource("2_configurator")
+base_root = "user://recommended_template"
 profile_key = "csharp_workflow"
 project_title = "SaveFlow C# Workflow Demo"
 verify_scene_path_on_load = false
 
-[node name="SaveGraph" type="Node" parent="." unique_id=1365411346]
+[node name="SaveGraph" type="Node" parent="."]
 script = ExtResource("3_scope")
 scope_key = "csharp_workflow"
 
-[node name="RoomStateSource" type="Node" parent="SaveGraph" unique_id=1254706073]
+[node name="RoomStateSource" type="Node" parent="SaveGraph"]
 script = ExtResource("4_source")
 SourceKey = "room_state"
 
-[node name="WorldRoot" type="Node2D" parent="." unique_id=1970463760]
+[node name="WorldRoot" type="Node2D" parent="."]
 
-[node name="Room" type="Node2D" parent="WorldRoot" unique_id=1511252106]
+[node name="Room" type="Node2D" parent="WorldRoot"]
 
-[node name="Floor" type="Polygon2D" parent="WorldRoot/Room" unique_id=2087986750]
+[node name="Floor" type="Polygon2D" parent="WorldRoot/Room"]
 color = Color(0.14, 0.18, 0.24, 1)
 polygon = PackedVector2Array(110, 120, 1130, 120, 1130, 620, 110, 620)
 
-[node name="NorthWall" type="Polygon2D" parent="WorldRoot/Room" unique_id=676220847]
+[node name="NorthWall" type="Polygon2D" parent="WorldRoot/Room"]
 color = Color(0.31, 0.42, 0.56, 1)
 polygon = PackedVector2Array(110, 120, 1130, 120, 1130, 155, 110, 155)
 
-[node name="SouthWall" type="Polygon2D" parent="WorldRoot/Room" unique_id=2012276192]
+[node name="SouthWall" type="Polygon2D" parent="WorldRoot/Room"]
 color = Color(0.31, 0.42, 0.56, 1)
 polygon = PackedVector2Array(110, 585, 1130, 585, 1130, 620, 110, 620)
 
-[node name="LeftWall" type="Polygon2D" parent="WorldRoot/Room" unique_id=1354582070]
+[node name="LeftWall" type="Polygon2D" parent="WorldRoot/Room"]
 color = Color(0.31, 0.42, 0.56, 1)
 polygon = PackedVector2Array(110, 120, 145, 120, 145, 620, 110, 620)
 
-[node name="RightWall" type="Polygon2D" parent="WorldRoot/Room" unique_id=1260760267]
+[node name="RightWall" type="Polygon2D" parent="WorldRoot/Room"]
 color = Color(0.31, 0.42, 0.56, 1)
 polygon = PackedVector2Array(1095, 120, 1130, 120, 1130, 620, 1095, 620)
 
-[node name="TypedStateZone" type="Polygon2D" parent="WorldRoot/Room" unique_id=127380406]
+[node name="TypedStateZone" type="Polygon2D" parent="WorldRoot/Room"]
 color = Color(0.2, 0.42, 0.72, 0.45)
 polygon = PackedVector2Array(190, 220, 455, 220, 455, 500, 190, 500)
 
-[node name="SlotWorkflowZone" type="Polygon2D" parent="WorldRoot/Room" unique_id=944386849]
+[node name="SlotWorkflowZone" type="Polygon2D" parent="WorldRoot/Room"]
 color = Color(0.34, 0.56, 0.32, 0.45)
 polygon = PackedVector2Array(520, 220, 785, 220, 785, 500, 520, 500)
 
-[node name="SaveClientZone" type="Polygon2D" parent="WorldRoot/Room" unique_id=556674580]
+[node name="SaveClientZone" type="Polygon2D" parent="WorldRoot/Room"]
 color = Color(0.72, 0.5, 0.22, 0.45)
 polygon = PackedVector2Array(850, 220, 1050, 220, 1050, 500, 850, 500)
 
-[node name="PlayerMarker" type="Polygon2D" parent="WorldRoot/Room" unique_id=277526579]
+[node name="PlayerMarker" type="Polygon2D" parent="WorldRoot/Room"]
 z_index = 50
 position = Vector2(325, 390)
 color = Color(0.55, 0.85, 1, 1)
 polygon = PackedVector2Array(0, -24, 20, 0, 0, 24, -20, 0)
 
-[node name="CoinMarker" type="Polygon2D" parent="WorldRoot/Room" unique_id=1634303091]
+[node name="CoinMarker" type="Polygon2D" parent="WorldRoot/Room"]
 position = Vector2(615, 380)
 color = Color(1, 0.82, 0.24, 1)
 polygon = PackedVector2Array(0, -18, 14, 0, 0, 18, -14, 0)
 
-[node name="DoorMarker" type="Polygon2D" parent="WorldRoot/Room" unique_id=1381126623]
+[node name="DoorMarker" type="Polygon2D" parent="WorldRoot/Room"]
 position = Vector2(950, 370)
 color = Color(0.95, 0.38, 0.32, 1)
 polygon = PackedVector2Array(-42, -12, 42, -12, 42, 12, -42, 12)
 
-[node name="RoomTitle" type="Label" parent="WorldRoot/Room" unique_id=575878326]
+[node name="RoomTitle" type="Label" parent="WorldRoot/Room"]
 offset_left = 485.0
 offset_top = 165.0
 offset_right = 755.0
@@ -88,7 +89,7 @@ offset_bottom = 195.0
 text = "C# Typed Data Workflow"
 horizontal_alignment = 1
 
-[node name="TypedStateLabel" type="Label" parent="WorldRoot/Room" unique_id=570981775]
+[node name="TypedStateLabel" type="Label" parent="WorldRoot/Room"]
 offset_left = 230.0
 offset_top = 238.0
 offset_right = 420.0
@@ -97,7 +98,7 @@ text = "SaveFlowTypedStateSource
 typed C# room data"
 horizontal_alignment = 1
 
-[node name="SlotWorkflowLabel" type="Label" parent="WorldRoot/Room" unique_id=832452983]
+[node name="SlotWorkflowLabel" type="Label" parent="WorldRoot/Room"]
 offset_left = 555.0
 offset_top = 238.0
 offset_right = 750.0
@@ -106,7 +107,7 @@ text = "SaveFlowSlotWorkflow
 active slot + card"
 horizontal_alignment = 1
 
-[node name="ClientLabel" type="Label" parent="WorldRoot/Room" unique_id=478439719]
+[node name="ClientLabel" type="Label" parent="WorldRoot/Room"]
 offset_left = 865.0
 offset_top = 238.0
 offset_right = 1040.0
@@ -115,7 +116,7 @@ text = "SaveFlowClient
 SaveScope / LoadScope"
 horizontal_alignment = 1
 
-[node name="RoomStateLabel" type="Label" parent="WorldRoot/Room" unique_id=733900176]
+[node name="RoomStateLabel" type="Label" parent="WorldRoot/Room"]
 offset_left = 835.0
 offset_top = 415.0
 offset_right = 1065.0
@@ -123,7 +124,7 @@ offset_bottom = 455.0
 text = "Door is closed"
 horizontal_alignment = 1
 
-[node name="Screen" type="Control" parent="." unique_id=1415488935]
+[node name="Screen" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -132,7 +133,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Background" type="ColorRect" parent="Screen" unique_id=1257457474]
+[node name="Background" type="ColorRect" parent="Screen"]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -143,7 +144,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.02, 0.025, 0.03, 0.78)
 
-[node name="TopBar" type="PanelContainer" parent="Screen" unique_id=879460898]
+[node name="TopBar" type="PanelContainer" parent="Screen"]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -153,22 +154,22 @@ offset_right = -18.0
 offset_bottom = 66.0
 grow_horizontal = 2
 
-[node name="TopBarContent" type="HBoxContainer" parent="Screen/TopBar" unique_id=263626906]
+[node name="TopBarContent" type="HBoxContainer" parent="Screen/TopBar"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="TitleLabel" type="Label" parent="Screen/TopBar/TopBarContent" unique_id=1674707286]
+[node name="TitleLabel" type="Label" parent="Screen/TopBar/TopBarContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "C# Workflow Demo: typed state + active slot + C# SaveFlowClient"
 
-[node name="CoinsLabel" type="Label" parent="Screen/TopBar/TopBarContent" unique_id=1923103165]
-custom_minimum_size = Vector2(120, 0)
+[node name="CoinsLabel" type="Label" parent="Screen/TopBar/TopBarContent"]
 layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
 text = "$ 12"
 horizontal_alignment = 1
 
-[node name="MainLayout" type="HBoxContainer" parent="Screen" unique_id=405701690]
+[node name="MainLayout" type="HBoxContainer" parent="Screen"]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -182,89 +183,89 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 18
 
-[node name="LeftColumn" type="VBoxContainer" parent="Screen/MainLayout" unique_id=46735959]
+[node name="LeftColumn" type="VBoxContainer" parent="Screen/MainLayout"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
-[node name="ButtonRow" type="HBoxContainer" parent="Screen/MainLayout/LeftColumn" unique_id=1655612374]
+[node name="ButtonRow" type="HBoxContainer" parent="Screen/MainLayout/LeftColumn"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="MutateButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow" unique_id=1778474955]
+[node name="MutateButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
 layout_mode = 2
 text = "Mutate C# State"
 
-[node name="SaveButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow" unique_id=66462528]
+[node name="SaveButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
 layout_mode = 2
 text = "Save"
 
-[node name="LoadButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow" unique_id=1453410762]
+[node name="LoadButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
 layout_mode = 2
 text = "Load"
 
-[node name="ResetButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow" unique_id=330005759]
+[node name="ResetButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
 layout_mode = 2
 text = "Reset Local"
 
-[node name="CloseButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow" unique_id=807266776]
+[node name="CloseButton" type="Button" parent="Screen/MainLayout/LeftColumn/ButtonRow"]
 layout_mode = 2
 text = "Close"
 
-[node name="StatePanel" type="PanelContainer" parent="Screen/MainLayout/LeftColumn" unique_id=535159947]
+[node name="StatePanel" type="PanelContainer" parent="Screen/MainLayout/LeftColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="StateMargin" type="MarginContainer" parent="Screen/MainLayout/LeftColumn/StatePanel" unique_id=1232560838]
+[node name="StateMargin" type="MarginContainer" parent="Screen/MainLayout/LeftColumn/StatePanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 14
 theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 12
 
-[node name="StateLabel" type="Label" parent="Screen/MainLayout/LeftColumn/StatePanel/StateMargin" unique_id=17319269]
+[node name="StateLabel" type="Label" parent="Screen/MainLayout/LeftColumn/StatePanel/StateMargin"]
 layout_mode = 2
 text = "C# typed state"
 autowrap_mode = 3
 
-[node name="RightColumn" type="VBoxContainer" parent="Screen/MainLayout" unique_id=749545728]
+[node name="RightColumn" type="VBoxContainer" parent="Screen/MainLayout"]
 custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
 size_flags_horizontal = 0
 theme_override_constants/separation = 10
 
-[node name="SlotPanel" type="PanelContainer" parent="Screen/MainLayout/RightColumn" unique_id=1080034664]
+[node name="SlotPanel" type="PanelContainer" parent="Screen/MainLayout/RightColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="SlotMargin" type="MarginContainer" parent="Screen/MainLayout/RightColumn/SlotPanel" unique_id=2090924668]
+[node name="SlotMargin" type="MarginContainer" parent="Screen/MainLayout/RightColumn/SlotPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 14
 theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 12
 
-[node name="SlotCardLabel" type="Label" parent="Screen/MainLayout/RightColumn/SlotPanel/SlotMargin" unique_id=1963890717]
+[node name="SlotCardLabel" type="Label" parent="Screen/MainLayout/RightColumn/SlotPanel/SlotMargin"]
 layout_mode = 2
 text = "Slot card"
 autowrap_mode = 3
 
-[node name="StatusPanel" type="PanelContainer" parent="Screen/MainLayout/RightColumn" unique_id=1832580852]
+[node name="StatusPanel" type="PanelContainer" parent="Screen/MainLayout/RightColumn"]
 layout_mode = 2
 
-[node name="StatusMargin" type="MarginContainer" parent="Screen/MainLayout/RightColumn/StatusPanel" unique_id=473495085]
+[node name="StatusMargin" type="MarginContainer" parent="Screen/MainLayout/RightColumn/StatusPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 14
 theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 12
 
-[node name="StatusLabel" type="Label" parent="Screen/MainLayout/RightColumn/StatusPanel/StatusMargin" unique_id=621700776]
+[node name="StatusLabel" type="Label" parent="Screen/MainLayout/RightColumn/StatusPanel/StatusMargin"]
 layout_mode = 2
 text = "C# workflow ready."
 autowrap_mode = 3
 
-[node name="BottomHintPanel" type="PanelContainer" parent="Screen" unique_id=1817440618]
+[node name="BottomHintPanel" type="PanelContainer" parent="Screen"]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -279,7 +280,7 @@ grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
 
-[node name="BottomHintLabel" type="Label" parent="Screen/BottomHintPanel" unique_id=308627881]
+[node name="BottomHintLabel" type="Label" parent="Screen/BottomHintPanel"]
 layout_mode = 2
 text = "WASD / arrows move | Enter interact in a colored zone | Esc details"
 horizontal_alignment = 1

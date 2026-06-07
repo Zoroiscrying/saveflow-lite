@@ -50,6 +50,8 @@
 *.DotSettings.user
 .claude/
 CLAUDE.md
+.reasonix/
+.superpowers/
 
 # Local editor / workspace helpers
 /feature_profiles/
@@ -57,6 +59,7 @@ CLAUDE.md
 /export_templates/
 /script_templates/
 /$coreRoot/
+/saveflow_migrations/
 
 # Non-release workspace content outside SaveFlow Lite
 /addons/control_center/
@@ -71,6 +74,7 @@ CLAUDE.md
 !/tools/release/manifests/
 !/tools/release/manifests/*.json
 !/tools/release/publish_saveflow_lite.ps1
+!/tools/release/check_saveflow_pro_contract_readiness.gd
 !/tools/release/sync_saveflow_pro.ps1
 !/tools/release/validate_saveflow_lite_clean_install.ps1
 !/tools/release/validate_saveflow_lite_mono_clean_install.ps1

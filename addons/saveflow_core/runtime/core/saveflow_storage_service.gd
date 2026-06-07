@@ -63,6 +63,59 @@ func save_payload(slot_id: String, payload: Dictionary, format: int) -> SaveResu
 	return _ok_result(payload, {"slot_id": slot_id, "path": path, "format": format})
 
 
+func save_record_payload(slot_id: String, record_key: String, payload: Dictionary, format: int) -> SaveResult:
+	if slot_id.is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"slot_id cannot be empty"
+		)
+	if record_key.strip_edges().is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"record_key cannot be empty",
+			{"slot_id": slot_id}
+		)
+	if not is_valid_payload(payload):
+		return _error_result(
+			SaveError.INVALID_FORMAT,
+			"INVALID_FORMAT",
+			"payload must contain meta and data",
+			{"slot_id": slot_id, "record_key": record_key}
+		)
+
+	var path: String = build_record_path(slot_id, record_key, format)
+	var ensure_result: SaveResult = ensure_parent_dir(path)
+	if not ensure_result.ok:
+		return ensure_result
+
+	var previous_result: SaveResult = locate_record(slot_id, record_key, false)
+	var previous_path: String = ""
+	if previous_result.ok:
+		previous_path = String(previous_result.data["path"])
+		var previous_entry: Dictionary = Dictionary(previous_result.data.get("entry", {}))
+		if previous_entry.has("meta") and previous_entry["meta"] is Dictionary:
+			var previous_meta: Dictionary = Dictionary(previous_entry["meta"])
+			if previous_meta.has("created_at_unix") and not payload["meta"].has("created_at_unix"):
+				payload["meta"]["created_at_unix"] = previous_meta["created_at_unix"]
+			if previous_meta.has("created_at_iso") and not payload["meta"].has("created_at_iso"):
+				payload["meta"]["created_at_iso"] = previous_meta["created_at_iso"]
+
+	var write_result: SaveResult = write_payload_file(path, payload, format)
+	if not write_result.ok:
+		return write_result
+
+	if previous_path != "" and previous_path != path and FileAccess.file_exists(previous_path):
+		DirAccess.remove_absolute(previous_path)
+
+	var index_result: SaveResult = upsert_record_index_entry(slot_id, record_key, path, format, payload["meta"])
+	if not index_result.ok:
+		return index_result
+
+	return _ok_result(payload, {"slot_id": slot_id, "record_key": record_key, "path": path, "format": format})
+
+
 func locate_slot(slot_id: String, use_fallback := true) -> SaveResult:
 	if slot_id.is_empty():
 		return _error_result(
@@ -108,6 +161,86 @@ func locate_slot(slot_id: String, use_fallback := true) -> SaveResult:
 	)
 
 
+func locate_record(slot_id: String, record_key: String, use_fallback := true) -> SaveResult:
+	if slot_id.is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"slot_id cannot be empty"
+		)
+	if record_key.strip_edges().is_empty():
+		return _error_result(
+			SaveError.INVALID_ARGUMENT,
+			"INVALID_ARGUMENT",
+			"record_key cannot be empty",
+			{"slot_id": slot_id}
+		)
+
+	if record_key == "main":
+		var main_result: SaveResult = locate_slot(slot_id, use_fallback)
+		if main_result.ok:
+			main_result.data["record_key"] = record_key
+			main_result.meta["record_key"] = record_key
+			return main_result
+		if use_fallback:
+			for candidate_variant in build_record_candidate_paths(slot_id, record_key):
+				var candidate: Dictionary = Dictionary(candidate_variant)
+				var candidate_path: String = String(candidate["path"])
+				if FileAccess.file_exists(candidate_path):
+					return _ok_result(
+						{
+							"path": candidate_path,
+							"format": int(candidate["format"]),
+							"entry": {},
+							"record_key": record_key,
+						},
+						{"slot_id": slot_id, "record_key": record_key, "source": "fallback"}
+					)
+		return main_result
+
+	var index_result: SaveResult = read_index_data()
+	if index_result.ok:
+		var slots_map: Dictionary = index_result.data[INDEX_SLOTS_KEY]
+		if slots_map.has(slot_id):
+			var slot_entry: Dictionary = Dictionary(slots_map[slot_id])
+			var records: Dictionary = Dictionary(slot_entry.get("records", {}))
+			if records.has(record_key):
+				var entry: Dictionary = Dictionary(records[record_key])
+				var indexed_path: String = String(entry.get("path", ""))
+				if indexed_path != "" and FileAccess.file_exists(indexed_path):
+					return _ok_result(
+						{
+							"path": indexed_path,
+							"format": int(entry.get("format", resolve_storage_format())),
+							"entry": entry,
+							"record_key": record_key,
+						},
+						{"slot_id": slot_id, "record_key": record_key, "source": "index"}
+					)
+
+	if use_fallback:
+		for candidate_variant in build_record_candidate_paths(slot_id, record_key):
+			var candidate: Dictionary = Dictionary(candidate_variant)
+			var candidate_path: String = String(candidate["path"])
+			if FileAccess.file_exists(candidate_path):
+				return _ok_result(
+					{
+						"path": candidate_path,
+						"format": int(candidate["format"]),
+						"entry": {},
+						"record_key": record_key,
+					},
+					{"slot_id": slot_id, "record_key": record_key, "source": "fallback"}
+				)
+
+	return _error_result(
+		SaveError.SLOT_NOT_FOUND,
+		"SLOT_NOT_FOUND",
+		"record was not found",
+		{"slot_id": slot_id, "record_key": record_key}
+	)
+
+
 func build_candidate_paths(slot_id: String) -> Array:
 	var resolved_format: int = resolve_storage_format()
 	var formats: Array = [resolved_format]
@@ -122,11 +255,37 @@ func build_candidate_paths(slot_id: String) -> Array:
 	return candidates
 
 
+func build_record_candidate_paths(slot_id: String, record_key: String) -> Array:
+	var resolved_format: int = resolve_storage_format()
+	var formats: Array = [resolved_format]
+	if resolved_format != FORMAT_JSON:
+		formats.append(FORMAT_JSON)
+	if resolved_format != FORMAT_BINARY:
+		formats.append(FORMAT_BINARY)
+
+	var candidates: Array = []
+	for format in formats:
+		candidates.append({"path": build_record_path(slot_id, record_key, int(format)), "format": int(format)})
+	return candidates
+
+
 func build_slot_path(slot_id: String, format: int) -> String:
 	var extension: String = _settings.file_extension_json
 	if format == FORMAT_BINARY:
 		extension = _settings.file_extension_binary
 	return "%s/%s.%s" % [_settings.save_root, sanitize_slot_id(slot_id), extension]
+
+
+func build_record_path(slot_id: String, record_key: String, format: int) -> String:
+	var extension: String = _settings.file_extension_json
+	if format == FORMAT_BINARY:
+		extension = _settings.file_extension_binary
+	return "%s/%s/%s.%s" % [
+		_settings.save_root,
+		sanitize_slot_id(slot_id),
+		sanitize_record_key(record_key),
+		extension,
+	]
 
 
 func sanitize_slot_id(slot_id: String) -> String:
@@ -142,6 +301,22 @@ func sanitize_slot_id(slot_id: String) -> String:
 	sanitized = sanitized.replace("|", "_")
 	if sanitized.is_empty():
 		sanitized = "slot"
+	return sanitized
+
+
+func sanitize_record_key(record_key: String) -> String:
+	var sanitized: String = record_key.strip_edges()
+	sanitized = sanitized.replace("/", "_")
+	sanitized = sanitized.replace("\\", "_")
+	sanitized = sanitized.replace(":", "_")
+	sanitized = sanitized.replace("*", "_")
+	sanitized = sanitized.replace("?", "_")
+	sanitized = sanitized.replace("\"", "_")
+	sanitized = sanitized.replace("<", "_")
+	sanitized = sanitized.replace(">", "_")
+	sanitized = sanitized.replace("|", "_")
+	if sanitized.is_empty():
+		sanitized = "main"
 	return sanitized
 
 
@@ -178,7 +353,9 @@ func read_payload_file(path: String, format: int) -> SaveResult:
 			if backup_parse_result.ok:
 				return _ok_result(backup_parse_result.data, backup_parse_result.meta)
 			return parse_error_result
-		var native_payload: Variant = JSON.to_native(json.data, true)
+		var native_payload: Variant = json.data
+		if is_native_json_dictionary_payload(json.data):
+			native_payload = JSON.to_native(json.data, true)
 		return _ok_result(native_payload, {"path": path, "format": format})
 
 	var bytes: PackedByteArray = file.get_buffer(file.get_length())
@@ -398,14 +575,104 @@ func upsert_index_entry(slot_id: String, path: String, format: int, meta: Dictio
 
 	var index_data: Dictionary = index_result.data
 	var slots_map: Dictionary = index_data[INDEX_SLOTS_KEY]
-	slots_map[slot_id] = {
+	var slot_entry: Dictionary = {}
+	if slots_map.has(slot_id) and slots_map[slot_id] is Dictionary:
+		slot_entry = Dictionary(slots_map[slot_id]).duplicate(true)
+
+	var meta_copy: Dictionary = meta.duplicate(true)
+	var records: Dictionary = Dictionary(slot_entry.get("records", {}))
+	records["main"] = {
 		"slot_id": slot_id,
+		"record_key": "main",
+		"record_kind": String(meta.get("record_kind", "main")),
+		"path": path,
+		"format": format,
+		"meta": meta_copy.duplicate(true),
+	}
+
+	slot_entry["slot_id"] = slot_id
+	slot_entry["display_name"] = String(meta.get("display_name", slot_id))
+	slot_entry["saved_at_unix"] = int(meta.get("saved_at_unix", 0))
+	slot_entry["path"] = path
+	slot_entry["format"] = format
+	slot_entry["meta"] = meta_copy
+	slot_entry["records"] = records
+	slots_map[slot_id] = slot_entry
+	index_data[INDEX_SLOTS_KEY] = slots_map
+	return write_index_data(index_data)
+
+
+func upsert_record_index_entry(slot_id: String, record_key: String, path: String, format: int, meta: Dictionary) -> SaveResult:
+	var index_result: SaveResult = read_index_data()
+	if not index_result.ok:
+		return index_result
+
+	var index_data: Dictionary = index_result.data
+	var slots_map: Dictionary = index_data[INDEX_SLOTS_KEY]
+	var slot_entry: Dictionary = {}
+	if slots_map.has(slot_id) and slots_map[slot_id] is Dictionary:
+		slot_entry = Dictionary(slots_map[slot_id]).duplicate(true)
+
+	var records: Dictionary = Dictionary(slot_entry.get("records", {}))
+	records[record_key] = {
+		"slot_id": slot_id,
+		"record_key": record_key,
+		"record_kind": String(meta.get("record_kind", "custom")),
 		"path": path,
 		"format": format,
 		"meta": meta.duplicate(true),
 	}
+
+	slot_entry["slot_id"] = slot_id
+	slot_entry["display_name"] = String(meta.get("display_name", slot_id))
+	slot_entry["saved_at_unix"] = int(meta.get("saved_at_unix", 0))
+	slot_entry["records"] = records
+	if record_key == "main":
+		slot_entry["path"] = path
+		slot_entry["format"] = format
+		slot_entry["meta"] = meta.duplicate(true)
+
+	slots_map[slot_id] = slot_entry
 	index_data[INDEX_SLOTS_KEY] = slots_map
 	return write_index_data(index_data)
+
+
+func list_record_entries(slot_id: String) -> Array:
+	var index_result: SaveResult = read_index_data()
+	if not index_result.ok:
+		return []
+
+	var slots_map: Dictionary = index_result.data[INDEX_SLOTS_KEY]
+	if not slots_map.has(slot_id):
+		return []
+
+	var slot_entry: Dictionary = Dictionary(slots_map[slot_id])
+	var records: Dictionary = Dictionary(slot_entry.get("records", {}))
+	var entries: Array = []
+	for key_variant in records.keys():
+		var record_key: String = String(key_variant)
+		var entry: Dictionary = Dictionary(records[record_key]).duplicate(true)
+		entry["slot_id"] = String(entry.get("slot_id", slot_id))
+		entry["record_key"] = String(entry.get("record_key", record_key))
+		entries.append(entry)
+
+	if not records.has("main") and slot_entry.has("path"):
+		var legacy_meta: Dictionary = Dictionary(slot_entry.get("meta", {}))
+		entries.append({
+			"slot_id": slot_id,
+			"record_key": "main",
+			"record_kind": String(legacy_meta.get("record_kind", "main")),
+			"path": String(slot_entry.get("path", "")),
+			"format": int(slot_entry.get("format", resolve_storage_format())),
+			"meta": legacy_meta.duplicate(true),
+		})
+
+	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var a_meta: Dictionary = Dictionary(a.get("meta", {}))
+		var b_meta: Dictionary = Dictionary(b.get("meta", {}))
+		return int(a_meta.get("saved_at_unix", 0)) > int(b_meta.get("saved_at_unix", 0))
+	)
+	return entries
 
 
 func remove_index_entry(slot_id: String) -> SaveResult:
@@ -506,6 +773,15 @@ func default_index_data() -> Dictionary:
 
 func is_valid_payload(payload: Variant) -> bool:
 	return payload is Dictionary and payload.has("meta") and payload.has("data") and payload["meta"] is Dictionary
+
+
+func is_native_json_dictionary_payload(payload: Variant) -> bool:
+	if not (payload is Dictionary):
+		return false
+	var payload_dict: Dictionary = Dictionary(payload)
+	return String(payload_dict.get("type", "")) == "Dictionary" and (
+		payload_dict.has("value") or payload_dict.has("args")
+	)
 
 
 func is_valid_format(mode: int) -> bool:

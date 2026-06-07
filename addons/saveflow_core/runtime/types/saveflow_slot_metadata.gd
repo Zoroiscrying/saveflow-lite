@@ -19,6 +19,9 @@ const BUSINESS_FIELD_IDS := [
 
 const CORE_FIELD_IDS := [
 	"slot_id",
+	"record_key",
+	"record_kind",
+	"scope_key",
 	"created_at_unix",
 	"created_at_iso",
 	"saved_at_unix",
@@ -34,6 +37,9 @@ const MAX_RECOMMENDED_CUSTOM_METADATA_FIELDS := 12
 const MAX_METADATA_WARNING_DEPTH := 12
 
 @export var slot_id := ""
+@export var record_key := "main"
+@export var record_kind := "main"
+@export var scope_key := ""
 @export var display_name := ""
 @export var save_type := "manual"
 @export var chapter_name := ""
@@ -169,6 +175,12 @@ func set_field(field_id: String, value: Variant) -> void:
 	match field_id:
 		"slot_id":
 			slot_id = String(value)
+		"record_key":
+			record_key = String(value)
+		"record_kind":
+			record_kind = String(value)
+		"scope_key":
+			scope_key = String(value)
 		"display_name":
 			display_name = String(value)
 		"save_type":
@@ -207,6 +219,9 @@ func to_dictionary() -> Dictionary:
 	push_saveflow_authoring_warnings()
 	var meta := {
 		"slot_id": slot_id,
+		"record_key": record_key,
+		"record_kind": record_kind,
+		"scope_key": scope_key,
 		"display_name": display_name,
 		"save_type": save_type,
 		"chapter_name": chapter_name,
@@ -244,6 +259,9 @@ func to_patch_dictionary() -> Dictionary:
 		"thumbnail_path": thumbnail_path,
 	}
 	_add_if_not_empty(meta, "slot_id", slot_id)
+	_add_if_not_default(meta, "record_key", record_key, "main")
+	_add_if_not_default(meta, "record_kind", record_kind, "main")
+	_add_if_not_empty(meta, "scope_key", scope_key)
 	_add_if_not_zero(meta, "created_at_unix", created_at_unix)
 	_add_if_not_empty(meta, "created_at_iso", created_at_iso)
 	_add_if_not_zero(meta, "saved_at_unix", saved_at_unix)
@@ -267,6 +285,11 @@ static func _is_known_field(field_id: String) -> bool:
 
 static func _add_if_not_empty(target: Dictionary, field_id: String, value: String) -> void:
 	if not value.is_empty():
+		target[field_id] = value
+
+
+static func _add_if_not_default(target: Dictionary, field_id: String, value: String, default_value: String) -> void:
+	if not value.is_empty() and value != default_value:
 		target[field_id] = value
 
 

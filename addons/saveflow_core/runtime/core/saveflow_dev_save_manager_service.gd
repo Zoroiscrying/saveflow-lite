@@ -15,13 +15,14 @@ func write_status(runtime: Node, bridge: Node) -> void:
 	var runtime_available := bridge_active or builtin_active
 	var dev_settings: Dictionary = {}
 	var current_scene_path := ""
+	var current_record_target := {}
 	var scene_root := resolve_runtime_scene_root(runtime)
 	if scene_root != null:
 		current_scene_path = resolve_scene_path_for_node(scene_root)
+		current_record_target = resolve_current_record_target(scene_root)
 	if bridge_active and bridge.has_method("get_dev_save_settings"):
 		var bridge_dev_settings: Variant = bridge.call("get_dev_save_settings")
-		if bridge_dev_settings is Dictionary:
-			dev_settings = Dictionary(bridge_dev_settings).duplicate(true)
+		dev_settings = _settings_variant_to_status_dict(bridge_dev_settings)
 	elif builtin_active:
 		dev_settings = settings_to_status_dict(build_builtin_dev_settings(_settings))
 	SaveFlowSaveManagerBusScript.write_status(
@@ -29,6 +30,9 @@ func write_status(runtime: Node, bridge: Node) -> void:
 			"runtime_available": runtime_available,
 			"bridge_name": get_bridge_name(bridge) if bridge_active else ("SaveFlow (Built-in)" if builtin_active else ""),
 			"current_scene_path": current_scene_path,
+			"current_record_key": String(current_record_target.get("record_key", "")),
+			"current_record_kind": String(current_record_target.get("record_kind", "")),
+			"current_scope_key": String(current_record_target.get("scope_key", "")),
 			"settings": settings_to_status_dict(_settings),
 			"dev_settings": dev_settings,
 		}
@@ -180,6 +184,24 @@ func resolve_dev_scope_root(scene_root: Node) -> SaveFlowScope:
 	return scope_root
 
 
+func resolve_current_record_target(scene_root: Node) -> Dictionary:
+	if scene_root == null:
+		return {}
+	var scope_root := resolve_dev_scope_root(scene_root)
+	if scope_root != null:
+		var scope_key := scope_root.get_scope_key().strip_edges()
+		return {
+			"record_key": _resolve_scope_record_key(scope_root),
+			"record_kind": "scope",
+			"scope_key": scope_key,
+		}
+	return {
+		"record_key": _resolve_scene_record_key(scene_root),
+		"record_kind": "scene",
+		"scope_key": "",
+	}
+
+
 func _has_graph_source_outside_scope(current: Node, scope_root: SaveFlowScope) -> bool:
 	if current == null:
 		return false
@@ -253,6 +275,14 @@ func settings_to_status_dict(settings: SaveSettings) -> Dictionary:
 	}
 
 
+func _settings_variant_to_status_dict(settings_variant: Variant) -> Dictionary:
+	if settings_variant is SaveSettings:
+		return settings_to_status_dict(settings_variant as SaveSettings)
+	if settings_variant is Dictionary:
+		return Dictionary(settings_variant).duplicate(true)
+	return {}
+
+
 func resolve_scene_path_for_node(node: Node) -> String:
 	if node == null or not is_instance_valid(node):
 		return ""
@@ -262,6 +292,62 @@ func resolve_scene_path_for_node(node: Node) -> String:
 	if tree != null and tree.current_scene != null and (node == tree.current_scene or tree.current_scene.is_ancestor_of(node)):
 		return tree.current_scene.scene_file_path
 	return ""
+
+
+func _resolve_scene_record_key(root: Node) -> String:
+	if is_instance_valid(root):
+		if root.has_meta("saveflow_record_key"):
+			var explicit_key := String(root.get_meta("saveflow_record_key")).strip_edges()
+			if not explicit_key.is_empty():
+				return explicit_key
+		var scene_key := _resolve_scene_key_for_node(root)
+		if not scene_key.is_empty():
+			return "scene:%s" % scene_key
+		var node_path_key := _node_path_record_fragment(root)
+		if not node_path_key.is_empty():
+			return "scene:%s" % node_path_key
+	return "scene:unknown"
+
+
+func _resolve_scope_record_key(scope_root: SaveFlowScope) -> String:
+	var scope_key := ""
+	if is_instance_valid(scope_root):
+		scope_key = scope_root.get_scope_key().strip_edges()
+	if not scope_key.is_empty():
+		var scene_key := _resolve_scene_key_for_node(scope_root)
+		if not scene_key.is_empty():
+			return "scene:%s/scope:%s" % [scene_key, scope_key]
+		return "scope:%s" % scope_key
+	if is_instance_valid(scope_root):
+		var node_path_key := _node_path_record_fragment(scope_root)
+		if not node_path_key.is_empty():
+			var scene_key := _resolve_scene_key_for_node(scope_root)
+			if not scene_key.is_empty():
+				return "scene:%s/scope:%s" % [scene_key, node_path_key]
+			return "scope:%s" % node_path_key
+	return "scope:unknown"
+
+
+func _resolve_scene_key_for_node(node: Node) -> String:
+	var scene_path := resolve_scene_path_for_node(node).strip_edges()
+	if scene_path.is_empty():
+		return ""
+	return _scene_key_from_path(scene_path)
+
+
+func _scene_key_from_path(scene_path: String) -> String:
+	var scene_key_path := scene_path.replace("\\", "/")
+	if scene_key_path.begins_with("res://"):
+		scene_key_path = scene_key_path.trim_prefix("res://")
+	elif scene_key_path.begins_with("user://"):
+		scene_key_path = scene_key_path.trim_prefix("user://")
+	return scene_key_path.get_basename().strip_edges()
+
+
+func _node_path_record_fragment(node: Node) -> String:
+	if node == null or not is_instance_valid(node):
+		return ""
+	return String(node.get_path()).replace("/", "_").strip_edges()
 
 
 func _call_saveflow_result(runtime: Node, method_name: String, arguments: Array) -> SaveResult:

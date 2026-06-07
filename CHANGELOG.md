@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.5
+
+Updated in this release:
+- Qualified scope save records by scene path so the same scope key in different scenes maps to separate records under one slot
+- Preserved compatibility with legacy scope records by falling back to the previous `scope:*` record key when loading existing saves
+- Updated the Zelda-like demo bridge/source metadata so DevSaveManager and the recommended template keep stable save identities
+
 ## 1.0.4
 
 Updated in this release:

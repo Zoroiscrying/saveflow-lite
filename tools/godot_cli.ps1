@@ -1,5 +1,4 @@
 ﻿param(
-    [int]$TimeoutSeconds = 0,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$GodotArgs
 )
@@ -26,79 +25,5 @@ $env:LOCALAPPDATA = $localAppData
 $env:TEMP = $tempDir
 $env:TMP = $tempDir
 
-$effectiveTimeoutSeconds = $TimeoutSeconds
-if ($effectiveTimeoutSeconds -le 0 -and $env:GODOT_CLI_TIMEOUT_SECONDS) {
-    $parsedTimeoutSeconds = 0
-    if ([int]::TryParse($env:GODOT_CLI_TIMEOUT_SECONDS, [ref]$parsedTimeoutSeconds)) {
-        $effectiveTimeoutSeconds = $parsedTimeoutSeconds
-    }
-}
-
-if ($effectiveTimeoutSeconds -le 0) {
-    & $godotExe @GodotArgs
-    exit $LASTEXITCODE
-}
-
-function ConvertTo-CommandLineArgument {
-    param([string]$Argument)
-
-    if ($null -eq $Argument) {
-        return '""'
-    }
-    if ($Argument.Length -gt 0 -and $Argument -notmatch '[\s"]') {
-        return $Argument
-    }
-
-    $builder = [System.Text.StringBuilder]::new()
-    [void]$builder.Append('"')
-    $backslashCount = 0
-    foreach ($char in $Argument.ToCharArray()) {
-        if ($char -eq '\') {
-            $backslashCount += 1
-            continue
-        }
-        if ($char -eq '"') {
-            [void]$builder.Append('\' * (($backslashCount * 2) + 1))
-            [void]$builder.Append('"')
-            $backslashCount = 0
-            continue
-        }
-        if ($backslashCount -gt 0) {
-            [void]$builder.Append('\' * $backslashCount)
-            $backslashCount = 0
-        }
-        [void]$builder.Append($char)
-    }
-    if ($backslashCount -gt 0) {
-        [void]$builder.Append('\' * ($backslashCount * 2))
-    }
-    [void]$builder.Append('"')
-    return $builder.ToString()
-}
-
-$processStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
-$processStartInfo.FileName = $godotExe
-$processStartInfo.UseShellExecute = $false
-$processStartInfo.Arguments = (($GodotArgs | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join ' ')
-
-$process = [System.Diagnostics.Process]::new()
-$process.StartInfo = $processStartInfo
-
-[void]$process.Start()
-if (-not $process.WaitForExit($effectiveTimeoutSeconds * 1000)) {
-    Write-Error "Godot CLI timed out after $effectiveTimeoutSeconds seconds. Terminating process $($process.Id)."
-    try {
-        $process.Kill($true)
-    } catch {
-        try {
-            $process.Kill()
-        } catch {
-        }
-    }
-    $process.Dispose()
-    exit 124
-}
-
-$exitCode = $process.ExitCode
-$process.Dispose()
-exit $exitCode
+& $godotExe @GodotArgs
+exit $LASTEXITCODE

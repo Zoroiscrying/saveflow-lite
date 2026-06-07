@@ -24,11 +24,13 @@ func get_bridge_name() -> String:
 	return "Zelda Demo"
 
 
-func get_dev_save_settings() -> Dictionary:
+func get_dev_save_settings() -> Variant:
 	var resolved_sandbox := _resolve_sandbox()
 	if resolved_sandbox == null or not resolved_sandbox.has_method("build_dev_save_settings"):
 		return {}
 	var settings_variant: Variant = resolved_sandbox.call("build_dev_save_settings")
+	if settings_variant is SaveSettings:
+		return settings_variant
 	if settings_variant is Dictionary:
 		return Dictionary(settings_variant).duplicate(true)
 	return {}

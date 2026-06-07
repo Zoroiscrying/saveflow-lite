@@ -21,6 +21,9 @@ public class SaveFlowSlotMetadata
 	private static readonly HashSet<string> KnownFields = new(StringComparer.Ordinal)
 	{
 		"slot_id",
+		"record_key",
+		"record_kind",
+		"scope_key",
 		"display_name",
 		"save_type",
 		"chapter_name",
@@ -40,6 +43,9 @@ public class SaveFlowSlotMetadata
 	};
 
 	public string SlotId { get; set; } = "";
+	public string RecordKey { get; set; } = "main";
+	public string RecordKind { get; set; } = "main";
+	public string ScopeKey { get; set; } = "";
 	public string DisplayName { get; set; } = "";
 	public string SaveType { get; set; } = "manual";
 	public string ChapterName { get; set; } = "";
@@ -111,6 +117,15 @@ public class SaveFlowSlotMetadata
 				case "slot_id":
 					SlotId = VariantToString(value);
 					break;
+				case "record_key":
+					RecordKey = VariantToString(value);
+					break;
+				case "record_kind":
+					RecordKind = VariantToString(value);
+					break;
+				case "scope_key":
+					ScopeKey = VariantToString(value);
+					break;
 				case "display_name":
 					DisplayName = VariantToString(value);
 					break;
@@ -175,6 +190,9 @@ public class SaveFlowSlotMetadata
 		var meta = new GodotDictionary
 		{
 			["slot_id"] = SlotId,
+			["record_key"] = RecordKey,
+			["record_kind"] = RecordKind,
+			["scope_key"] = ScopeKey,
 			["display_name"] = DisplayName,
 			["save_type"] = SaveType,
 			["chapter_name"] = ChapterName,
@@ -211,6 +229,9 @@ public class SaveFlowSlotMetadata
 			["thumbnail_path"] = ThumbnailPath,
 		};
 		AddIfNotEmpty(meta, "slot_id", SlotId);
+		AddIfNotDefault(meta, "record_key", RecordKey, "main");
+		AddIfNotDefault(meta, "record_kind", RecordKind, "main");
+		AddIfNotEmpty(meta, "scope_key", ScopeKey);
 		AddIfNotZero(meta, "created_at_unix", CreatedAtUnix);
 		AddIfNotEmpty(meta, "created_at_iso", CreatedAtIso);
 		AddIfNotZero(meta, "saved_at_unix", SavedAtUnix);
@@ -332,6 +353,12 @@ public class SaveFlowSlotMetadata
 	private static void AddIfNotEmpty(GodotDictionary target, string fieldId, string value)
 	{
 		if (!string.IsNullOrEmpty(value))
+			target[fieldId] = value;
+	}
+
+	private static void AddIfNotDefault(GodotDictionary target, string fieldId, string value, string defaultValue)
+	{
+		if (!string.IsNullOrEmpty(value) && value != defaultValue)
 			target[fieldId] = value;
 	}
 

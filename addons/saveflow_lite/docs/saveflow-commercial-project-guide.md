@@ -268,6 +268,17 @@ Recommended business fields for slot metadata:
 These fields are not a replacement for gameplay payload.
 They exist so the game can present save slots cleanly.
 
+### Player slots and save records
+
+SaveFlow treats `slot_id` as the stable player-facing save slot. A slot can own
+multiple records: `main`, scene records, scope records, and custom domain
+records. This lets one playthrough keep separate physical files for large scenes
+or domains without turning each scene file into a separate player slot.
+
+Legacy `save_slot()` and `load_slot()` calls operate on the `main` record.
+Scene and scope saves use record metadata so editor tools can inspect missing,
+conflicting, or outdated records under the player slot.
+
 ---
 
 ## 9. When save is driven by gameplay events instead of a debug button
