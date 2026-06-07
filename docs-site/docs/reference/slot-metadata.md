@@ -7,6 +7,10 @@ Slot metadata is the typed summary stored with a save slot.
 
 Use it for menus, compatibility checks, and player-facing save cards.
 
+Record metadata also uses the slot metadata shape. Scene, Scope, and custom
+records add `record_key` and `record_kind` to the saved metadata so tools can
+tell which payload inside the slot they are inspecting.
+
 ## SaveFlowSlotMetadata Fields
 
 | Field | Type | Purpose |
@@ -29,8 +33,31 @@ Use it for menus, compatibility checks, and player-facing save cards.
 | `data_version` | `int` | Data version metadata. |
 | `save_schema` | `String` | Schema label used by compatibility checks. |
 
+Record-aware saves may also include these metadata keys:
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `record_key` | `String` | Stable identity for one payload inside the slot. |
+| `record_kind` | `String` | `main`, `scene`, `scope`, or project-specific/custom kind. |
+
 Extra fields should be basic Variant-safe data or typed SaveFlow data.
 Do not store heavy runtime objects in slot metadata.
+
+## Slot Metadata vs Record Metadata
+
+The `slot_id` remains the player-facing save identity.
+
+`record_key` identifies the payload inside that slot.
+
+```text
+slot_id = slot_1
+record_key = scope:res://world/project_room_dungeon.tscn:room
+record_kind = scope
+```
+
+Save menus normally use slot metadata and summaries. Editor tools, migration
+tools, and release checks can inspect record metadata to find missing,
+outdated, or conflicting payloads under that slot.
 
 ## Metadata Methods
 

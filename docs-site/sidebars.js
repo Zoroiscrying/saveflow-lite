@@ -19,6 +19,7 @@ const sidebars = {
       items: [
         'concepts/save-graph',
         'concepts/ownership-model',
+        'concepts/player-slots-and-records',
       ],
     },
     {

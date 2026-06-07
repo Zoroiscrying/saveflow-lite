@@ -11,6 +11,10 @@ SaveFlow deliberately does not own "the player's current slot".
 That state belongs to the project.
 `SaveFlowSlotWorkflow` keeps it explicit while removing repeated glue.
 
+The active slot is a playthrough identity, not a single-file guarantee.
+Scene, Scope, and custom saves may write separate records under the same active
+slot.
+
 ![SaveFlow slot workflow](/img/saveflow/slot-workflow.svg)
 
 ## What It Owns
@@ -83,6 +87,7 @@ func trigger_autosave(scope: SaveFlowScope) -> void:
 This keeps autosave understandable:
 
 - the active slot is still the storage target
+- scene and scope calls can target the relevant record inside that slot
 - metadata records that the write was an autosave
 - the save menu can display the new slot state through cards
 
@@ -102,3 +107,18 @@ save_type = manual
 
 Avoid using player-facing names as storage IDs.
 Names change; storage keys should not.
+
+## Slot ID vs Record Key
+
+Keep `slot_id` stable for the player.
+
+Let SaveFlow choose scene and scope record keys for scene-authored data.
+
+```text
+slot_id = slot_1
+record_key = scope:res://world/project_room_dungeon.tscn:room
+```
+
+If your project writes a custom record directly, choose a stable record key
+such as `quest_log` or `world_state`. Do not include display names, timestamps,
+or temporary scene state in record keys.

@@ -19,6 +19,10 @@ The key idea is:
 
 > storage identity is stable, UI naming is metadata.
 
+A player slot can contain multiple save records. The slot remains the stable
+playthrough identity, while scene, scope, and custom records let the project
+store separate gameplay domains under that same slot.
+
 ## Slot ID vs Display Name
 
 Use a stable slot ID for storage.
@@ -55,6 +59,10 @@ In the recommended template, the Esc menu writes the main scene data.
 Room pads write the active subscene slot.
 That split keeps project location data separate from room-local payloads.
 
+When the player changes scene, the active `slot_id` should usually stay the
+same. What changes is the scene or scope record that `save_scene()`,
+`load_scene()`, `save_scope()`, or `load_scope()` targets under that slot.
+
 ![Recommended Project Workflow main save menu showing main scene data and active room slot context](/img/saveflow/screenshots/project-workflow-main-save-menu.png)
 
 ## Save Cards
@@ -87,3 +95,28 @@ active slot.
 
 In Lite, these are workflows over the same baseline slot model.
 They are not separate storage systems.
+
+## Slot Records
+
+Use records when one player slot needs more than one saved payload boundary.
+
+```text
+slot_1
+|- main
+|- scene:res://world/project_room_dungeon.tscn
+|- scope:res://world/project_room_dungeon.tscn:room
+```
+
+`save_slot()` and `load_slot()` operate on the `main` record.
+
+`save_scene()` stores a scene-qualified record.
+
+`save_scope()` stores a scene-and-scope-qualified record. This prevents two
+different scenes that both use `scope_key = "room"` from colliding inside the
+same player slot.
+
+Player UI should normally group by slot. Editor and QA tools can expand a slot
+to inspect the records that make that playthrough complete.
+
+See [Player Slots And Records](../concepts/player-slots-and-records) for the
+full model.

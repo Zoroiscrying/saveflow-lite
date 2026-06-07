@@ -12,6 +12,10 @@ menus, autosave zones, or debug shortcuts.
 
 Use this when one gameplay domain owns the save/load boundary.
 
+This writes a Scope record under the provided player slot. Keep the `slot_id`
+stable for the playthrough; the Scope and current scene decide which record
+inside that slot is written.
+
 ```gdscript
 @onready var room_scope: SaveFlowScope = $RoomScope
 
@@ -34,6 +38,9 @@ func save_room() -> void:
 The target Scope and its Sources must already exist in the currently loaded
 scene.
 
+This reads the matching Scope record for the current scene and Scope key under
+the same player slot.
+
 ```gdscript
 func load_room() -> void:
 	var result := SaveFlow.load_scope("slot_1", room_scope)
@@ -50,6 +57,8 @@ SaveFlow.load_scope("slot_1", room_scope, true)
 ## Save And Load A Scene Graph
 
 Use this when the scene's Sources are discovered from the `saveflow` group.
+
+Scene graph calls use a scene-qualified record under the player slot.
 
 ```gdscript
 func save_current_scene() -> void:
@@ -186,6 +195,21 @@ func can_load_slot(slot_id: String) -> bool:
 
 Compatibility checks report schema/data-version safety.
 They do not run Pro migration.
+
+## List Records In A Slot
+
+Use this for editor tooling, QA helpers, diagnostics, or migration checks.
+Most player-facing save menus should still show slot summaries instead.
+
+```gdscript
+func print_slot_records(slot_id: String) -> void:
+	var result := SaveFlow.list_slot_records(slot_id)
+	if not result.ok:
+		push_warning(result.message)
+		return
+	for record in result.data:
+		print(record.get("record_key", ""), " ", record.get("record_kind", ""))
+```
 
 ## Store A Raw Payload
 

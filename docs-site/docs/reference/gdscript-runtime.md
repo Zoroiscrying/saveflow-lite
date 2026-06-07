@@ -52,8 +52,36 @@ SaveFlow.load_data(slot_id: String) -> SaveResult
 SaveFlow.load_slot_or_default(slot_id: String, default_data: Variant) -> SaveResult
 ```
 
-Use these when you already own the whole payload.
+Use these when you already own the whole payload. These calls operate on the
+slot's `main` record.
+
 For scene-authored game state, prefer Scope or scene calls.
+
+## Record Calls
+
+```gdscript
+SaveFlow.save_record(
+	slot_id: String,
+	record_key: String,
+	data: Variant,
+	meta_patch: Dictionary = {},
+	record_kind: String = "custom",
+	extra_meta: Dictionary = {}
+) -> SaveResult
+SaveFlow.load_record(slot_id: String, record_key: String) -> SaveResult
+SaveFlow.load_record_data(slot_id: String, record_key: String) -> SaveResult
+SaveFlow.record_exists(slot_id: String, record_key: String) -> bool
+SaveFlow.list_slot_records(slot_id: String) -> SaveResult
+```
+
+A record is one payload under a player slot.
+
+Use direct record calls only when your project owns a named custom domain such
+as `quest_log`, `world_state`, or `settings`.
+
+Scene and Scope workflows generate their own record keys. Prefer
+`save_scene()` or `save_scope()` for scene-authored data so scene path and scope
+identity stay consistent.
 
 ## Scene Graph Calls
 
@@ -68,6 +96,10 @@ SaveFlow.apply_nodes(root: Node, saveables_data: Dictionary, strict: bool = fals
 ```
 
 Use scene calls when Sources are discovered from the scene tree/group.
+
+Scene calls write and read a scene-qualified record under the provided
+`slot_id`. If a legacy main record exists and the scene record is missing,
+`load_scene()` falls back to the main record for upgrade compatibility.
 
 `strict` controls whether missing payload/source situations should fail harder.
 Keep it false while iterating; use strict only when the project expects an exact
@@ -84,6 +116,10 @@ SaveFlow.inspect_scope(scope_root: SaveFlowScope) -> SaveResult
 ```
 
 These are the recommended calls for domain-based gameplay saves.
+
+Scope calls write and read a scene-and-scope-qualified record under the provided
+`slot_id`. This lets two scenes use the same local `scope_key` without sharing
+one physical record by accident.
 
 Example:
 
@@ -120,6 +156,10 @@ SaveFlow.get_index_path() -> String
 
 Use summary and metadata reads for save/load menus.
 Avoid loading full gameplay payloads just to draw a save card.
+
+Use `list_slot_records()` for editor, QA, migration, or diagnostics tools that
+need to inspect every record under one slot. Player save menus should usually
+group by slot summary instead.
 
 ## Metadata Builders
 

@@ -32,7 +32,8 @@ SaveFlow Lite focuses on the baseline save model:
 - typed C# state through `SaveFlowTypedStateSource`
 - runtime-spawned objects through `SaveFlowEntityCollectionSource`
 - domain boundaries through `SaveFlowScope`
-- slot metadata, active slots, save cards, autosave, and checkpoint examples
+- player slots with multiple records, slot metadata, active slots, save cards,
+  autosave, and checkpoint examples
 - editor diagnostics, scene validator feedback, and setup health checks
 
 ## What Lite Does Not Try To Be
@@ -49,10 +50,11 @@ background saves belong to SaveFlow Pro.
 2. Build your first Save Graph.
 3. Copy the common API calls into your first save/load buttons.
 4. Learn the ownership model.
-5. Choose the right Source for each kind of data.
-6. Open the recommended template and compare the docs to the scene tree.
-7. Use the Examples One-Page Starter to decide which demo to open next.
-8. Use Reference when you need exact method names, properties, and signals.
+5. Learn how player slots and save records fit together.
+6. Choose the right Source for each kind of data.
+7. Open the recommended template and compare the docs to the scene tree.
+8. Use the Examples One-Page Starter to decide which demo to open next.
+9. Use Reference when you need exact method names, properties, and signals.
 
 ## The Short Version
 
