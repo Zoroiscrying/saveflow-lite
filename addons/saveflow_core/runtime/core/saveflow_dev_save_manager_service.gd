@@ -3,13 +3,35 @@ extends RefCounted
 const SaveFlowSaveManagerBusScript := preload("res://addons/saveflow_core/runtime/core/saveflow_save_manager_bus.gd")
 
 var _settings: SaveSettings = SaveSettings.new()
+var _last_status_signature := ""
+var _status_dirty := true
 
 
 func configure(settings: SaveSettings) -> void:
 	_settings = settings if settings != null else SaveSettings.new()
+	mark_status_dirty()
+
+
+func mark_status_dirty() -> void:
+	_status_dirty = true
+
+
+func write_status_if_dirty(runtime: Node, bridge: Node, force := false) -> bool:
+	var status := build_status(runtime, bridge)
+	var signature := JSON.stringify(status)
+	if not force and not _status_dirty and signature == _last_status_signature:
+		return false
+	SaveFlowSaveManagerBusScript.write_status(status)
+	_last_status_signature = signature
+	_status_dirty = false
+	return true
 
 
 func write_status(runtime: Node, bridge: Node) -> void:
+	write_status_if_dirty(runtime, bridge, true)
+
+
+func build_status(runtime: Node, bridge: Node) -> Dictionary:
 	var bridge_active := is_bridge_available(bridge)
 	var builtin_active := is_builtin_fallback_available(runtime)
 	var runtime_available := bridge_active or builtin_active
@@ -25,30 +47,33 @@ func write_status(runtime: Node, bridge: Node) -> void:
 		dev_settings = _settings_variant_to_status_dict(bridge_dev_settings)
 	elif builtin_active:
 		dev_settings = settings_to_status_dict(build_builtin_dev_settings(_settings))
-	SaveFlowSaveManagerBusScript.write_status(
-		{
-			"runtime_available": runtime_available,
-			"bridge_name": get_bridge_name(bridge) if bridge_active else ("SaveFlow (Built-in)" if builtin_active else ""),
-			"current_scene_path": current_scene_path,
-			"current_record_key": String(current_record_target.get("record_key", "")),
-			"current_record_kind": String(current_record_target.get("record_kind", "")),
-			"current_scope_key": String(current_record_target.get("scope_key", "")),
-			"settings": settings_to_status_dict(_settings),
-			"dev_settings": dev_settings,
-		}
-	)
+	return {
+		"runtime_available": runtime_available,
+		"bridge_name": get_bridge_name(bridge) if bridge_active else ("SaveFlow (Built-in)" if builtin_active else ""),
+		"current_scene_path": current_scene_path,
+		"current_record_key": String(current_record_target.get("record_key", "")),
+		"current_record_kind": String(current_record_target.get("record_kind", "")),
+		"current_scope_key": String(current_record_target.get("scope_key", "")),
+		"settings": settings_to_status_dict(_settings),
+		"dev_settings": dev_settings,
+	}
 
 
-func process_requests(runtime: Node, bridge: Node) -> void:
+func process_requests(runtime: Node, bridge: Node) -> bool:
 	var bridge_active := is_bridge_available(bridge)
 	var builtin_active := is_builtin_fallback_available(runtime)
 	if not bridge_active and not builtin_active:
-		return
+		return false
 
+	var processed_any := false
 	for request in SaveFlowSaveManagerBusScript.list_pending_requests():
+		processed_any = true
 		var request_id: String = String(request.get("id", ""))
 		var action: String = String(request.get("action", ""))
 		var entry_name: String = String(request.get("name", ""))
+		var scope: String = String(request.get("scope", "dev"))
+		if scope != "formal":
+			scope = "dev"
 		var result: SaveResult = _error_result(
 			SaveError.INVALID_ARGUMENT,
 			"INVALID_ARGUMENT",
@@ -56,25 +81,41 @@ func process_requests(runtime: Node, bridge: Node) -> void:
 			{"action": action}
 		)
 
-		if bridge_active:
+		if bridge_active and scope == "dev":
 			if action == "save":
 				result = bridge.call("save_named_entry", entry_name)
 			elif action == "load":
 				result = bridge.call("load_named_entry", entry_name)
 		else:
-			result = run_named_entry_with_dev_settings(runtime, action, entry_name)
+			result = run_named_entry_with_scope_settings(runtime, action, entry_name, scope)
 
 		if result.ok:
-			SaveFlowSaveManagerBusScript.complete_request(request_id, true, "Completed %s '%s'." % [action, entry_name])
+			SaveFlowSaveManagerBusScript.complete_request(
+				request_id,
+				true,
+				"Completed %s %s '%s'." % [scope, action, entry_name],
+				{
+					"refresh_required": true,
+					"scope": scope,
+					"entry_name": entry_name,
+				}
+			)
 		else:
 			SaveFlowSaveManagerBusScript.complete_request(
 				request_id,
 				false,
 				result.error_message if not result.error_message.is_empty() else "Save manager request failed."
 			)
+	if processed_any:
+		mark_status_dirty()
+	return processed_any
 
 
 func run_named_entry_with_dev_settings(runtime: Node, action: String, entry_name: String) -> SaveResult:
+	return run_named_entry_with_scope_settings(runtime, action, entry_name, "dev")
+
+
+func run_named_entry_with_scope_settings(runtime: Node, action: String, entry_name: String, scope: String) -> SaveResult:
 	var slot_id := entry_name.strip_edges()
 	if slot_id.is_empty():
 		return _error_result(
@@ -90,14 +131,17 @@ func run_named_entry_with_dev_settings(runtime: Node, action: String, entry_name
 		)
 
 	var previous_settings: SaveSettings = runtime.call("get_settings")
-	var dev_settings := build_builtin_dev_settings(previous_settings)
-	runtime.call("configure", dev_settings)
-	var result := execute_named_entry_action(runtime, action, slot_id)
-	runtime.call("configure", previous_settings)
+	var should_use_dev_settings := scope != "formal"
+	if should_use_dev_settings:
+		var dev_settings := build_builtin_dev_settings(previous_settings)
+		runtime.call("configure", dev_settings)
+	var result := execute_named_entry_action(runtime, action, slot_id, scope)
+	if should_use_dev_settings:
+		runtime.call("configure", previous_settings)
 	return result
 
 
-func execute_named_entry_action(runtime: Node, action: String, slot_id: String) -> SaveResult:
+func execute_named_entry_action(runtime: Node, action: String, slot_id: String, scope: String = "dev") -> SaveResult:
 	var scene_root := resolve_runtime_scene_root(runtime)
 	if scene_root == null:
 		return _error_result(
@@ -105,6 +149,11 @@ func execute_named_entry_action(runtime: Node, action: String, slot_id: String) 
 			"INVALID_SAVEABLE",
 			"no runtime scene is available for SaveFlow dev save/load"
 		)
+
+	if scope == "formal":
+		var named_result := call_scene_named_entry_action(scene_root, action, slot_id)
+		if named_result != null:
+			return named_result
 
 	var scope_root := resolve_dev_scope_root(scene_root)
 	if scope_root != null:
@@ -124,6 +173,26 @@ func execute_named_entry_action(runtime: Node, action: String, slot_id: String) 
 		"unsupported save manager action",
 		{"action": action}
 	)
+
+
+func call_scene_named_entry_action(scene_root: Node, action: String, slot_id: String) -> SaveResult:
+	if scene_root == null or not is_instance_valid(scene_root):
+		return null
+	var method_name := ""
+	if action == "save":
+		method_name = "save_named_entry"
+	elif action == "load":
+		method_name = "load_named_entry"
+	if method_name.is_empty() or not scene_root.has_method(method_name):
+		return null
+	var result := scene_root.call(method_name, slot_id) as SaveResult
+	if result == null:
+		return _error_result(
+			SaveError.UNKNOWN,
+			"UNKNOWN",
+			"runtime scene method %s did not return a SaveResult" % method_name
+		)
+	return result
 
 
 func is_bridge_available(bridge: Node) -> bool:

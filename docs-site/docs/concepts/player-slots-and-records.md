@@ -158,6 +158,10 @@ Lite reports baseline compatibility and storage issues.
 SaveFlow Pro uses the same model to inspect records, show diagnostics, and run
 migration decisions before release.
 
+Editor tools read this same structure. DevSaveManager uses it to separate dev
+snapshots from formal slot-index saves, and SaveFlow Pro's Save Files tab uses
+it to group physical files, slots, records, diagnostics, and payload edits.
+
 ## Product Boundary
 
 This model belongs to Lite/Core.

@@ -63,7 +63,22 @@ It is the quickest way to catch "this Source is saving the wrong thing."
 
 ## DevSaveManager
 
-Use `DevSaveManager` while the game is running to test save/load without
-building a final game menu.
+Use `DevSaveManager` to work with development snapshots and formal slot saves
+from the editor while building save flows.
+
+The panel follows the same slot-and-record model as runtime saves:
+
+- a player slot is still the stable playthrough identity
+- scene, scope, custom, and main records live under that slot
+- dev snapshots are local testing saves requested from the editor
+- formal saves come from the configured save root and slot index
+
+Use the Dev/Formal toggle to switch the list you are reviewing. Each save row
+shows the save name, status badges, icon actions, and a compact metadata line
+so you can load, save, duplicate, rename, delete, or open the relevant folder
+without splitting the panel into separate columns.
+
+Runtime requests target dev snapshots. Formal saves remain the project-facing
+slot index saves that a game menu would normally present to players.
 
 It is for development workflow, not your shipped UI.

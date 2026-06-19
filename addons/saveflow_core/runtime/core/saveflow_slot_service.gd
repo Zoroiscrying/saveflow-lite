@@ -314,11 +314,45 @@ func list_slots() -> SaveResult:
 
 	var slots_map: Dictionary = index_result.data[INDEX_SLOTS_KEY]
 	var slot_infos: Array = []
-	for slot_id in slots_map.keys():
-		var entry: Dictionary = slots_map[slot_id]
-		if entry.has("meta"):
-			slot_infos.append(entry["meta"].duplicate(true))
+	for slot_id_variant in slots_map.keys():
+		var slot_id := String(slot_id_variant)
+		var entry: Dictionary = Dictionary(slots_map[slot_id_variant])
+		var meta := _slot_meta_from_index_entry(slot_id, entry)
+		if not meta.is_empty():
+			slot_infos.append(meta)
 	return _ok_result(slot_infos)
+
+
+func _slot_meta_from_index_entry(slot_id: String, slot_entry: Dictionary) -> Dictionary:
+	var meta := Dictionary(slot_entry.get("meta", {}))
+	if meta.is_empty():
+		meta = _latest_record_meta_from_slot_entry(slot_entry)
+	if meta.is_empty():
+		return {}
+
+	var result := meta.duplicate(true)
+	result["slot_id"] = String(result.get("slot_id", slot_id))
+	if String(result.get("display_name", "")).is_empty():
+		result["display_name"] = String(slot_entry.get("display_name", slot_id))
+	if int(result.get("saved_at_unix", 0)) <= 0:
+		result["saved_at_unix"] = int(slot_entry.get("saved_at_unix", 0))
+	return result
+
+
+func _latest_record_meta_from_slot_entry(slot_entry: Dictionary) -> Dictionary:
+	var records := Dictionary(slot_entry.get("records", {}))
+	var latest_meta: Dictionary = {}
+	for record_key_variant in records.keys():
+		var record_key := String(record_key_variant)
+		var record_entry := Dictionary(records[record_key_variant])
+		var meta := Dictionary(record_entry.get("meta", {}))
+		if meta.is_empty():
+			continue
+		if latest_meta.is_empty() or int(meta.get("saved_at_unix", 0)) > int(latest_meta.get("saved_at_unix", 0)):
+			latest_meta = meta.duplicate(true)
+			latest_meta["record_key"] = String(latest_meta.get("record_key", record_key))
+			latest_meta["record_kind"] = String(latest_meta.get("record_kind", record_entry.get("record_kind", "")))
+	return latest_meta
 
 
 func read_slot_summary(slot_id: String) -> SaveResult:

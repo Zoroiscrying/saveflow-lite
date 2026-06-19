@@ -47,8 +47,8 @@ func _process(delta: float) -> void:
 	if _save_manager_status_timer < 0.5:
 		return
 	_save_manager_status_timer = 0.0
-	_dev_save_manager_service.write_status(self, _save_manager_bridge)
-	_dev_save_manager_service.process_requests(self, _save_manager_bridge)
+	var processed_request: bool = _dev_save_manager_service.process_requests(self, _save_manager_bridge)
+	_dev_save_manager_service.write_status_if_dirty(self, _save_manager_bridge, processed_request)
 
 
 func _is_save_manager_bus_enabled() -> bool:

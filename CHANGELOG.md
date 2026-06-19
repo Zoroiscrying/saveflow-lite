@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.6
+
+Updated in this release:
+- Added the stable slot-and-record save model to Lite/Core so one player slot can own scene, scope, custom, and main records without losing the player's slot identity
+- Updated DevSaveManager around the new model with editor-owned dev snapshot requests, formal slot index loading, compact save rows, and correct dev/formal save-root actions
+- Expanded SaveFlow Pro 0.2 authoring tools with Save Files browsing, file hierarchy review, payload inspection and editing, migration decision handling, and release-time issue surfacing
+- Updated documentation for the slot/record model and the editor tools used to inspect and maintain those saves
+
 ## 1.0.5
 
 Updated in this release:

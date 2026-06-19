@@ -11,11 +11,9 @@ const SCOPE_FORMAL := "formal"
 const BACKUP_FILE_SUFFIX := ".bak"
 
 const REFRESH_INTERVAL := 1.0
-const STATUS_ACTIVE_SECONDS := 3
-const STATUS_STALE_SECONDS := 30
 const RUNTIME_STATUS_ACTIVE := "active"
-const RUNTIME_STATUS_STALE := "stale"
 const RUNTIME_STATUS_UNAVAILABLE := "unavailable"
+const RUNTIME_STATUS_DISK_ONLY := "disk_only"
 
 enum SortMode {
 	NAME_ASC,
@@ -33,21 +31,30 @@ var _sort_option: OptionButton
 var _new_name_edit: LineEdit
 var _runtime_status_label: Label
 var _request_status_label: Label
+var _scope_title_label: Label
+var _scope_hint_label: Label
+var _save_bar: HBoxContainer
+var _scope_toggle_dev_button: Button
+var _scope_toggle_formal_button: Button
 var _dev_list_box: VBoxContainer
 var _formal_list_box: VBoxContainer
+var _scope_list_box: VBoxContainer
 var _name_dialog: ConfirmationDialog
 var _name_dialog_line: LineEdit
 var _name_dialog_mode := ""
 var _name_dialog_source := ""
 var _name_dialog_scope := SCOPE_DEV
 var _delete_dialog: ConfirmationDialog
+var _detail_dialog: AcceptDialog
+var _detail_dialog_content: VBoxContainer
 var _delete_target := ""
 var _delete_scope := SCOPE_DEV
 var _refresh_timer := 0.0
 var _request_status_hold_until_unix := 0
 var _fallback_runtime: Node
-var _expanded_entry_keys: Dictionary = {}
+var _active_scope := SCOPE_DEV
 var _has_refreshed_once := false
+var _last_refresh_request_id := ""
 
 
 func _ready() -> void:
@@ -124,10 +131,26 @@ func _build_ui() -> void:
 	_content_root.add_child(title)
 
 	var description := Label.new()
-	description.text = "Manage dev snapshots and formal slot saves side by side. Runtime save/load requests only target dev saves."
+	description.text = "Manage dev snapshots and formal slot saves from one focused list."
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.modulate = get_theme_color("font_placeholder_color", "Editor")
 	_content_root.add_child(description)
+
+	var scope_bar := HBoxContainer.new()
+	scope_bar.add_theme_constant_override("separation", 6)
+	_content_root.add_child(scope_bar)
+
+	_scope_toggle_dev_button = _make_scope_toggle_button("Dev", SCOPE_DEV)
+	scope_bar.add_child(_scope_toggle_dev_button)
+
+	_scope_toggle_formal_button = _make_scope_toggle_button("Formal", SCOPE_FORMAL)
+	scope_bar.add_child(_scope_toggle_formal_button)
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scope_bar.add_child(spacer)
+
+	scope_bar.add_child(_make_icon_button("Folder", "Open", "Open current save folder", true, func() -> void: _open_active_save_folder()))
 
 	var toolbar := HBoxContainer.new()
 	toolbar.add_theme_constant_override("separation", 8)
@@ -149,38 +172,18 @@ func _build_ui() -> void:
 	_sort_option.item_selected.connect(func(_index: int) -> void: _refresh_lists())
 	toolbar.add_child(_sort_option)
 
-	var refresh_button := Button.new()
-	refresh_button.text = "Refresh"
-	refresh_button.pressed.connect(refresh_now)
-	toolbar.add_child(refresh_button)
+	toolbar.add_child(_make_icon_button("Reload", "Refresh", "Refresh saves", true, func() -> void: refresh_now()))
 
-	var folder_bar := HBoxContainer.new()
-	folder_bar.add_theme_constant_override("separation", 8)
-	_content_root.add_child(folder_bar)
-
-	var open_formal_folder_button := Button.new()
-	open_formal_folder_button.text = "Open Formal Saves"
-	open_formal_folder_button.pressed.connect(_open_formal_save_folder)
-	folder_bar.add_child(open_formal_folder_button)
-
-	var open_dev_folder_button := Button.new()
-	open_dev_folder_button.text = "Open Dev Saves"
-	open_dev_folder_button.pressed.connect(_open_dev_save_folder)
-	folder_bar.add_child(open_dev_folder_button)
-
-	var save_bar := HBoxContainer.new()
-	save_bar.add_theme_constant_override("separation", 8)
-	_content_root.add_child(save_bar)
+	_save_bar = HBoxContainer.new()
+	_save_bar.add_theme_constant_override("separation", 8)
+	_content_root.add_child(_save_bar)
 
 	_new_name_edit = LineEdit.new()
 	_new_name_edit.placeholder_text = "New dev save name"
 	_new_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	save_bar.add_child(_new_name_edit)
+	_save_bar.add_child(_new_name_edit)
 
-	var save_button := Button.new()
-	save_button.text = "Save Dev Runtime Snapshot"
-	save_button.pressed.connect(_queue_save_request)
-	save_bar.add_child(save_button)
+	_save_bar.add_child(_make_icon_button("Save", "Save", "Save dev runtime snapshot", true, func() -> void: _queue_save_request()))
 
 	_runtime_status_label = Label.new()
 	_runtime_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -191,14 +194,8 @@ func _build_ui() -> void:
 	_request_status_label.modulate = get_theme_color("font_placeholder_color", "Editor")
 	_content_root.add_child(_request_status_label)
 
-	var lists_split := HSplitContainer.new()
-	lists_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lists_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lists_split.custom_minimum_size.y = 520
-	_content_root.add_child(lists_split)
-
-	lists_split.add_child(_build_scope_list_section("Dev Saves", SCOPE_DEV))
-	lists_split.add_child(_build_scope_list_section("Formal Saves (Slot Index)", SCOPE_FORMAL))
+	_content_root.add_child(_build_scope_list_section())
+	_update_scope_controls()
 
 	_name_dialog = ConfirmationDialog.new()
 	_name_dialog.min_size = Vector2(420, 0)
@@ -217,38 +214,53 @@ func _build_ui() -> void:
 	_delete_dialog.confirmed.connect(_confirm_delete)
 	add_child(_delete_dialog)
 
+	_detail_dialog = AcceptDialog.new()
+	_detail_dialog.title = "Save Details"
+	_detail_dialog.min_size = Vector2(720, 760)
+	add_child(_detail_dialog)
 
-func _build_scope_list_section(title_text: String, scope: String) -> Control:
+	var detail_scroll := ScrollContainer.new()
+	detail_scroll.custom_minimum_size = Vector2(680, 680)
+	detail_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_detail_dialog.add_child(detail_scroll)
+
+	_detail_dialog_content = VBoxContainer.new()
+	_detail_dialog_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_detail_dialog_content.add_theme_constant_override("separation", 10)
+	detail_scroll.add_child(_detail_dialog_content)
+
+
+func _build_scope_list_section() -> Control:
 	var wrapper := VBoxContainer.new()
 	wrapper.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wrapper.add_theme_constant_override("separation", 6)
 
-	var title := Label.new()
-	title.text = title_text
-	title.add_theme_font_size_override("font_size", 14)
-	wrapper.add_child(title)
+	_scope_title_label = Label.new()
+	_scope_title_label.add_theme_font_size_override("font_size", 14)
+	wrapper.add_child(_scope_title_label)
 
-	if scope == SCOPE_FORMAL:
-		var hint := Label.new()
-		hint.text = "Formal list is index-based management only. Runtime Save/Load requests are disabled here."
-		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		hint.modulate = get_theme_color("font_placeholder_color", "Editor")
-		wrapper.add_child(hint)
+	_scope_hint_label = Label.new()
+	_scope_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_scope_hint_label.modulate = get_theme_color("font_placeholder_color", "Editor")
+	wrapper.add_child(_scope_hint_label)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size.y = 520
 	wrapper.add_child(scroll)
 
 	var list_box := VBoxContainer.new()
+	list_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	list_box.add_theme_constant_override("separation", 6)
 	scroll.add_child(list_box)
 
-	if scope == SCOPE_DEV:
-		_dev_list_box = list_box
-	else:
-		_formal_list_box = list_box
+	_scope_list_box = list_box
+	_dev_list_box = list_box
+	_formal_list_box = list_box
 
 	return wrapper
 
@@ -265,9 +277,6 @@ func _refresh_runtime_status() -> void:
 	if state == RUNTIME_STATUS_ACTIVE:
 		_runtime_status_label.text = _format_runtime_status_text(status)
 		_runtime_status_label.modulate = Color(0.35, 0.8, 0.45, 1.0)
-	elif state == RUNTIME_STATUS_STALE:
-		_runtime_status_label.text = _format_runtime_status_text(status)
-		_runtime_status_label.modulate = Color(0.85, 0.6, 0.3, 1.0)
 	else:
 		_runtime_status_label.text = _format_runtime_status_text(status)
 		_runtime_status_label.modulate = Color(0.85, 0.6, 0.3, 1.0)
@@ -281,13 +290,27 @@ func _refresh_request_status() -> void:
 	if requests.is_empty():
 		_request_status_label.text = "No runtime requests yet."
 		return
+	_refresh_after_completed_requests(requests)
 	var latest: Dictionary = requests[requests.size() - 1]
 	_request_status_label.text = "Last request: [%s] %s" % [String(latest.get("status", "pending")), String(latest.get("message", ""))]
 
 
+func _refresh_after_completed_requests(requests: Array) -> void:
+	for request_variant in requests:
+		if not (request_variant is Dictionary):
+			continue
+		var request: Dictionary = request_variant
+		var request_id := String(request.get("id", ""))
+		if request_id.is_empty() or request_id == _last_refresh_request_id:
+			continue
+		if String(request.get("status", "")) == "completed" and bool(request.get("refresh_required", false)):
+			_last_refresh_request_id = request_id
+			_refresh_lists()
+			return
+
+
 func _refresh_lists() -> void:
-	_refresh_scope_list(SCOPE_DEV)
-	_refresh_scope_list(SCOPE_FORMAL)
+	_refresh_scope_list(_active_scope)
 
 
 func _refresh_scope_list(scope: String) -> void:
@@ -296,6 +319,7 @@ func _refresh_scope_list(scope: String) -> void:
 		child.queue_free()
 
 	var entries := _read_entries(scope)
+	_update_scope_header(scope, entries.size())
 	if entries.is_empty():
 		var empty_label := Label.new()
 		empty_label.modulate = get_theme_color("font_placeholder_color", "Editor")
@@ -308,7 +332,51 @@ func _refresh_scope_list(scope: String) -> void:
 
 
 func _get_list_box_for_scope(scope: String) -> VBoxContainer:
-	return _dev_list_box if scope == SCOPE_DEV else _formal_list_box
+	return _scope_list_box
+
+
+func _make_scope_toggle_button(text: String, scope: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.toggle_mode = true
+	button.tooltip_text = "Show %s saves" % text
+	button.pressed.connect(func() -> void: _select_scope(scope))
+	return button
+
+
+func _select_scope(scope: String) -> void:
+	var normalized_scope := SCOPE_FORMAL if scope == SCOPE_FORMAL else SCOPE_DEV
+	if _active_scope == normalized_scope:
+		_update_scope_controls()
+		return
+	_active_scope = normalized_scope
+	_update_scope_controls()
+	_refresh_lists()
+
+
+func _update_scope_controls() -> void:
+	if _scope_toggle_dev_button != null:
+		_scope_toggle_dev_button.set_pressed_no_signal(_active_scope == SCOPE_DEV)
+	if _scope_toggle_formal_button != null:
+		_scope_toggle_formal_button.set_pressed_no_signal(_active_scope == SCOPE_FORMAL)
+	if _save_bar != null:
+		_save_bar.visible = _active_scope == SCOPE_DEV
+	_update_scope_header(_active_scope, -1)
+
+
+func _update_scope_header(scope: String, count: int) -> void:
+	if _scope_title_label == null:
+		return
+	var title := "Dev Saves" if scope == SCOPE_DEV else "Formal Saves"
+	if count >= 0:
+		title = "%s | %d" % [title, count]
+	_scope_title_label.text = title
+	if _scope_hint_label == null:
+		return
+	if scope == SCOPE_DEV:
+		_scope_hint_label.text = "Runtime snapshots for local testing."
+	else:
+		_scope_hint_label.text = "Formal slot saves from the project slot index."
 
 
 func _read_entries(scope: String) -> Array:
@@ -322,12 +390,15 @@ func _read_entries(scope: String) -> Array:
 		var list_result = runtime.list_slots()
 		if list_result.ok:
 			entries = _build_entries_from_slot_meta(Array(list_result.data))
-		if scope == SCOPE_DEV and entries.is_empty():
+		if entries.is_empty():
+			entries = _scan_entries_from_slot_index(settings)
+		if entries.is_empty():
 			entries = _scan_entries_from_save_root(settings)
 	else:
-		# Runtime not available, use default settings and scan filesystem
 		settings = _get_default_settings_for_scope(scope, status)
-		entries = _scan_entries_from_save_root(settings)
+		entries = _scan_entries_from_slot_index(settings)
+		if entries.is_empty():
+			entries = _scan_entries_from_save_root(settings)
 
 	if entries.is_empty():
 		return []
@@ -403,6 +474,73 @@ func _scan_entries_from_save_root(settings: SaveSettings) -> Array:
 	return entries
 
 
+func _scan_entries_from_slot_index(settings: SaveSettings) -> Array:
+	if settings == null:
+		return []
+	if settings.slot_index_file.is_empty() or not FileAccess.file_exists(settings.slot_index_file):
+		return []
+	var file := FileAccess.open(settings.slot_index_file, FileAccess.READ)
+	if file == null:
+		return []
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if not (parsed is Dictionary):
+		return []
+
+	var index_data: Dictionary = parsed
+	var slots := Dictionary(index_data.get("slots", {}))
+	var entries: Array = []
+	for slot_id_variant in slots.keys():
+		var slot_id := String(slot_id_variant)
+		var slot_entry := Dictionary(slots[slot_id_variant])
+		var entry := _entry_from_index_slot(slot_id, slot_entry)
+		if entry.is_empty():
+			continue
+		entries.append(entry)
+	return entries
+
+
+func _entry_from_index_slot(slot_id: String, slot_entry: Dictionary) -> Dictionary:
+	var meta := Dictionary(slot_entry.get("meta", {}))
+	var record_entry: Dictionary = {}
+	if meta.is_empty():
+		record_entry = _latest_record_entry_from_index_slot(slot_entry)
+		meta = Dictionary(record_entry.get("meta", {}))
+	if meta.is_empty():
+		return {}
+
+	var entry := _entry_from_meta(meta)
+	if String(entry.get("name", "")).is_empty():
+		entry["name"] = slot_id
+	if String(entry.get("display_name", "")).is_empty():
+		entry["display_name"] = String(slot_entry.get("display_name", slot_id))
+	if int(entry.get("saved_at_unix", 0)) <= 0:
+		entry["saved_at_unix"] = int(slot_entry.get("saved_at_unix", 0))
+	if not record_entry.is_empty():
+		entry["record_path"] = String(record_entry.get("path", ""))
+		entry["record_format"] = int(record_entry.get("format", 0))
+	return entry
+
+
+func _latest_record_entry_from_index_slot(slot_entry: Dictionary) -> Dictionary:
+	var records := Dictionary(slot_entry.get("records", {}))
+	var latest_entry: Dictionary = {}
+	for record_key_variant in records.keys():
+		var record_key := String(record_key_variant)
+		var record_entry := Dictionary(records[record_key_variant])
+		var meta := Dictionary(record_entry.get("meta", {}))
+		if meta.is_empty():
+			continue
+		var latest_meta := Dictionary(latest_entry.get("meta", {}))
+		if latest_entry.is_empty() or int(meta.get("saved_at_unix", 0)) > int(latest_meta.get("saved_at_unix", 0)):
+			var normalized := record_entry.duplicate(true)
+			var normalized_meta := Dictionary(normalized.get("meta", {}))
+			normalized_meta["record_key"] = String(normalized_meta.get("record_key", record_key))
+			normalized_meta["record_kind"] = String(normalized_meta.get("record_kind", normalized.get("record_kind", "")))
+			normalized["meta"] = normalized_meta
+			latest_entry = normalized
+	return latest_entry
+
+
 func _read_meta_from_slot_file(path: String, format: int) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
@@ -460,130 +598,315 @@ func _sort_entries(a: Dictionary, b: Dictionary) -> bool:
 
 func _build_row(entry: Dictionary, scope: String) -> Control:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 96)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	panel.add_child(row)
+	panel.custom_minimum_size = Vector2(0, 64)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	var text_box := VBoxContainer.new()
-	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(text_box)
+	var card := VBoxContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_constant_override("separation", 4)
+	panel.add_child(card)
 
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 6)
+	top_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(top_row)
+
+	var entry_name := String(entry.get("name", ""))
+	var display_name := String(entry.get("display_name", entry_name))
 	var title := Label.new()
-	title.text = String(entry.get("display_name", ""))
-	title.add_theme_font_size_override("font_size", 15)
-	text_box.add_child(title)
+	title.name = "SaveNameLabel"
+	title.text = display_name
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.add_theme_font_size_override("font_size", 14)
+	top_row.add_child(title)
 
-	var status_row := HBoxContainer.new()
-	status_row.add_theme_constant_override("separation", 6)
-	text_box.add_child(status_row)
+	var meta := Dictionary(entry.get("meta", {}))
+	var badge_row := HBoxContainer.new()
+	badge_row.name = "SaveBadgeRow"
+	badge_row.add_theme_constant_override("separation", 4)
+	badge_row.size_flags_horizontal = Control.SIZE_SHRINK_END
+	top_row.add_child(badge_row)
 
 	var compatibility_report := Dictionary(entry.get("compatibility_report", {}))
-	status_row.add_child(
-		_make_status_badge_clean(
-			"Compatibility",
-			_build_compatibility_status_text(compatibility_report).trim_prefix("Compatibility: "),
+	badge_row.add_child(
+		_make_status_pill(
+			_compact_compatibility_status_text(compatibility_report),
 			_build_compatibility_status_color(compatibility_report),
 			_build_compatibility_tooltip(
 				compatibility_report,
-				Dictionary(entry.get("meta", {}))
+				meta
 			)
 		)
 	)
 
 	var restore_readiness_report := Dictionary(entry.get("restore_readiness_report", {}))
-	status_row.add_child(
-		_make_status_badge_clean(
-			"Restore Contract",
-			_build_restore_readiness_status_text(restore_readiness_report).trim_prefix("Restore Readiness: "),
+	badge_row.add_child(
+		_make_status_pill(
+			_compact_restore_status_text(restore_readiness_report),
 			_build_restore_readiness_status_color(restore_readiness_report),
 			_build_restore_readiness_tooltip(
 				restore_readiness_report,
-				Dictionary(entry.get("meta", {}))
+				meta
 			)
 		)
 	)
 
-	status_row.add_child(
-		_make_status_badge_clean(
-			"Slot Safety",
-			_build_slot_safety_status_text(entry),
+	badge_row.add_child(
+		_make_status_pill(
+			_compact_slot_safety_status_text(entry),
 			_build_slot_safety_summary_color(entry),
 			_build_slot_safety_tooltip(entry)
 		)
 	)
 
-	# Create a horizontal container for buttons
-	var button_row := HBoxContainer.new()
-	button_row.add_theme_constant_override("separation", 6)
-	text_box.add_child(button_row)
+	var action_row := HBoxContainer.new()
+	action_row.name = "SaveActionRow"
+	action_row.alignment = BoxContainer.ALIGNMENT_END
+	action_row.add_theme_constant_override("separation", 4)
+	action_row.size_flags_horizontal = Control.SIZE_SHRINK_END
+	top_row.add_child(action_row)
 
-	var subtitle := Label.new()
-	subtitle.text = "Created: %s | Saved: %s" % [
-		_format_unix_time(int(entry.get("created_at_unix", 0))),
-		_format_unix_time(int(entry.get("saved_at_unix", 0))),
-	]
-	subtitle.modulate = get_theme_color("font_placeholder_color", "Editor")
-	subtitle.add_theme_font_size_override("font_size", 12)  # Smaller font size
-	text_box.add_child(subtitle)
-
-	var entry_name := String(entry.get("name", ""))
-	var display_name := String(entry.get("display_name", entry_name))
-	var details_key := _entry_ui_key(scope, entry_name)
-	var details_expanded := bool(_expanded_entry_keys.get(details_key, false))
-
-	var details_toggle := Button.new()
-	details_toggle.flat = true
-	details_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	details_toggle.text = ("%s Slot Details" % ("v" if details_expanded else ">"))
-	details_toggle.pressed.connect(
-		func() -> void:
-			_expanded_entry_keys[details_key] = not details_expanded
-			_refresh_scope_list(scope)
-	)
-	text_box.add_child(details_toggle)
-
-	var details_box := VBoxContainer.new()
-	details_box.visible = details_expanded
-	details_box.add_theme_constant_override("separation", 4)
-	text_box.add_child(details_box)
-
-	if details_expanded:
-		var safety_summary := Label.new()
-		safety_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		safety_summary.text = _build_slot_safety_summary(entry)
-		safety_summary.modulate = _build_slot_safety_summary_color(entry)
-		details_box.add_child(safety_summary)
-
-		var storage_info := Dictionary(entry.get("storage_info", {}))
-		details_box.add_child(_make_detail_label("Slot Path", String(storage_info.get("slot_path", PATH_UNAVAILABLE))))
-		details_box.add_child(_make_detail_label("Primary File", _build_primary_status_text(storage_info)))
-		details_box.add_child(_make_detail_label("Backup", _build_backup_status_text(storage_info)))
-
-		var meta := Dictionary(entry.get("meta", {}))
-		details_box.add_child(_make_detail_label("Save Schema", _fallback_detail_text(String(meta.get("save_schema", "")))))
-		details_box.add_child(_make_detail_label("Data Version", _detail_number_text(meta.get("data_version", 0))))
-		details_box.add_child(_make_detail_label("Game Version", _fallback_detail_text(String(meta.get("game_version", "")))))
-		details_box.add_child(_make_detail_label("Scene Path", _fallback_detail_text(String(meta.get("scene_path", "")))))
+	action_row.add_child(_make_icon_button_any(PackedStringArray(["Inspect", "Search", "Info"]), "Details", "Inspect save details", true, func() -> void: _open_detail_dialog(entry, scope), "InspectSaveButton"))
 
 	if scope == SCOPE_DEV:
-		button_row.add_child(_make_row_button("Ld", _is_runtime_available(), func() -> void: _queue_load_request(entry_name)))
-		button_row.add_child(_make_row_button("Sv", _is_runtime_available(), func() -> void: _queue_save_request_named(entry_name)))
-	# Add Load button for formal saves too
+		action_row.add_child(_make_icon_button_any(PackedStringArray(["Load", "MoveDown", "Import"]), "Ld", "Load dev save", _is_runtime_available(), func() -> void: _queue_load_request(entry_name, SCOPE_DEV), "LoadSaveButton"))
+		action_row.add_child(_make_icon_button_any(PackedStringArray(["Save"]), "Sv", "Overwrite dev save from runtime", _is_runtime_available(), func() -> void: _queue_save_request_named(entry_name), "SaveSnapshotButton"))
 	if scope == SCOPE_FORMAL:
-		button_row.add_child(_make_row_button("Ld", _is_runtime_available(), func() -> void: _queue_load_request(entry_name)))
-	button_row.add_child(_make_row_button("Cp", true, func() -> void: _open_name_dialog(scope, "copy", entry_name, "Copy Save", "Copy", "%s Copy" % display_name)))
-	button_row.add_child(_make_row_button("Rn", true, func() -> void: _open_name_dialog(scope, "rename", entry_name, "Rename Save", "Rename", display_name)))
-	button_row.add_child(_make_row_button("Dl", true, func() -> void: _open_delete_dialog(scope, entry_name)))
+		action_row.add_child(_make_icon_button_any(PackedStringArray(["Load", "MoveDown", "Import"]), "Ld", "Load formal save", _is_runtime_available(), func() -> void: _queue_load_request(entry_name, SCOPE_FORMAL), "LoadSaveButton"))
+	action_row.add_child(_make_icon_button_any(PackedStringArray(["ActionCopy", "Duplicate", "File"]), "Cp", "Copy save", true, func() -> void: _open_name_dialog(scope, "copy", entry_name, "Copy Save", "Copy", "%s Copy" % display_name), "CopySaveButton"))
+	action_row.add_child(_make_icon_button_any(PackedStringArray(["Rename", "Edit"]), "Rn", "Rename save", true, func() -> void: _open_name_dialog(scope, "rename", entry_name, "Rename Save", "Rename", display_name), "RenameSaveButton"))
+	action_row.add_child(_make_icon_button_any(PackedStringArray(["Remove", "Close", "Trash"]), "Dl", "Delete save", true, func() -> void: _open_delete_dialog(scope, entry_name), "DeleteSaveButton"))
+
+	var meta_row := HBoxContainer.new()
+	meta_row.name = "SaveMetaRow"
+	meta_row.add_theme_constant_override("separation", 6)
+	card.add_child(meta_row)
+
+	var saved_label := _make_row_meta_label(_format_short_unix_time(int(entry.get("saved_at_unix", 0))), "")
+	saved_label.custom_minimum_size.x = 76
+	saved_label.modulate = get_theme_color("font_color", "Editor")
+	meta_row.add_child(saved_label)
+
+	var tag_label := _make_row_meta_label(_build_row_tag_text(entry, scope), _build_row_context_tooltip(entry, scope))
+	tag_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	meta_row.add_child(tag_label)
+
+	var condition_label := _make_row_meta_label(_build_slot_safety_status_text(entry), _build_slot_safety_summary(entry))
+	condition_label.modulate = _build_slot_safety_summary_color(entry)
+	meta_row.add_child(condition_label)
 	return panel
 
 
 func _make_row_button(text: String, enabled: bool, action: Callable) -> Button:
+	return _make_icon_button("", text, text, enabled, action)
+
+
+func _make_icon_button(icon_name: String, fallback_text: String, tooltip: String, enabled: bool, action: Callable) -> Button:
+	return _make_icon_button_any(PackedStringArray([icon_name]), fallback_text, tooltip, enabled, action)
+
+
+func _make_icon_button_any(icon_names: PackedStringArray, fallback_text: String, tooltip: String, enabled: bool, action: Callable, node_name: String = "") -> Button:
 	var button := Button.new()
-	button.text = text
+	button.name = node_name if not node_name.is_empty() else "%sButton" % fallback_text
+	button.tooltip_text = tooltip
 	button.disabled = not enabled
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(28, 28)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	button.icon = _resolve_editor_icon(icon_names)
+	if button.icon != null:
+		button.text = ""
+	else:
+		button.text = fallback_text
 	button.pressed.connect(action)
 	return button
+
+
+func _resolve_editor_icon(icon_names: PackedStringArray) -> Texture2D:
+	var candidates := PackedStringArray(icon_names)
+	candidates.append("Search")
+	candidates.append("Info")
+	for icon_name in candidates:
+		if icon_name.is_empty():
+			continue
+		if has_theme_icon(icon_name, "EditorIcons"):
+			return get_theme_icon(icon_name, "EditorIcons")
+	return _make_fallback_button_icon()
+
+
+func _make_fallback_button_icon() -> Texture2D:
+	var image := Image.create(12, 12, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for index in range(3, 9):
+		image.set_pixel(index, 3, Color(0.82, 0.84, 0.86, 1.0))
+		image.set_pixel(index, 8, Color(0.82, 0.84, 0.86, 1.0))
+		image.set_pixel(3, index, Color(0.82, 0.84, 0.86, 1.0))
+		image.set_pixel(8, index, Color(0.82, 0.84, 0.86, 1.0))
+	return ImageTexture.create_from_image(image)
+
+
+func _build_row_context_text(entry: Dictionary, scope: String) -> String:
+	var meta := Dictionary(entry.get("meta", {}))
+	var parts := PackedStringArray()
+	parts.append("Dev" if scope == SCOPE_DEV else "Formal")
+	parts.append(_record_kind_label(meta))
+
+	var record_key := String(meta.get("record_key", "")).strip_edges()
+	if not record_key.is_empty():
+		parts.append(_short_record_key(record_key))
+
+	var scene_path := String(meta.get("scene_path", "")).strip_edges()
+	if not scene_path.is_empty():
+		parts.append(scene_path.get_file())
+
+	var schema := String(meta.get("save_schema", "")).strip_edges()
+	var version := int(meta.get("data_version", 0))
+	if not schema.is_empty():
+		parts.append("%s v%d" % [schema, version] if version > 0 else schema)
+
+	var saved_text := _format_short_unix_time(int(entry.get("saved_at_unix", 0)))
+	if saved_text != "--":
+		parts.append(saved_text)
+	return " | ".join(parts)
+
+
+func _build_row_tag_text(entry: Dictionary, scope: String) -> String:
+	var meta := Dictionary(entry.get("meta", {}))
+	var parts := PackedStringArray()
+	parts.append("Dev" if scope == SCOPE_DEV else "Formal")
+	parts.append(_record_kind_label(meta))
+
+	var record_key := String(meta.get("record_key", "")).strip_edges()
+	if not record_key.is_empty():
+		parts.append(_short_record_key(record_key))
+
+	var scene_path := String(meta.get("scene_path", "")).strip_edges()
+	if not scene_path.is_empty():
+		parts.append(scene_path.get_file())
+
+	var schema := String(meta.get("save_schema", "")).strip_edges()
+	if not schema.is_empty():
+		parts.append("%s v%d" % [schema, int(meta.get("data_version", 0))])
+	return " | ".join(parts)
+
+
+func _build_row_context_tooltip(entry: Dictionary, scope: String) -> String:
+	var meta := Dictionary(entry.get("meta", {}))
+	var lines := PackedStringArray()
+	lines.append("Scope: %s" % ("Dev" if scope == SCOPE_DEV else "Formal"))
+	lines.append("Record: %s" % _fallback_detail_text(String(meta.get("record_key", ""))))
+	lines.append("Scene: %s" % _fallback_detail_text(String(meta.get("scene_path", ""))))
+	lines.append("Schema: %s v%d" % [
+		_fallback_detail_text(String(meta.get("save_schema", ""))),
+		int(meta.get("data_version", 0)),
+	])
+	lines.append("Saved: %s" % _format_short_unix_time(int(entry.get("saved_at_unix", 0))))
+	return "\n".join(lines)
+
+
+func _short_record_key(record_key: String) -> String:
+	var segments := record_key.split("/")
+	if segments.size() > 0:
+		record_key = String(segments[segments.size() - 1])
+	if record_key.length() > 36:
+		return "...%s" % record_key.right(33)
+	return record_key
+
+
+func _make_row_meta_label(text: String, tooltip: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.tooltip_text = tooltip
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.modulate = get_theme_color("font_placeholder_color", "Editor")
+	label.add_theme_font_size_override("font_size", 12)
+	return label
+
+
+func _make_status_pill(value: String, tone: Color, tooltip: String) -> Control:
+	var panel := PanelContainer.new()
+	panel.tooltip_text = tooltip
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(tone.r, tone.g, tone.b, 0.12)
+	style.border_color = Color(tone.r, tone.g, tone.b, 0.50)
+	style.set_border_width_all(1)
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_right = 6
+	style.corner_radius_bottom_left = 6
+	style.content_margin_left = 6
+	style.content_margin_right = 6
+	style.content_margin_top = 2
+	style.content_margin_bottom = 2
+	panel.add_theme_stylebox_override("panel", style)
+
+	var label := Label.new()
+	label.text = value
+	label.modulate = tone
+	label.add_theme_font_size_override("font_size", 10)
+	panel.add_child(label)
+	return panel
+
+
+func _compact_compatibility_status_text(report: Dictionary) -> String:
+	if report.is_empty():
+		return "?"
+	if not bool(report.get("compatible", true)):
+		return "Migrate"
+	var reasons := PackedStringArray(report.get("reasons", PackedStringArray()))
+	return "Diff" if not reasons.is_empty() else "OK"
+
+
+func _compact_restore_status_text(report: Dictionary) -> String:
+	if report.is_empty():
+		return "Target?"
+	match String(report.get("status", "ready")):
+		"blocked":
+			return "Scene"
+		"unknown":
+			return "Target?"
+		"disabled":
+			return "NoCheck"
+		"advisory":
+			return "NoScene"
+		_:
+			return "Ready"
+
+
+func _compact_slot_safety_status_text(entry: Dictionary) -> String:
+	var storage_info := Dictionary(entry.get("storage_info", {}))
+	if storage_info.is_empty():
+		return "File?"
+	if bool(storage_info.get("recovery_possible", false)):
+		return "Recover"
+	if bool(storage_info.get("primary_valid_payload", false)):
+		return "File OK"
+	if bool(storage_info.get("backup_valid_payload", false)):
+		return "Backup"
+	return "File!"
+
+
+func _record_kind_label(meta: Dictionary) -> String:
+	var record_kind := String(meta.get("record_kind", "")).strip_edges()
+	if record_kind.is_empty():
+		return "slot"
+	return record_kind
+
+
+func _format_short_unix_time(value: int) -> String:
+	if value <= 0:
+		return "--"
+	var dt := Time.get_datetime_dict_from_unix_time(value)
+	return "%02d-%02d %02d:%02d" % [
+		int(dt.get("month", 0)),
+		int(dt.get("day", 0)),
+		int(dt.get("hour", 0)),
+		int(dt.get("minute", 0)),
+	]
 
 
 func _make_status_badge(title: String, value: String, tone: Color, tooltip: String) -> Control:
@@ -654,6 +977,81 @@ func _make_detail_label(label_text: String, value_text: String) -> Control:
 	value.text = value_text
 	row.add_child(value)
 	return row
+
+
+func _open_detail_dialog(entry: Dictionary, scope: String) -> void:
+	if _detail_dialog == null or _detail_dialog_content == null:
+		return
+	_clear_container_children(_detail_dialog_content)
+
+	var entry_name := String(entry.get("display_name", entry.get("name", "")))
+	var heading := Label.new()
+	heading.text = entry_name
+	heading.add_theme_font_size_override("font_size", 18)
+	_detail_dialog_content.add_child(heading)
+
+	var summary := Label.new()
+	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	summary.text = _build_slot_safety_summary(entry)
+	summary.modulate = _build_slot_safety_summary_color(entry)
+	_detail_dialog_content.add_child(summary)
+
+	var meta := Dictionary(entry.get("meta", {}))
+	var overview_fields := [
+		["Scope", "Dev" if scope == SCOPE_DEV else "Formal"],
+		["Record", _fallback_detail_text(String(meta.get("record_key", "")))],
+		["Record Kind", _record_kind_label(meta)],
+		["Scene", _fallback_detail_text(String(meta.get("scene_path", "")))],
+		["Schema", _fallback_detail_text(String(meta.get("save_schema", "")))],
+		["Data Version", _detail_number_text(meta.get("data_version", 0))],
+		["Game Version", _fallback_detail_text(String(meta.get("game_version", "")))],
+	]
+	_add_detail_section(_detail_dialog_content, "Overview", overview_fields)
+
+	var storage_info := Dictionary(entry.get("storage_info", {}))
+	var storage_fields := [
+		["Slot Path", String(storage_info.get("slot_path", PATH_UNAVAILABLE))],
+		["Primary File", _build_primary_status_text(storage_info)],
+		["Backup", _build_backup_status_text(storage_info)],
+	]
+	_add_detail_section(_detail_dialog_content, "Storage", storage_fields)
+
+	var status_fields := [
+		["Compatibility", _build_compatibility_status_text(Dictionary(entry.get("compatibility_report", {})))],
+		["Restore Target", _build_restore_readiness_status_text(Dictionary(entry.get("restore_readiness_report", {})))],
+		["Slot Safety", _build_slot_safety_status_text(entry)],
+	]
+	_add_detail_section(_detail_dialog_content, "Status", status_fields)
+
+	_detail_dialog.popup_centered(Vector2i(720, 760))
+
+
+func _add_detail_section(parent: VBoxContainer, title_text: String, fields: Array) -> void:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(panel)
+
+	var box := VBoxContainer.new()
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 6)
+	panel.add_child(box)
+
+	var title := Label.new()
+	title.text = title_text
+	title.modulate = get_theme_color("font_placeholder_color", "Editor")
+	title.add_theme_font_size_override("font_size", 11)
+	box.add_child(title)
+
+	for field_variant in fields:
+		var field := Array(field_variant)
+		if field.size() < 2:
+			continue
+		box.add_child(_make_detail_label(String(field[0]), String(field[1])))
+
+
+func _clear_container_children(container: Node) -> void:
+	for child in container.get_children():
+		child.queue_free()
 
 
 func _entry_ui_key(scope: String, entry_name: String) -> String:
@@ -794,25 +1192,30 @@ func _queue_save_request() -> void:
 
 func _queue_save_request_named(entry_name: String) -> void:
 	if entry_name.is_empty():
-		_request_status_label.text = "Enter a save name first."
+		_set_operation_status("Enter a save name first.", true)
 		return
 	if not _is_runtime_available():
-		_request_status_label.text = "Save requests require a running game with SaveFlow available."
+		_set_operation_status("Save requests require a running game with SaveFlow available.", true)
 		return
-	SaveFlowSaveManagerBusScript.append_request("save", entry_name)
+	SaveFlowSaveManagerBusScript.append_request("save", entry_name, {"scope": SCOPE_DEV})
 	_request_status_label.text = "Queued dev save request for '%s'." % entry_name
-	_refresh_all()
+	_has_refreshed_once = true
+	_update_process_state()
+	_refresh_lists()
 
 
-func _queue_load_request(entry_name: String) -> void:
+func _queue_load_request(entry_name: String, scope: String = SCOPE_DEV) -> void:
 	if entry_name.is_empty():
 		return
 	if not _is_runtime_available():
-		_request_status_label.text = "Load requests require a running game with SaveFlow available."
+		_set_operation_status("Load requests require a running game with SaveFlow available.", true)
 		return
-	SaveFlowSaveManagerBusScript.append_request("load", entry_name)
-	_request_status_label.text = "Queued dev load request for '%s'." % entry_name
-	_refresh_all()
+	var normalized_scope := SCOPE_FORMAL if scope == SCOPE_FORMAL else SCOPE_DEV
+	SaveFlowSaveManagerBusScript.append_request("load", entry_name, {"scope": normalized_scope})
+	_request_status_label.text = "Queued %s load request for '%s'." % [normalized_scope, entry_name]
+	_has_refreshed_once = true
+	_update_process_state()
+	_refresh_lists()
 
 
 func _open_name_dialog(scope: String, mode: String, source_name: String, title: String, ok_text: String, default_text: String) -> void:
@@ -903,7 +1306,7 @@ func _get_runtime_for_slot_operations() -> Node:
 func _sync_editor_runtime_settings_from_status(runtime: Node, status: Dictionary = {}) -> SaveSettings:
 	if status.is_empty():
 		status = _read_runtime_status()
-	var settings_data := Dictionary(status.get("settings", {}))
+	var settings_data := _settings_data_from_status(status, "settings", "last_settings")
 	if settings_data.is_empty():
 		if runtime.has_method("get_settings"):
 			return runtime.get_settings()
@@ -914,7 +1317,7 @@ func _sync_editor_runtime_settings_from_status(runtime: Node, status: Dictionary
 func _sync_editor_dev_settings_from_status(runtime: Node, status: Dictionary = {}) -> SaveSettings:
 	if status.is_empty():
 		status = _read_runtime_status()
-	var settings_data := Dictionary(status.get("dev_settings", {}))
+	var settings_data := _settings_data_from_status(status, "dev_settings", "last_dev_settings")
 	if settings_data.is_empty():
 		var derived := _build_derived_dev_settings(status)
 		if derived == null:
@@ -954,6 +1357,16 @@ func _settings_from_data(settings_data: Dictionary, fallback: SaveSettings = nul
 	return settings
 
 
+func _settings_data_from_status(status: Dictionary, current_key: String, last_key: String) -> Dictionary:
+	var current := Dictionary(status.get(current_key, {}))
+	var last := Dictionary(status.get(last_key, {}))
+	if bool(status.get("runtime_available", false)) and not current.is_empty():
+		return current
+	if not last.is_empty():
+		return last
+	return current
+
+
 func _clone_settings(source: SaveSettings) -> SaveSettings:
 	var clone := SaveSettings.new()
 	if source == null:
@@ -981,13 +1394,14 @@ func _clone_settings(source: SaveSettings) -> SaveSettings:
 
 func _attach_entry_reports(entry: Dictionary, settings: SaveSettings, status: Dictionary, runtime: Node = null) -> Dictionary:
 	var meta := Dictionary(entry.get("meta", {}))
-	entry["storage_info"] = _build_entry_storage_info(String(entry.get("name", "")), settings, runtime)
+	entry["storage_info"] = _build_entry_storage_info(entry, settings, runtime)
 	entry["compatibility_report"] = _build_entry_compatibility_report(meta, settings)
 	entry["restore_readiness_report"] = _build_restore_readiness_report(meta, settings, status)
 	return entry
 
 
-func _build_entry_storage_info(entry_name: String, settings: SaveSettings, runtime: Node = null) -> Dictionary:
+func _build_entry_storage_info(entry: Dictionary, settings: SaveSettings, runtime: Node = null) -> Dictionary:
+	var entry_name := String(entry.get("name", ""))
 	if runtime != null and runtime.has_method("inspect_slot_storage"):
 		var inspect_result = runtime.inspect_slot_storage(entry_name)
 		if inspect_result != null and inspect_result.ok and inspect_result.data is Dictionary:
@@ -998,6 +1412,8 @@ func _build_entry_storage_info(entry_name: String, settings: SaveSettings, runti
 		var path_result = runtime.get_slot_path(entry_name)
 		if path_result != null and path_result.ok:
 			slot_path = String(path_result.data)
+	if slot_path.is_empty():
+		slot_path = String(entry.get("record_path", ""))
 	if slot_path.is_empty():
 		slot_path = _resolve_slot_path_from_settings(entry_name, settings)
 
@@ -1350,6 +1766,13 @@ func _open_dev_save_folder() -> void:
 	_open_folder_path(path, "Dev save folder is unavailable.")
 
 
+func _open_active_save_folder() -> void:
+	if _active_scope == SCOPE_FORMAL:
+		_open_formal_save_folder()
+	else:
+		_open_dev_save_folder()
+
+
 func _build_derived_dev_settings(status: Dictionary) -> SaveSettings:
 	var formal_settings := _formal_settings_from_status(status)
 	var formal_root := formal_settings.save_root
@@ -1386,13 +1809,13 @@ func _formal_settings_from_status(status: Dictionary = {}) -> SaveSettings:
 	var fallback := SaveSettings.new()
 	fallback.save_root = _get_editor_default_save_root()
 	fallback.slot_index_file = _get_editor_default_slot_index()
-	return _settings_from_data(Dictionary(status.get("settings", {})), fallback)
+	return _settings_from_data(_settings_data_from_status(status, "settings", "last_settings"), fallback)
 
 
 func _dev_settings_from_status(status: Dictionary = {}) -> SaveSettings:
 	if status.is_empty():
 		status = _read_runtime_status()
-	var explicit_dev := _settings_from_data(Dictionary(status.get("dev_settings", {})))
+	var explicit_dev := _settings_from_data(_settings_data_from_status(status, "dev_settings", "last_dev_settings"))
 	if not explicit_dev.save_root.is_empty() or not explicit_dev.slot_index_file.is_empty():
 		return explicit_dev
 	var derived := _build_derived_dev_settings(status)
@@ -1425,16 +1848,15 @@ func _is_runtime_status_active(status: Dictionary) -> bool:
 
 
 func _get_runtime_status_state(status: Dictionary) -> String:
-	if not bool(status.get("runtime_available", false)):
-		return RUNTIME_STATUS_UNAVAILABLE
-	var heartbeat_age := _get_runtime_status_age_seconds(status)
-	if heartbeat_age < 0:
-		return RUNTIME_STATUS_UNAVAILABLE
-	if heartbeat_age <= STATUS_ACTIVE_SECONDS:
+	if bool(status.get("runtime_available", false)):
 		return RUNTIME_STATUS_ACTIVE
-	if heartbeat_age <= STATUS_STALE_SECONDS:
-		return RUNTIME_STATUS_STALE
+	if _has_last_runtime_profile(status):
+		return RUNTIME_STATUS_DISK_ONLY
 	return RUNTIME_STATUS_UNAVAILABLE
+
+
+func _has_last_runtime_profile(status: Dictionary) -> bool:
+	return not Dictionary(status.get("last_settings", {})).is_empty() or not Dictionary(status.get("last_dev_settings", {})).is_empty()
 
 
 func _format_runtime_status_text(status: Dictionary) -> String:
@@ -1445,12 +1867,11 @@ func _format_runtime_status_text(status: Dictionary) -> String:
 	var target_text := _format_runtime_target_text(status)
 	if state == RUNTIME_STATUS_ACTIVE:
 		return "Runtime bridge active: %s%s" % [bridge_name, target_text]
-	if state == RUNTIME_STATUS_STALE:
-		return "Runtime bridge stale: %s%s. Last seen %s ago. File inspection remains available; runtime Save/Load requests are paused." % [
-			bridge_name,
-			target_text,
-			_format_duration_seconds(_get_runtime_status_age_seconds(status)),
-		]
+	if state == RUNTIME_STATUS_DISK_ONLY:
+		var last_bridge_name := String(status.get("last_bridge_name", "runtime")).strip_edges()
+		if last_bridge_name.is_empty():
+			last_bridge_name = "runtime"
+		return "Disk scan mode. Showing last known %s profile and save files from disk." % last_bridge_name
 	return "Runtime handler inactive. Save/load requests require a running game with SaveFlow available."
 
 
@@ -1462,23 +1883,6 @@ func _format_runtime_target_text(status: Dictionary) -> String:
 	if record_kind.is_empty():
 		record_kind = "record"
 	return ". Current target: %s %s" % [record_kind, record_key]
-
-
-func _get_runtime_status_age_seconds(status: Dictionary) -> int:
-	var updated_at := int(status.get("updated_at_unix", 0))
-	if updated_at <= 0:
-		return -1
-	return max(0, int(Time.get_unix_time_from_system()) - updated_at)
-
-
-func _format_duration_seconds(seconds: int) -> String:
-	if seconds < 60:
-		return "%ds" % max(0, seconds)
-	var minutes := int(float(seconds) / 60.0)
-	var remainder := seconds % 60
-	if remainder == 0:
-		return "%dm" % minutes
-	return "%dm %ds" % [minutes, remainder]
 
 
 func _set_operation_status(message: String, is_error: bool) -> void:
