@@ -22,6 +22,36 @@ Use this documentation to answer three questions:
 - Which SaveFlow Source should write and restore it?
 - Which workflow should I copy into my Godot project?
 
+## First Mental Model: Slots Own Records
+
+SaveFlow is organized around a stable player slot with one or more save records
+inside it.
+
+```text
+Player view:
+Slot 1
+
+Developer view:
+slot_1
+|- main
+|- scene:res://world/forest_room.tscn
+|- scope:res://world/forest_room.tscn:room
+|- custom:quest_log
+```
+
+Most player-facing UI should show slots. Most developer-facing tools should show
+the records inside each slot.
+
+This matters before you choose an API:
+
+- `save_data()` and `save_slot()` write the slot's `main` record
+- `save_scene()` writes a scene-qualified record under the same slot
+- `save_scope()` writes a scene-and-scope-qualified record under the same slot
+- `list_slot_records()` is for tools, QA, diagnostics, and migration work
+
+Changing scene should usually keep the same `slot_id` and change the record that
+is read or written.
+
 ## What Lite Covers
 
 SaveFlow Lite focuses on the baseline save model:
@@ -47,10 +77,10 @@ background saves belong to SaveFlow Pro.
 ## Recommended Reading Path
 
 1. Install the plugin from the Asset Library or release zip and confirm the editor tools are visible.
-2. Build your first Save Graph.
-3. Copy the common API calls into your first save/load buttons.
+2. Learn how player slots and save records fit together.
+3. Build your first Save Graph.
 4. Learn the ownership model.
-5. Learn how player slots and save records fit together.
+5. Copy the common API calls into your first save/load buttons.
 6. Choose the right Source for each kind of data.
 7. Open the recommended template and compare the docs to the scene tree.
 8. Use the Examples One-Page Starter to decide which demo to open next.

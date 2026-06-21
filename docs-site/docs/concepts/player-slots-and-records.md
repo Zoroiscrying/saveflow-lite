@@ -6,6 +6,20 @@ title: Player Slots And Records
 SaveFlow separates the player's save slot from the stored records under that
 slot.
 
+## Read This First
+
+SaveFlow has two layers:
+
+| Layer | Who Thinks About It | What It Means |
+| --- | --- | --- |
+| Slot | Player and save menu | One stable playthrough, such as "Slot 1" or "Village Start". |
+| Record | Developer, runtime, and tools | One payload inside that slot, such as the main data, a scene save, a scope save, or a custom system save. |
+
+The short rule:
+
+> Keep the `slot_id` stable for the playthrough. Let SaveFlow choose or store
+> the right record inside that slot for the current save target.
+
 The player-facing concept is the slot:
 
 ```text
@@ -25,6 +39,27 @@ slot_1
 This lets one playthrough keep one stable slot while different gameplay
 domains can still be saved, loaded, inspected, backed up, and migrated as
 separate records.
+
+## API Mapping
+
+Use this table while reading the API and component docs:
+
+| Call | Record Target |
+| --- | --- |
+| `save_data(slot_id, data)` | `main` record |
+| `load_data(slot_id)` | `main` record |
+| `save_slot(slot_id, data)` | `main` record |
+| `load_slot(slot_id)` | `main` record |
+| `save_scene(slot_id, root)` | scene-qualified record |
+| `load_scene(slot_id, root)` | scene-qualified record, with legacy main-record fallback |
+| `save_scope(slot_id, scope)` | scene-and-scope-qualified record |
+| `load_scope(slot_id, scope)` | scene-and-scope-qualified record |
+| `save_record(slot_id, record_key, data)` | explicit project-owned record |
+| `list_slot_records(slot_id)` | all known records under one slot |
+
+Most projects should start with `save_scope()` or `save_scene()` for
+scene-authored game state. Use direct `save_record()` calls for named project
+domains such as `quest_log`, `world_state`, or `settings`.
 
 ## Slot
 

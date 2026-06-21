@@ -17,9 +17,9 @@ const sidebars = {
       label: 'Core Concepts',
       collapsed: false,
       items: [
+        'concepts/player-slots-and-records',
         'concepts/save-graph',
         'concepts/ownership-model',
-        'concepts/player-slots-and-records',
       ],
     },
     {

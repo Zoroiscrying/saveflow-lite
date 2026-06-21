@@ -8,6 +8,11 @@ This page is the quick copy/paste layer.
 Use it after you understand the basic Save Graph idea and need to wire buttons,
 menus, autosave zones, or debug shortcuts.
 
+If the slot/record model is still fuzzy, read
+[Player Slots And Records](../concepts/player-slots-and-records) first.
+The short version is: keep the player's `slot_id` stable, then let each API
+write the correct record inside that slot.
+
 ## Save A Scope
 
 Use this when one gameplay domain owns the save/load boundary.

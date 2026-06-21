@@ -4,6 +4,16 @@ SaveFlow Lite is a comfort-first save workflow plugin for Godot 4. It keeps
 save ownership in the scene tree instead of hiding everything inside one large
 save script.
 
+Save model:
+- players choose a stable slot, such as `slot_1`
+- developers save records inside that slot, such as `main`, scene records,
+  scope records, and custom records
+- `save_data()` and `save_slot()` write the `main` record
+- `save_scene()` writes a scene-qualified record
+- `save_scope()` writes a scene-and-scope-qualified record
+- changing scene should usually change the active record, not create a new
+  player slot
+
 Main paths:
 - `SaveFlowNodeSource` for object-owned state
 - `SaveFlowTypedDataSource` for typed system/model-style state

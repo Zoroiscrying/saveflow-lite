@@ -9,6 +9,17 @@ Use these calls from gameplay code, menu code, tests, or editor utilities.
 
 The method names on this page are the stable GDScript surface for the 1.0 line.
 
+Before choosing a method, keep the save model in mind:
+
+- `slot_id` is the stable player-facing playthrough identity
+- `save_data()` and `save_slot()` target the slot's `main` record
+- `save_scene()` targets a scene-qualified record
+- `save_scope()` targets a scene-and-scope-qualified record
+- direct record calls are for explicit project-owned domains
+
+See [Player Slots And Records](../concepts/player-slots-and-records) for the
+full model.
+
 ## Configuration
 
 ```gdscript
