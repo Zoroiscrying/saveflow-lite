@@ -31,6 +31,39 @@ and published releases are maintained by the project owner.
   <img src="addons/saveflow_lite/docs/screenshots/SaveFlowScope.png" alt="SaveFlowScope inspector" width="48%" />
 </p>
 
+## The Save Model
+
+Read this first if you are new to SaveFlow.
+
+SaveFlow separates the player-facing save slot from the developer-facing save
+records inside that slot.
+
+```text
+Player view:
+Slot 1
+
+Developer view:
+slot_1
+|- main
+|- scene:res://world/forest_room.tscn
+|- scope:res://world/forest_room.tscn:room
+|- custom:quest_log
+```
+
+A `slot_id` should stay stable for one playthrough. Changing scene should not
+usually create a new player slot. Instead, `save_scene()` and `save_scope()`
+write scene-qualified or scope-qualified records under the same slot.
+
+That model makes the rest of SaveFlow easier to read:
+
+- save menus show slots
+- Save Graphs and Sources write records
+- `save_data()` / `save_slot()` target the `main` record
+- `save_scene()` targets a scene record
+- `save_scope()` targets a scene-and-scope record
+- editor tools inspect the files, records, metadata, and compatibility that
+  belong to each slot
+
 ## Start With One Ownership Model
 
 Start with the smallest ownership model that matches what you are saving:
@@ -104,6 +137,8 @@ bridges before running the game.
 
 ## Start Here
 
+- Save model:
+  [Player Slots And Records](https://zoroiscrying.github.io/saveflow-lite/concepts/player-slots-and-records)
 - Start with one object:
   `SaveFlowNodeSource`
 - Start with one system:
